@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Settings — myRSSfeed</title>
+  <!-- Apply theme before first paint to prevent flash -->
+  <script>
+    (function() {
+      var t = localStorage.getItem("theme") || "system";
+      var el = document.documentElement;
+      if (t === "light") el.setAttribute("data-theme", "light");
+      else if (t === "dark") el.setAttribute("data-theme", "dark");
+      else el.removeAttribute("data-theme");
+    })();
+  </script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    /* ── Dark theme (default) ── */
+    :root {
+      --bg:        #0f1117;
+      --surface:   #1a1d27;
+      --border:    #2a2d3a;
+      --accent:    #5b8cff;
+      --accent-dim:#3a5fbf;
+      --text:      #e2e4ef;
+      --muted:     #7a7f99;
+      --danger:    #e05c5c;
+      --tag-bg:    #252a3d;
+      --shadow:    rgba(0,0,0,.45);
+      --success:   #4caf7d;
+      --radius:    10px;
+      font-size:   16px;
+    }
+
+    /* ── Light theme ── */
+    [data-theme="light"] {
+      --bg:        #f4f5f9;
+      --surface:   #ffffff;
+      --border:    #dde0ea;
+      --accent:    #3b6ef0;
+      --accent-dim:#2754c9;
+      --text:      #1a1d2e;
+      --muted:     #6b7190;
+      --danger:    #d94040;
+      --tag-bg:    #e8ecf8;
+      --shadow:    rgba(0,0,0,.12);
+      --success:   #2e9e62;
+    }
+
+    /* ── System preference ── */
+    @media (prefers-color-scheme: light) {
+      :root:not([data-theme="dark"]) {
+        --bg:        #f4f5f9;
+        --surface:   #ffffff;
+        --border:    #dde0ea;
+        --accent:    #3b6ef0;
+        --accent-dim:#2754c9;
+        --text:      #1a1d2e;
+        --muted:     #6b7190;
+        --danger:    #d94040;
+        --tag-bg:    #e8ecf8;
+        --shadow:    rgba(0,0,0,.12);
+        --success:   #2e9e62;
+      }
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      min-height: 100dvh;
+      transition: background .2s, color .2s;
+    }
+
+    /* ── Header ── */
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0.65rem 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .header-brand {
+      font-size: 1.1rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: var(--accent);
+      flex-shrink: 0;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+    .header-brand:hover { color: var(--accent-dim); }
+    .header-title {
+      flex: 1;
+      font-size: 0.92rem;
+      color: var(--muted);
+      font-weight: 500;
+    }
+
+    .btn {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius);
+      padding: 0.45rem 0.85rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background .15s;
+    }
+    .btn:hover { background: var(--accent-dim); }
+    .btn.ghost {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--muted);
+    }
+    .btn.ghost:hover { border-color: var(--accent); color: var(--accent); }
+    .btn.icon-btn {
+      background: transparent;
+      border: none;
+      color: var(--muted);
+      font-size: 1.3rem;
+      padding: 0.3rem 0.4rem;
+      line-height: 1;
+      border-radius: 6px;
+      flex-shrink: 0;
+    }
+    .btn.icon-btn:hover { color: var(--text); background: var(--tag-bg); }
+
+    /* ── Hamburger ── */
+    .hamburger-wrap {
+      position: relative;
+      flex-shrink: 0;
+    }
+    .hamburger-menu {
+      position: absolute;
+      top: calc(100% + 0.4rem);
+      right: 0;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      min-width: 160px;
+      box-shadow: 0 8px 24px var(--shadow);
+      display: none;
+      z-index: 300;
+      overflow: hidden;
+    }
+    .hamburger-menu.open { display: block; }
+    .hamburger-menu a {
+      display: flex;
+      align-items: center;
+      gap: 0.55rem;
+      padding: 0.65rem 1rem;
+      color: var(--text);
+      text-decoration: none;
+      font-size: 0.9rem;
+      transition: background .15s;
+    }
+    .hamburger-menu a:hover { background: var(--tag-bg); color: var(--accent); }
+    .hamburger-menu a .menu-icon { font-size: 1rem; width: 1.1rem; text-align: center; }
+    .hamburger-menu a.active-page { color: var(--accent); }
+
+    /* ── Settings layout ── */
+    .settings-wrap {
+      max-width: 640px;
+      margin: 2rem auto;
+      padding: 0 1rem;
+    }
+
+    .settings-section {
+      margin-bottom: 2rem;
+    }
+    .settings-section-title {
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .09em;
+      color: var(--muted);
+      margin-bottom: 0.75rem;
+      padding-bottom: 0.4rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .setting-row {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1rem 1.1rem;
+      margin-bottom: 0.6rem;
+      display: flex;
+      align-items: flex-start;
+      gap: 1rem;
+    }
+    .setting-info {
+      flex: 1;
+      min-width: 0;
+    }
+    .setting-label {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 0.2rem;
+    }
+    .setting-desc {
+      font-size: 0.8rem;
+      color: var(--muted);
+      line-height: 1.4;
+    }
+    .setting-control {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-shrink: 0;
+    }
+
+    /* Number input */
+    .num-input {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      padding: 0.38rem 0.65rem;
+      font-size: 0.9rem;
+      width: 72px;
+      text-align: center;
+      outline: none;
+      transition: border-color .2s;
+      -moz-appearance: textfield;
+    }
+    .num-input::-webkit-inner-spin-button,
+    .num-input::-webkit-outer-spin-button { -webkit-appearance: none; }
+    .num-input:focus { border-color: var(--accent); }
+    .num-unit {
+      font-size: 0.8rem;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    /* ── Theme pill toggle ── */
+    .theme-toggle {
+      display: flex;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 3px;
+      gap: 2px;
+    }
+    .theme-toggle button {
+      background: transparent;
+      border: none;
+      border-radius: 999px;
+      padding: 0.3rem 0.75rem;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--muted);
+      cursor: pointer;
+      transition: background .15s, color .15s;
+      white-space: nowrap;
+    }
+    .theme-toggle button.active {
+      background: var(--surface);
+      color: var(--accent);
+      box-shadow: 0 1px 4px var(--shadow);
+    }
+    .theme-toggle button:not(.active):hover { color: var(--text); }
+
+    /* Save bar */
+    .save-bar {
+      position: sticky;
+      bottom: 0;
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      padding: 0.85rem 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 0.75rem;
+    }
+    .save-status {
+      font-size: 0.82rem;
+      color: var(--success);
+      opacity: 0;
+      transition: opacity .3s;
+    }
+    .save-status.show { opacity: 1; }
+
+    /* ── Toast ── */
+    #toast {
+      position: fixed;
+      bottom: 4rem;
+      left: 50%;
+      transform: translateX(-50%) translateY(2rem);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 0.6rem 1.2rem;
+      border-radius: 30px;
+      font-size: 0.88rem;
+      opacity: 0;
+      transition: opacity .3s, transform .3s;
+      pointer-events: none;
+      z-index: 999;
+    }
+    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    @media (max-width: 640px) {
+      .header-brand { display: none; }
+      .settings-wrap { margin: 1rem auto; }
+      .setting-row { flex-direction: column; gap: 0.75rem; }
+      .setting-control { justify-content: flex-start; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <a href="/" class="header-brand">myRSSfeed</a>
+  <span class="header-title">Settings</span>
+
+  <div class="hamburger-wrap">
+    <button class="btn icon-btn" id="hamburger-btn" onclick="toggleMenu()" aria-label="Menu" aria-expanded="false">&#9776;</button>
+    <nav class="hamburger-menu" id="hamburger-menu" role="menu">
+      <a href="/" role="menuitem">
+        <span class="menu-icon">📰</span> My Feeds
+      </a>
+      <a href="/settings" class="active-page" role="menuitem">
+        <span class="menu-icon">⚙️</span> Settings
+      </a>
+    </nav>
+  </div>
+</header>
+
+<div class="settings-wrap">
+
+  <div class="settings-section">
+    <div class="settings-section-title">Appearance</div>
+
+    <div class="setting-row">
+      <div class="setting-info">
+        <div class="setting-label">Theme</div>
+        <div class="setting-desc">
+          Choose a colour scheme. <em>System</em> follows your device's dark/light preference.
+        </div>
+      </div>
+      <div class="setting-control">
+        <div class="theme-toggle" id="theme-toggle" role="group" aria-label="Theme">
+          <button data-theme-val="dark"   onclick="setTheme('dark')"  >Dark</button>
+          <button data-theme-val="system" onclick="setTheme('system')">System</button>
+          <button data-theme-val="light"  onclick="setTheme('light')" >Light</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="settings-section">
+    <div class="settings-section-title">Storage &amp; Pruning</div>
+
+    <div class="setting-row">
+      <div class="setting-info">
+        <div class="setting-label">Article retention</div>
+        <div class="setting-desc">
+          Articles older than this many days are automatically deleted each time
+          the daily feed fetch runs. Set to <strong>0</strong> to keep articles forever.
+        </div>
+      </div>
+      <div class="setting-control">
+        <input
+          class="num-input"
+          type="number"
+          id="retention_days"
+          min="0"
+          max="3650"
+          value="{{ settings.retention_days }}"
+        />
+        <span class="num-unit">days</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="settings-section">
+    <div class="settings-section-title">Topics</div>
+
+    <div class="setting-row">
+      <div class="setting-info">
+        <div class="setting-label">Number of topic clusters</div>
+        <div class="setting-desc">
+          How many topic groups K-Means will create when clustering articles.
+          Larger values give finer-grained topics but take longer to compute.
+        </div>
+      </div>
+      <div class="setting-control">
+        <input
+          class="num-input"
+          type="number"
+          id="num_topic_clusters"
+          min="2"
+          max="100"
+          value="{{ settings.num_topic_clusters }}"
+        />
+        <span class="num-unit">clusters</span>
+      </div>
+    </div>
+
+    <div class="setting-row" style="flex-direction:column; gap:0.75rem;">
+      <div style="display:flex; align-items:flex-start; gap:1rem; width:100%;">
+        <div class="setting-info">
+          <div class="setting-label">Re-cluster topics</div>
+          <div class="setting-desc">
+            Regenerate all topic clusters from the current articles. This runs the
+            embedding + K-Means pipeline and may take a minute on large feeds.
+          </div>
+        </div>
+        <div class="setting-control">
+          <button class="btn ghost" id="recluster-btn" onclick="recluster()">Re-cluster topics</button>
+        </div>
+      </div>
+      <!-- progress bar — hidden until clustering starts -->
+      <div id="recluster-progress-wrap" style="display:none; width:100%;">
+        <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:0.3rem;">
+          <span id="recluster-step-label" style="font-size:0.8rem; color:var(--muted);">—</span>
+          <span id="recluster-pct-label" style="font-size:0.8rem; color:var(--muted);">0%</span>
+        </div>
+        <div style="background:var(--bg); border:1px solid var(--border); border-radius:999px; height:8px; overflow:hidden;">
+          <div id="recluster-bar"
+               style="height:100%; width:0%; background:var(--accent); border-radius:999px; transition:width .4s ease;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="settings-section">
+    <div class="settings-section-title">AI Digest (ollama)</div>
+
+    <div class="setting-row">
+      <div class="setting-info">
+        <div class="setting-label">ollama URL</div>
+        <div class="setting-desc">
+          Base URL of your local <a href="https://ollama.com" target="_blank" rel="noopener" style="color:var(--accent)">ollama</a>
+          instance. Default: <code>http://localhost:11434</code>.
+          On the Pi this is usually the same host as the app.
+        </div>
+      </div>
+      <div class="setting-control">
+        <input
+          class="num-input"
+          type="text"
+          id="ollama_url"
+          style="width:210px; text-align:left;"
+          value="{{ settings.ollama_url }}"
+          placeholder="http://localhost:11434"
+        />
+      </div>
+    </div>
+
+    <div class="setting-row">
+      <div class="setting-info">
+        <div class="setting-label">ollama model</div>
+        <div class="setting-desc">
+          Model tag to use for digest generation, e.g.
+          <code>llama3.2:1b</code> (fast, ~1 GB), <code>phi3:mini</code>, or
+          <code>mistral:7b-q4</code>. The model must already be pulled on the
+          Pi with <code>ollama pull &lt;model&gt;</code>.
+        </div>
+      </div>
+      <div class="setting-control">
+        <input
+          class="num-input"
+          type="text"
+          id="ollama_model"
+          style="width:160px; text-align:left;"
+          value="{{ settings.ollama_model }}"
+          placeholder="llama3.2:1b"
+        />
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="save-bar">
+  <span class="save-status" id="save-status">✓ Saved</span>
+  <button class="btn ghost" onclick="window.location.href='/'">Cancel</button>
+  <button class="btn" onclick="saveSettings()">Save changes</button>
+</div>
+
+<div id="toast"></div>
+
+<script>
+  // ── Hamburger ───────────────────────────────────────────────────
+  const hamburgerBtn  = document.getElementById("hamburger-btn");
+  const hamburgerMenu = document.getElementById("hamburger-menu");
+
+  function toggleMenu() {
+    const open = hamburgerMenu.classList.toggle("open");
+    hamburgerBtn.setAttribute("aria-expanded", open);
+  }
+
+  document.addEventListener("click", (e) => {
+    if (!hamburgerBtn.contains(e.target) && !hamburgerMenu.contains(e.target)) {
+      hamburgerMenu.classList.remove("open");
+      hamburgerBtn.setAttribute("aria-expanded", "false");
+    }
+  });
+
+  // ── Theme toggle ────────────────────────────────────────────────
+  function applyTheme(t) {
+    const el = document.documentElement;
+    if (t === "light")       el.setAttribute("data-theme", "light");
+    else if (t === "dark")   el.setAttribute("data-theme", "dark");
+    else                     el.removeAttribute("data-theme");
+  }
+
+  function refreshToggleUI(t) {
+    document.querySelectorAll("#theme-toggle button").forEach((btn) => {
+      btn.classList.toggle("active", btn.dataset.themeVal === t);
+    });
+  }
+
+  function setTheme(t) {
+    localStorage.setItem("theme", t);
+    applyTheme(t);
+    refreshToggleUI(t);
+  }
+
+  // Initialise toggle to match current localStorage value
+  (function() {
+    const t = localStorage.getItem("theme") || "system";
+    refreshToggleUI(t);
+  })();
+
+  // ── Toast ───────────────────────────────────────────────────────
+  function toast(msg, ok = true) {
+    const el = document.getElementById("toast");
+    el.textContent = msg;
+    el.style.borderColor = ok ? "var(--accent)" : "var(--danger)";
+    el.classList.add("show");
+    setTimeout(() => el.classList.remove("show"), 2800);
+  }
+
+  // ── Save settings ───────────────────────────────────────────────
+  async function saveSettings() {
+    const retentionInput = document.getElementById("retention_days");
+    const days = parseInt(retentionInput.value, 10);
+
+    if (isNaN(days) || days < 0 || days > 3650) {
+      toast("Retention must be 0–3650 days.", false);
+      retentionInput.focus();
+      return;
+    }
+
+    const clustersInput = document.getElementById("num_topic_clusters");
+    const clusters = parseInt(clustersInput.value, 10);
+
+    if (isNaN(clusters) || clusters < 2 || clusters > 100) {
+      toast("Topic clusters must be 2–100.", false);
+      clustersInput.focus();
+      return;
+    }
+
+    const theme = localStorage.getItem("theme") || "system";
+
+    const ollamaUrl   = document.getElementById("ollama_url").value.trim();
+    const ollamaModel = document.getElementById("ollama_model").value.trim();
+
+    const res = await fetch("/api/settings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        retention_days: String(days),
+        num_topic_clusters: String(clusters),
+        theme,
+        ollama_url:   ollamaUrl   || "http://localhost:11434",
+        ollama_model: ollamaModel || "llama3.2:1b",
+      }),
+    });
+
+    if (res.ok) {
+      const statusEl = document.getElementById("save-status");
+      statusEl.classList.add("show");
+      setTimeout(() => statusEl.classList.remove("show"), 2500);
+    } else {
+      const data = await res.json().catch(() => ({}));
+      toast(data.detail || "Could not save settings.", false);
+    }
+  }
+
+  // ── Re-cluster with progress polling ────────────────────────────
+  let _reclusterPollTimer = null;
+
+  function _setProgress(pct, step) {
+    const wrap = document.getElementById("recluster-progress-wrap");
+    const bar  = document.getElementById("recluster-bar");
+    const pctLbl  = document.getElementById("recluster-pct-label");
+    const stepLbl = document.getElementById("recluster-step-label");
+    wrap.style.display = "";
+    bar.style.width    = pct + "%";
+    pctLbl.textContent = pct + "%";
+    stepLbl.textContent = step || "—";
+  }
+
+  function _hideProgress() {
+    document.getElementById("recluster-progress-wrap").style.display = "none";
+    document.getElementById("recluster-bar").style.width = "0%";
+  }
+
+  async function _pollStatus() {
+    try {
+      const res  = await fetch("/api/recluster/status");
+      if (!res.ok) return;
+      const data = await res.json();
+
+      if (data.status === "none") return;
+
+      _setProgress(data.progress || 0, data.step || "Working…");
+
+      if (data.status === "running") {
+        _reclusterPollTimer = setTimeout(_pollStatus, 1500);
+        return;
+      }
+
+      // finished or error
+      clearTimeout(_reclusterPollTimer);
+      const btn = document.getElementById("recluster-btn");
+      btn.disabled = false;
+      btn.textContent = "Re-cluster topics";
+
+      if (data.status === "done") {
+        _setProgress(100, "Done");
+        toast("Topics re-clustered successfully.");
+        setTimeout(_hideProgress, 3000);
+      } else {
+        _hideProgress();
+        toast("Re-clustering failed.", false);
+      }
+    } catch (_) {
+      // network hiccup — keep polling
+      _reclusterPollTimer = setTimeout(_pollStatus, 2000);
+    }
+  }
+
+  async function recluster() {
+    const btn = document.getElementById("recluster-btn");
+    btn.disabled = true;
+    btn.textContent = "Clustering…";
+    _setProgress(0, "Starting…");
+
+    // Fire the request; the server runs synchronously so this won't resolve
+    // until clustering is done — but we poll in parallel for live updates.
+    const fetchPromise = fetch("/api/recluster", { method: "POST" });
+    _reclusterPollTimer = setTimeout(_pollStatus, 800);
+
+    const res = await fetchPromise;
+    clearTimeout(_reclusterPollTimer);
+
+    btn.disabled = false;
+    btn.textContent = "Re-cluster topics";
+
+    if (res.ok) {
+      _setProgress(100, "Done");
+      toast("Topics re-clustered successfully.");
+      setTimeout(_hideProgress, 3000);
+    } else {
+      _hideProgress();
+      const data = await res.json().catch(() => ({}));
+      toast(data.detail || "Re-clustering failed.", false);
+    }
+  }
+</script>
+
+</body>
+</html>
