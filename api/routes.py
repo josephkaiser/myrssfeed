@@ -399,12 +399,22 @@ def generate_llm_digest(date: Optional[str] = None):
     )
     try:
         with urllib.request.urlopen(req, timeout=120) as resp:
-            body = _json.loads(resp.read().decode())
+            raw = resp.read().decode()
+        if not raw:
+            raise HTTPException(status_code=502, detail="ollama returned an empty response body.")
+        body = _json.loads(raw)
         summary = body.get("response", "").strip()
+    except HTTPException:
+        raise
     except urllib.error.URLError as exc:
         raise HTTPException(
             status_code=503,
             detail=f"Could not reach ollama at {api_endpoint}: {exc.reason}",
+        ) from exc
+    except _json.JSONDecodeError as exc:
+        raise HTTPException(
+            status_code=502,
+            detail=f"ollama returned an invalid JSON response: {exc}",
         ) from exc
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
@@ -459,21 +469,22 @@ def trigger_recluster():
             text=True,
             timeout=600,  # hard ceiling: 10 minutes
         )
-        if proc.returncode != 0:
-            finish_job(job_id, success=False)
-            logger.error("Clustering child exited %d:\n%s", proc.returncode, proc.stderr)
-            raise HTTPException(
-                status_code=500,
-                detail=f"Clustering failed (exit {proc.returncode}). "
-                       "Check server logs for details.",
-            )
     except subprocess.TimeoutExpired:
         finish_job(job_id, success=False)
         raise HTTPException(status_code=504, detail="Clustering timed out after 10 minutes.")
     except Exception as exc:
         finish_job(job_id, success=False)
         logger.exception("Failed to launch clustering child")
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+        raise HTTPException(status_code=500, detail=f"Failed to start clustering process: {exc}") from exc
+
+    if proc.returncode != 0:
+        finish_job(job_id, success=False)
+        stderr_snippet = proc.stderr[-500:] if proc.stderr else "(no stderr)"
+        logger.error("Clustering child exited %d:\n%s", proc.returncode, proc.stderr)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Clustering failed (exit {proc.returncode}): {stderr_snippet}",
+        )
 
     return {"status": "ok", "job_id": job_id, "message": "Re-clustering complete."}
 
