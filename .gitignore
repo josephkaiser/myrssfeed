@@ -3,3 +3,4 @@ __pycache__/
 *.pyc
 feeds/rss.db
 certs/*.pem
+.DS_STORE
