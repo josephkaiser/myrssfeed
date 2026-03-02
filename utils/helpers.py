@@ -72,7 +72,8 @@ def init_db():
             progress    INTEGER NOT NULL DEFAULT 0,
             total       INTEGER NOT NULL DEFAULT 0,
             started_at  TEXT,
-            finished_at TEXT
+            finished_at TEXT,
+            error_log   TEXT
         );
 
         CREATE TABLE IF NOT EXISTS daily_digests (
@@ -82,6 +83,11 @@ def init_db():
             created_at TEXT NOT NULL
         );
     """)
+    # Migrate existing databases that pre-date the error_log column.
+    try:
+        cursor.execute("ALTER TABLE cluster_jobs ADD COLUMN error_log TEXT")
+    except Exception:
+        pass  # column already exists
     conn.commit()
     conn.close()
 

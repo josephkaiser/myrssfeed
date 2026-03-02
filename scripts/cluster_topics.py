@@ -5,7 +5,6 @@ import logging
 import resource
 import tempfile
 from typing import Callable, Optional
-import numpy as np
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from utils.helpers import get_db, get_setting
@@ -31,27 +30,30 @@ for _, w in _STEPS:
 # 384-dim float32 × 16 articles = ~24 KB per batch — negligible.
 _ENCODE_BATCH = 16
 
-# Hard virtual-memory ceiling applied before any ML work begins.
-# Keeps the clustering child from OOM-killing the whole machine.
-# Raise this if you have more RAM to spare; lower it to be more aggressive.
-_MEMORY_LIMIT_BYTES = 512 * 1024 * 1024  # 512 MB
+# Physical-memory ceiling for the clustering child process.
+# RLIMIT_AS (virtual address space) is intentionally NOT used here — Python,
+# torch, and numpy mmap large regions of virtual space even when physical RAM
+# usage is low, so an AS limit kills the process on import.  RLIMIT_DATA caps
+# the actual heap instead.  The systemd MemoryMax cgroup directive is the
+# primary hard wall; this is a belt-and-suspenders backup for non-systemd runs.
+_MEMORY_LIMIT_BYTES = 600 * 1024 * 1024  # 600 MB heap
 
 
 def _apply_memory_limit() -> None:
-    """Set a hard RLIMIT_AS cap on this process so the kernel kills *us*
-    (SIGKILL / MemoryError) rather than letting us starve the rest of the
-    system.  Only enforced when running as the cluster child — the main
-    uvicorn process is not affected."""
+    """Cap heap growth on this process using RLIMIT_DATA.
+
+    Only called from __main__ (the clustering child subprocess).
+    The main uvicorn process is never affected."""
     try:
-        soft, hard = resource.getrlimit(resource.RLIMIT_AS)
-        # Only tighten; never loosen a stricter limit already in place.
+        soft, hard = resource.getrlimit(resource.RLIMIT_DATA)
         new_limit = _MEMORY_LIMIT_BYTES
         if hard != resource.RLIM_INFINITY:
             new_limit = min(new_limit, hard)
-        resource.setrlimit(resource.RLIMIT_AS, (new_limit, max(new_limit, hard) if hard != resource.RLIM_INFINITY else new_limit))
-        logger.info("Memory cap applied: %.0f MB virtual address space.", new_limit / 1024 / 1024)
+        new_hard = new_limit if hard == resource.RLIM_INFINITY else max(new_limit, hard)
+        resource.setrlimit(resource.RLIMIT_DATA, (new_limit, new_hard))
+        logger.info("Memory cap applied: %.0f MB heap (RLIMIT_DATA).", new_limit / 1024 / 1024)
     except (ValueError, resource.error) as exc:
-        # Non-fatal — log and continue; better slow OOM than a crash during setup.
+        # Non-fatal — systemd MemoryMax is the real enforcer.
         logger.warning("Could not apply memory limit: %s", exc)
 
 
@@ -88,13 +90,13 @@ def start_job() -> int:
     return job_id
 
 
-def finish_job(job_id: int, success: bool) -> None:
+def finish_job(job_id: int, success: bool, error_log: str = "") -> None:
     import datetime
     status = "done" if success else "error"
     conn = get_db()
     conn.execute(
-        "UPDATE cluster_jobs SET status=?, progress=?, finished_at=? WHERE id=?",
-        (status, 100 if success else None, datetime.datetime.utcnow().isoformat(), job_id),
+        "UPDATE cluster_jobs SET status=?, progress=?, finished_at=?, error_log=? WHERE id=?",
+        (status, 100 if success else 0, datetime.datetime.utcnow().isoformat(), error_log or None, job_id),
     )
     conn.commit()
     conn.close()
@@ -103,6 +105,7 @@ def finish_job(job_id: int, success: bool) -> None:
 def run_cluster_topics(
     progress_callback: Optional[Callable[[str, int, int], None]] = None,
 ) -> None:
+    import numpy as np
     from sentence_transformers import SentenceTransformer
     from sklearn.cluster import MiniBatchKMeans
     from sklearn.feature_extraction.text import TfidfVectorizer
@@ -297,6 +300,9 @@ if __name__ == "__main__":
         if args.job_id is not None:
             finish_job(args.job_id, success=True)
     except Exception:
+        import traceback
+        tb = traceback.format_exc()
+        logger.error("Clustering failed:\n%s", tb)
         if args.job_id is not None:
-            finish_job(args.job_id, success=False)
+            finish_job(args.job_id, success=False, error_log=tb)
         raise

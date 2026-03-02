@@ -478,12 +478,12 @@ def trigger_recluster():
         raise HTTPException(status_code=500, detail=f"Failed to start clustering process: {exc}") from exc
 
     if proc.returncode != 0:
-        finish_job(job_id, success=False)
-        stderr_snippet = proc.stderr[-500:] if proc.stderr else "(no stderr)"
-        logger.error("Clustering child exited %d:\n%s", proc.returncode, proc.stderr)
+        stderr_full = (proc.stderr or "").strip() or "(no stderr)"
+        finish_job(job_id, success=False, error_log=stderr_full)
+        logger.error("Clustering child exited %d:\n%s", proc.returncode, stderr_full)
         raise HTTPException(
             status_code=500,
-            detail=f"Clustering failed (exit {proc.returncode}): {stderr_snippet}",
+            detail=f"Clustering failed (exit {proc.returncode}): {stderr_full[-1000:]}",
         )
 
     return {"status": "ok", "job_id": job_id, "message": "Re-clustering complete."}
@@ -494,7 +494,7 @@ def recluster_status():
     """Return the most recent clustering job's status."""
     conn = get_db()
     row = conn.execute(
-        "SELECT id, status, step, progress, total, started_at, finished_at "
+        "SELECT id, status, step, progress, total, started_at, finished_at, error_log "
         "FROM cluster_jobs ORDER BY id DESC LIMIT 1"
     ).fetchone()
     conn.close()
