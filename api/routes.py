@@ -179,6 +179,72 @@ def trigger_refresh():
 
 
 # ---------------------------------------------------------------------------
+# Live search (suggestions + previews)
+# ---------------------------------------------------------------------------
+
+@router.get("/api/search")
+def live_search(q: Optional[str] = None, limit: int = 8):
+    """
+    Return word-completion suggestions and matching entry previews for a
+    partial query string.  Used by the live-search dropdown in the UI.
+    """
+    import re as _re
+
+    if not q or not q.strip():
+        return {"suggestions": [], "entries": []}
+
+    q = q.strip()
+    conn = get_db()
+
+    # Matching entries (title or summary)
+    entry_rows = conn.execute(
+        """
+        SELECT e.id, e.feed_id, f.title AS feed_title,
+               e.title, e.link, e.published
+        FROM entries e
+        JOIN feeds f ON f.id = e.feed_id
+        WHERE e.title LIKE ? OR e.summary LIKE ?
+        ORDER BY e.published DESC
+        LIMIT ?
+        """,
+        (f"%{q}%", f"%{q}%", limit),
+    ).fetchall()
+
+    # Word completions — look at the last partial word the user typed
+    words_in_q = q.split()
+    last_word = words_in_q[-1] if words_in_q else ""
+    suggestions: list[str] = []
+
+    if last_word and len(last_word) >= 2:
+        title_rows = conn.execute(
+            "SELECT title FROM entries WHERE title LIKE ? LIMIT 200",
+            (f"%{last_word}%",),
+        ).fetchall()
+        seen: set[str] = set()
+        for row in title_rows:
+            for word in _re.findall(r"[A-Za-z']+", row["title"]):
+                wl = word.lower()
+                if (
+                    wl.startswith(last_word.lower())
+                    and wl != last_word.lower()
+                    and len(wl) > len(last_word)
+                    and wl not in seen
+                ):
+                    seen.add(wl)
+                    suggestions.append(word)
+                    if len(suggestions) >= 8:
+                        break
+            if len(suggestions) >= 8:
+                break
+
+    conn.close()
+    return {
+        "suggestions": suggestions,
+        "entries": [dict(r) for r in entry_rows],
+    }
+
+
+# ---------------------------------------------------------------------------
 # Topics
 # ---------------------------------------------------------------------------
 
@@ -452,7 +518,8 @@ def trigger_recluster():
     """
     Launch the topic clustering pipeline in a child process so that an
     OOM-kill on the Pi only terminates the child, not the web server.
-    The child writes progress into cluster_jobs; poll /api/recluster/status.
+    Returns immediately — the child writes progress into cluster_jobs;
+    poll /api/recluster/status for updates.
     """
     import subprocess
     import sys
@@ -460,23 +527,19 @@ def trigger_recluster():
 
     job_id = start_job()
 
-    # Build the child command: python -m scripts.cluster_topics --job-id <id>
     cmd = [sys.executable, "-m", "scripts.cluster_topics", "--job-id", str(job_id)]
     try:
-        proc = subprocess.run(
+        subprocess.Popen(
             cmd,
-            capture_output=True,
-            text=True,
-            timeout=600,  # hard ceiling: 10 minutes
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
         )
-    except subprocess.TimeoutExpired:
-        finish_job(job_id, success=False)
-        raise HTTPException(status_code=504, detail="Clustering timed out after 10 minutes.")
     except Exception as exc:
-        finish_job(job_id, success=False)
+        finish_job(job_id, success=False, error_log=str(exc))
         logger.exception("Failed to launch clustering child")
         raise HTTPException(status_code=500, detail=f"Failed to start clustering process: {exc}") from exc
 
+<<<<<<< HEAD
     if proc.returncode != 0:
         stderr_full = (proc.stderr or "").strip() or "(no stderr)"
         finish_job(job_id, success=False, error_log=stderr_full)
@@ -487,6 +550,9 @@ def trigger_recluster():
         )
 
     return {"status": "ok", "job_id": job_id, "message": "Re-clustering complete."}
+=======
+    return {"status": "ok", "job_id": job_id, "message": "Re-clustering started."}
+>>>>>>> 1eff26f (.gitignore additions)
 
 
 @router.get("/api/recluster/status")

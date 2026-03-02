@@ -6,7 +6,7 @@ A simple, self-hosted RSS aggregator for your local network. Runs on a Raspberry
 
 ## Features
 
-- **Daily fetch at 9:00 AM** via APScheduler (local time, no cron setup needed)
+- **Daily fetch at 6:00 AM local time** via APScheduler
 - **Manual refresh** button for immediate updates
 - **Feed management** — add/remove RSS feeds directly from the browser
 - **Filter by feed** or **search by keyword** across all articles
@@ -131,7 +131,11 @@ The clustering pipeline runs as an isolated child process so an OOM-kill never t
 | **`MemoryHigh` (systemd)** | Kernel starts reclaiming pages and throttling the whole service cgroup once RSS approaches this limit (default: 700 MB). Slows things down instead of crashing. |
 | **`MemoryMax` (systemd)** | Hard kill ceiling for the entire service cgroup (default: 900 MB). The process is killed before the system OOM-killer fires. |
 | **`MemorySwapMax=0` (systemd)** | Prevents the Pi from thrashing its SD card swap partition; fail fast instead. |
+<<<<<<< HEAD
 | **`RLIMIT_DATA` (process)** | The clustering child sets a 600 MB heap limit on itself before loading any model weights. `RLIMIT_AS` (virtual address space) is deliberately avoided — Python/torch mmap large virtual regions even when physical RAM is low, causing spurious process kills on import. Only the child is affected. |
+=======
+| **`RLIMIT_DATA` (process)** | The clustering child sets a 600 MB heap limit on itself before loading any model weights. `RLIMIT_AS` (virtual address space) is deliberately avoided — Python/torch mmap large virtual regions even when physical RAM is low, causing spurious kills. Only the child is affected. |
+>>>>>>> 1eff26f (.gitignore additions)
 | **`max_entries_to_cluster`** | Caps the DB query so the ML pipeline never sees more than N articles, directly reducing the memmap file size and sklearn input. |
 | **memmap embeddings** | Embedding vectors are written to a temp file on disk batch-by-batch rather than held in RAM. |
 | **`del model; gc.collect()`** | The ~90 MB SentenceTransformer model is freed immediately after encoding finishes. |
@@ -146,6 +150,7 @@ To tune the systemd limits for your hardware, edit the `[Service]` section of th
 | Pi 5 8 GB | `2G` | `3G` |
 
 To tune the per-child heap limit, change `_MEMORY_LIMIT_BYTES` at the top of `scripts/cluster_topics.py`.
+<<<<<<< HEAD
 
 > **Note:** After changing the systemd limits you must reload nginx **and** restart the service:
 > ```bash
@@ -157,6 +162,8 @@ To tune the per-child heap limit, change `_MEMORY_LIMIT_BYTES` at the top of `sc
 ### nginx proxy timeout
 
 The `POST /api/recluster` endpoint is synchronous — nginx must wait for the full clustering run before the response comes back. The default `proxy_read_timeout` of 120 s is too short for a Pi; the recluster location block sets it to 620 s (matching the 10-minute Python subprocess timeout). If you see a `504 Gateway Time-out` in the browser, confirm nginx has picked up the config with the command above.
+=======
+>>>>>>> 1eff26f (.gitignore additions)
 
 ---
 
@@ -171,6 +178,8 @@ python main.py
 ```
 
 Open [http://localhost:8080](http://localhost:8080) — no nginx needed during dev.
+
+**First run:** `feeds/rss.db` is created automatically. The topic clustering model (`all-MiniLM-L6-v2`, ~80 MB) downloads to `~/.cache/huggingface/hub/` the first time clustering runs — nothing lands in the project directory.
 
 To use the AI Digest locally, install ollama on your machine and point Settings to `http://localhost:11434`.
 
@@ -225,12 +234,15 @@ myrssfeed/
 │   └── nginx-docker.conf      # nginx config for Docker Compose
 ├── certs/                     # Mount mkcert .pem files here (gitignored)
 ├── feeds/
-│   └── rss.db                 # SQLite database (auto-created on first run)
+│   └── rss.db                 # SQLite database — gitignored, auto-created on first run
+├── .env                       # Optional local overrides — gitignored, never committed
 ├── docker-compose.yml
 ├── Dockerfile
 ├── install.sh
 └── requirements.txt
 ```
+
+**Not in this repo (gitignored):** `.venv/`, `feeds/*.db`, `certs/*.pem`, `.env`, `__pycache__`, logs, and build artifacts. The HuggingFace model cache (`~/.cache/huggingface/`) is outside the project entirely.
 
 ---
 

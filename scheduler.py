@@ -43,11 +43,11 @@ def create_scheduler() -> BackgroundScheduler:
     scheduler = BackgroundScheduler()
     scheduler.add_job(
         _daily_job,
-        trigger=CronTrigger(hour=9, minute=0),
+        trigger=CronTrigger(hour=6, minute=0),
         id="daily_feed_compile",
-        name="Fetch RSS feeds and cluster topics at 9:00 AM local time",
+        name="Fetch RSS feeds and cluster topics at 6:00 AM local time",
         replace_existing=True,
         misfire_grace_time=3600,
     )
-    logger.info("Scheduler configured: RSS fetch + topic cluster daily at 09:00 local time.")
+    logger.info("Scheduler configured: RSS fetch + topic cluster daily at 06:00 local time.")
     return scheduler

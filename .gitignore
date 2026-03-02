@@ -1,6 +1,26 @@
+# Python
 .venv/
 __pycache__/
 *.pyc
-feeds/rss.db
+*.egg-info/
+
+# Runtime data
+feeds/*.db
+feeds/*.db-shm
+feeds/*.db-wal
+
+# Secrets & local config
+.env
+.env.*
 certs/*.pem
+
+# Logs
+*.log
+logs/
+
+# Build artifacts
+*.deb
+dist/
+
+# OS
 .DS_Store

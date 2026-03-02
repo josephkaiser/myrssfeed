@@ -593,7 +593,11 @@
 
   // ── Re-cluster with progress polling ────────────────────────────
   let _reclusterPollTimer = null;
+<<<<<<< HEAD
   let _reclusterActive = false;  // true only while a recluster() call is in flight
+=======
+  let _reclusterActive = false;
+>>>>>>> 1eff26f (.gitignore additions)
 
   function _setProgress(pct, step) {
     const wrap = document.getElementById("recluster-progress-wrap");
@@ -611,13 +615,25 @@
     document.getElementById("recluster-bar").style.width = "0%";
   }
 
+  function _resetBtn() {
+    const btn = document.getElementById("recluster-btn");
+    btn.disabled = false;
+    btn.textContent = "Re-cluster topics";
+  }
+
   async function _pollStatus() {
     try {
       const res  = await fetch("/api/recluster/status");
-      if (!res.ok) return;
+      if (!res.ok) {
+        if (_reclusterActive) _reclusterPollTimer = setTimeout(_pollStatus, 2000);
+        return;
+      }
       const data = await res.json();
 
-      if (data.status === "none") return;
+      if (data.status === "none" || !data.status) {
+        if (_reclusterActive) _reclusterPollTimer = setTimeout(_pollStatus, 2000);
+        return;
+      }
 
       _setProgress(data.progress || 0, data.step || "Working…");
 
@@ -626,8 +642,14 @@
         return;
       }
 
+<<<<<<< HEAD
       // finished, error, or one-shot check after a network failure
       clearTimeout(_reclusterPollTimer);
+=======
+      // done or error — stop polling and restore UI
+      _reclusterActive = false;
+      _resetBtn();
+>>>>>>> 1eff26f (.gitignore additions)
 
       if (data.status === "done") {
         _setProgress(100, "Done");
@@ -642,7 +664,10 @@
         console.error("Clustering error log:\n", data.error_log || "(none)");
       }
     } catch (_) {
+<<<<<<< HEAD
       // network hiccup — keep polling only if we started a job
+=======
+>>>>>>> 1eff26f (.gitignore additions)
       if (_reclusterActive) _reclusterPollTimer = setTimeout(_pollStatus, 2000);
     }
   }
@@ -653,15 +678,19 @@
     btn.textContent = "Clustering…";
     _setProgress(0, "Starting…");
 
+<<<<<<< HEAD
     // Fire the request; the server runs synchronously so this won't resolve
     // until clustering is done — but we poll in parallel for live updates.
     _reclusterActive = true;
     _reclusterPollTimer = setTimeout(_pollStatus, 800);
 
+=======
+>>>>>>> 1eff26f (.gitignore additions)
     let res;
     try {
       res = await fetch("/api/recluster", { method: "POST" });
     } catch (networkErr) {
+<<<<<<< HEAD
       // Connection dropped (e.g. nginx timeout or server restart mid-request).
       // The job may still be running — check the DB status before giving up.
       clearTimeout(_reclusterPollTimer);
@@ -694,7 +723,29 @@
       } catch (_) {}
       toast(msg, false);
       console.error("Clustering HTTP error — status:", res.status, "\nBody:", rawText);
+=======
+      _resetBtn();
+      _hideProgress();
+      toast("Could not start re-clustering.", false);
+      console.error("Clustering fetch error:", networkErr);
+      return;
+>>>>>>> 1eff26f (.gitignore additions)
     }
+
+    if (!res.ok) {
+      _resetBtn();
+      _hideProgress();
+      const rawText = await res.text().catch(() => "");
+      let msg = "Re-clustering failed to start.";
+      try { msg = JSON.parse(rawText).detail || msg; } catch (_) {}
+      toast(msg, false);
+      return;
+    }
+
+    // Server accepted (202) — the child process is now running.
+    // Keep polling until it reports done or error.
+    _reclusterActive = true;
+    _reclusterPollTimer = setTimeout(_pollStatus, 800);
   }
 </script>
 
