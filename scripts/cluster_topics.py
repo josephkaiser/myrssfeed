@@ -2,6 +2,7 @@ import sys
 import os
 import gc
 import logging
+import resource
 import tempfile
 from typing import Callable, Optional
 import numpy as np
@@ -29,6 +30,29 @@ for _, w in _STEPS:
 # Small batch size keeps peak RAM low on the Pi.
 # 384-dim float32 × 16 articles = ~24 KB per batch — negligible.
 _ENCODE_BATCH = 16
+
+# Hard virtual-memory ceiling applied before any ML work begins.
+# Keeps the clustering child from OOM-killing the whole machine.
+# Raise this if you have more RAM to spare; lower it to be more aggressive.
+_MEMORY_LIMIT_BYTES = 512 * 1024 * 1024  # 512 MB
+
+
+def _apply_memory_limit() -> None:
+    """Set a hard RLIMIT_AS cap on this process so the kernel kills *us*
+    (SIGKILL / MemoryError) rather than letting us starve the rest of the
+    system.  Only enforced when running as the cluster child — the main
+    uvicorn process is not affected."""
+    try:
+        soft, hard = resource.getrlimit(resource.RLIMIT_AS)
+        # Only tighten; never loosen a stricter limit already in place.
+        new_limit = _MEMORY_LIMIT_BYTES
+        if hard != resource.RLIM_INFINITY:
+            new_limit = min(new_limit, hard)
+        resource.setrlimit(resource.RLIMIT_AS, (new_limit, max(new_limit, hard) if hard != resource.RLIM_INFINITY else new_limit))
+        logger.info("Memory cap applied: %.0f MB virtual address space.", new_limit / 1024 / 1024)
+    except (ValueError, resource.error) as exc:
+        # Non-fatal — log and continue; better slow OOM than a crash during setup.
+        logger.warning("Could not apply memory limit: %s", exc)
 
 
 def _make_db_callback(job_id: int) -> Callable[[str, int, int], None]:
@@ -89,10 +113,25 @@ def run_cluster_topics(
         if progress_callback:
             progress_callback(name, done, total)
 
+    try:
+        max_entries = int(get_setting("max_entries_to_cluster"))
+        if max_entries <= 0:
+            max_entries = None
+    except (ValueError, TypeError):
+        max_entries = None
+
     conn = get_db()
-    rows = conn.execute(
-        "SELECT id, title, summary FROM entries WHERE title IS NOT NULL"
-    ).fetchall()
+    if max_entries:
+        rows = conn.execute(
+            "SELECT id, title, summary FROM entries WHERE title IS NOT NULL"
+            " ORDER BY published DESC LIMIT ?",
+            (max_entries,),
+        ).fetchall()
+    else:
+        rows = conn.execute(
+            "SELECT id, title, summary FROM entries WHERE title IS NOT NULL"
+            " ORDER BY published DESC"
+        ).fetchall()
     conn.close()
 
     if not rows:
@@ -244,6 +283,9 @@ if __name__ == "__main__":
         level=logging.INFO,
         format="%(asctime)s  %(levelname)-8s  %(name)s — %(message)s",
     )
+    # Apply the memory cap before importing torch / sentence-transformers so
+    # that even the import overhead counts toward the limit.
+    _apply_memory_limit()
     parser = argparse.ArgumentParser()
     parser.add_argument("--job-id", type=int, default=None,
                         help="cluster_jobs row to write progress into")

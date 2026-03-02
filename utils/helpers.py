@@ -8,6 +8,7 @@ DEFAULTS: dict[str, str] = {
     "retention_days": "90",
     "theme": "system",
     "num_topic_clusters": "10",
+    "max_entries_to_cluster": "2000",  # 0 = no cap
     "ollama_url": "http://localhost:11434",
     "ollama_model": "llama3.2:1b",
 }

@@ -40,6 +40,13 @@ WorkingDirectory=$APP_DIR
 ExecStart=$VENV_DIR/bin/python main.py
 Restart=on-failure
 RestartSec=10
+# Memory throttling: the kernel reclaims pages and slows the process once it
+# crosses MemoryHigh, then hard-kills it only if it reaches MemoryMax.
+# This keeps the Pi responsive under load instead of triggering a system OOM.
+# Adjust to fit your Pi's available RAM (Pi 4 4 GB → raise to 1G/1200M, etc.)
+MemoryHigh=700M
+MemoryMax=900M
+MemorySwapMax=0
 
 [Install]
 WantedBy=multi-user.target
