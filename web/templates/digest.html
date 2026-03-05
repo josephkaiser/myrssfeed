@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Digest — myRSSfeed</title>
+  <script>
+    (function() {
+      var t = localStorage.getItem("theme") || "system";
+      var el = document.documentElement;
+      if (t === "light") el.setAttribute("data-theme", "light");
+      else if (t === "dark") el.setAttribute("data-theme", "dark");
+      else el.removeAttribute("data-theme");
+    })();
+  </script>
+  <link rel="stylesheet" href="/static/index.css" />
+  <style>
+    .digest-wrap { max-width: 760px; margin: 0 auto; padding: 1.5rem 1rem; }
+    .digest-meta { font-size: 0.78rem; color: var(--muted); margin-bottom: 1.25rem; }
+    .digest-body {
+      font-size: 0.95rem; line-height: 1.7; color: var(--text);
+      white-space: pre-wrap; word-break: break-word;
+    }
+    .digest-body strong { color: var(--accent); }
+    .digest-empty { text-align: center; color: var(--muted); padding: 4rem 1rem; }
+    .digest-empty p { font-size: 0.95rem; margin-top: 0.5rem; }
+  </style>
+</head>
+<body>
+
+<header>
+  <a href="/" class="header-brand">myRSSfeed</a>
+  <span style="flex:1; font-size:0.9rem; color:var(--muted); padding-left:0.5rem;">Digest</span>
+  <div class="hamburger-wrap">
+    <button class="btn icon-btn" id="hamburger-btn" onclick="toggleMenu()" aria-label="Menu" aria-expanded="false">&#9776;</button>
+    <nav class="hamburger-menu" id="hamburger-menu" role="menu">
+      <a href="/" role="menuitem"><span class="menu-icon">📰</span> My Feeds</a>
+      <a href="/viz" role="menuitem"><span class="menu-icon">🗺️</span> Topic Map</a>
+      <a href="/digest" class="active-page" role="menuitem"><span class="menu-icon">✨</span> Digest</a>
+      <a href="/settings" role="menuitem"><span class="menu-icon">⚙️</span> Settings</a>
+    </nav>
+  </div>
+</header>
+
+<div class="digest-wrap">
+  <div id="digest-container"><p class="digest-meta">Loading…</p></div>
+</div>
+
+<div id="toast"></div>
+<script>
+  // ── Hamburger ──
+  const hamburgerBtn  = document.getElementById("hamburger-btn");
+  const hamburgerMenu = document.getElementById("hamburger-menu");
+  function toggleMenu() {
+    const open = hamburgerMenu.classList.toggle("open");
+    hamburgerBtn.setAttribute("aria-expanded", open);
+  }
+  document.addEventListener("click", (e) => {
+    if (!hamburgerBtn.contains(e.target) && !hamburgerMenu.contains(e.target)) {
+      hamburgerMenu.classList.remove("open");
+      hamburgerBtn.setAttribute("aria-expanded", "false");
+    }
+  });
+
+  // ── Load digest ──
+  (async function() {
+    const container = document.getElementById("digest-container");
+    try {
+      const res = await fetch("/api/digest");
+      if (res.status === 404) {
+        container.innerHTML =
+          '<div class="digest-empty"><div style="font-size:2.5rem">✨</div>' +
+          '<p>No digest yet. Trigger a <a href="/" style="color:var(--accent)">Refresh</a> to generate one.</p></div>';
+        return;
+      }
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      const data = await res.json();
+      // Render markdown-lite: **bold** and bullet points
+      const escaped = data.content
+        .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      const rendered = escaped
+        .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+      container.innerHTML =
+        '<p class="digest-meta">Generated ' + data.date + ' · ' + data.model + '</p>' +
+        '<div class="digest-body">' + rendered + '</div>';
+    } catch (err) {
+      container.innerHTML = '<p style="color:var(--danger);font-size:0.9rem">Failed to load digest: ' + err.message + '</p>';
+    }
+  })();
+</script>
+</body>
+</html>

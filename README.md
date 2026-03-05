@@ -1,22 +1,26 @@
 # myRSSfeed
 
-A simple, self-hosted RSS aggregator for your local network. Runs on a Raspberry Pi, fetches all your feeds once daily at 9:00 AM, and presents them in a clean mobile-friendly web UI accessible at **https://myrssfeed.local** from any device on the same network.
+A self-hosted RSS aggregator for your local network. Runs on a Raspberry Pi 5, fetches all your feeds daily at 6:00 AM, and serves a clean mobile-friendly web UI at **https://myrssfeed.local**.
 
 ---
 
 ## Features
 
-- **Daily fetch at 9:00 AM** via APScheduler (local time, no cron setup needed)
-- **Manual refresh** button for immediate updates
-- **Feed management** — add/remove RSS feeds directly from the browser
+- **Daily pipeline at 6:00 AM** — fetch feeds → rank articles → update topic map → generate digest
+- **Manual refresh** button runs the same pipeline on demand
+- **Personalized ranking** — like articles to train WordRank; similar articles are upranked automatically
+- **Read state** — clicked articles dim so you can see what's new at a glance
+- **Feed management** — add/remove RSS feeds from the browser
 - **Filter by feed** or **search by keyword** across all articles
-- **Topics view** — articles automatically clustered by semantic similarity using `sentence-transformers` + K-Means; browse by topic card
-- **Today's Digest** — one headline per topic cluster for a quick overview of the day's news
-- **AI Digest** — optional LLM-generated prose bullet summary via a local [ollama](https://ollama.com) instance (no cloud, no API key)
+- **Inline images and favicons** — article thumbnails and feed icons shown in the feed
+- **Colored feed labels** — auto-assigned by feed category name; override per-feed in settings
+- **Topic Map** — 2D scatter plot of all articles by semantic similarity; hover to preview, click to open
+- **AI Digest** — daily summary powered by ollama; runs locally on the Pi over ~4 hours
+- **Live search** with word-completion suggestions
 - **HTTPS via nginx** — TLS termination with a locally-trusted mkcert certificate
-- **Accessible as `myrssfeed.local`** — mDNS hostname via avahi, no DNS config needed
-- **No accounts, no algorithms** — just your feeds, sorted newest-first
-- **Lightweight** — SQLite, runs comfortably on a Raspberry Pi 4
+- **Accessible as `myrssfeed.local`** — mDNS via avahi, no DNS config needed
+- **Logs viewer** — `https://myrssfeed.local/api/logs` shows recent server logs from any device on the LAN
+- **No accounts, no cloud** — everything runs on-device; SQLite on a Pi 5
 
 ---
 
@@ -30,13 +34,13 @@ bash install.sh
 
 `install.sh` does everything in one shot:
 
-1. Creates a Python virtualenv and installs Python dependencies
+1. Creates a Python virtualenv and installs all dependencies
 2. Registers the app as a **systemd service** (binds to `127.0.0.1:8080`)
 3. Installs **nginx** and proxies HTTPS → uvicorn
 4. Installs **mkcert**, generates a locally-trusted TLS certificate for `myrssfeed.local`
 5. Sets the Pi's mDNS hostname via **avahi** so the `.local` name resolves on the LAN
 
-After install, open on any device on the same Wi-Fi:
+Open on any device on the same Wi-Fi:
 
 ```
 https://myrssfeed.local
@@ -44,23 +48,21 @@ https://myrssfeed.local
 
 ### Trusting the certificate on each device
 
-mkcert creates a private Certificate Authority that is automatically trusted on the Pi. Install the same CA on any other device (phone, laptop) that will access the feed.
-
 ```bash
 # On the Pi — find the CA file
-mkcert -CAROOT   # prints something like /home/pi/.local/share/mkcert
+mkcert -CAROOT
 ```
 
 Copy `rootCA.pem` to each device and install it:
 
 | Device | Steps |
 |--------|-------|
-| **iOS** | AirDrop or email the file → Settings → tap the profile → trust it |
+| **iOS** | AirDrop or email → Settings → tap the profile → trust it |
 | **Android** | Settings → Security → Install from storage |
-| **macOS** | Double-click → Keychain Access → set trust to "Always Trust" for SSL |
+| **macOS** | Double-click → Keychain Access → set "Always Trust" for SSL |
 | **Windows** | Double-click → Install Certificate → Trusted Root Certification Authorities |
 
-### Managing the services
+### Managing the service
 
 ```bash
 sudo systemctl status  myrssfeed
@@ -71,99 +73,44 @@ journalctl -u myrssfeed -f    # live logs
 
 ---
 
-## Optional: AI Digest with ollama
-
-The **Today's Digest** view can generate a prose bullet summary of the day's news using a local LLM — no cloud calls, no API key.
-
-### 1. Install ollama on the Pi
+## Local development
 
 ```bash
-curl -fsSL https://ollama.com/install.sh | sh
-```
-
-### 2. Pull a model
-
-`llama3.2:1b` is recommended for the Pi 4 — fast inference, ~1 GB download:
-
-```bash
-ollama pull llama3.2:1b
-```
-
-Other options (heavier but higher quality):
-
-```bash
-ollama pull phi3:mini        # ~2 GB, good quality
-ollama pull mistral:7b-q4   # ~4 GB, best quality, slower on Pi
-```
-
-### 3. Configure in Settings
-
-Open **https://myrssfeed.local/settings** and set:
-
-- **ollama URL** — `http://localhost:11434` (default, if ollama is on the same Pi)
-- **ollama model** — `llama3.2:1b` (or whichever model you pulled)
-
-Then go to **Today's Digest** and click **Generate**. The first run takes 30–90 seconds on a Pi 4 with a 1B model; the result is cached and returned instantly on subsequent loads.
-
-> **Note:** The digest caches one result per calendar day. Use the **regenerate** link in the digest to force a fresh summary.
-
----
-
-## Topics clustering
-
-After fetching feeds, the app can cluster articles by semantic similarity and let you browse by topic. The pipeline runs automatically after the daily fetch. You can also trigger it manually:
-
-1. Go to **Settings → Re-cluster topics**
-2. A progress bar tracks the pipeline stages: Loading model → Encoding → Clustering → Labelling → Saving
-
-**Settings:**
-- **Number of topic clusters** — how many K-Means groups to create (default: 10; range: 2–100)
-- **Max entries to cluster** — cap on how many articles are fed into the ML pipeline per run (default: 2000; set to `0` for no cap). The most recent articles are always preferred. Lowering this is the fastest way to reduce peak RAM on a heavily-loaded Pi.
-
-The clustering uses [`sentence-transformers/all-MiniLM-L6-v2`](https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2) (~80 MB, CPU-only) and scikit-learn. First run will download the model to the Pi.
-
-### Memory management
-
-The clustering pipeline runs as an isolated child process so an OOM-kill never takes down the web server. Several layers keep peak RAM in check:
-
-| Layer | What it does |
-|-------|-------------|
-| **`MemoryHigh` (systemd)** | Kernel starts reclaiming pages and throttling the whole service cgroup once RSS approaches this limit (default: 700 MB). Slows things down instead of crashing. |
-| **`MemoryMax` (systemd)** | Hard kill ceiling for the entire service cgroup (default: 900 MB). The process is killed before the system OOM-killer fires. |
-| **`MemorySwapMax=0` (systemd)** | Prevents the Pi from thrashing its SD card swap partition; fail fast instead. |
-| **`RLIMIT_DATA` (process)** | The clustering child sets a 600 MB heap limit on itself before loading any model weights. `RLIMIT_AS` (virtual address space) is deliberately avoided — Python/torch mmap large virtual regions even when physical RAM is low, causing spurious kills. Only the child is affected. |
-| **`max_entries_to_cluster`** | Caps the DB query so the ML pipeline never sees more than N articles, directly reducing the memmap file size and sklearn input. |
-| **memmap embeddings** | Embedding vectors are written to a temp file on disk batch-by-batch rather than held in RAM. |
-| **`del model; gc.collect()`** | The ~90 MB SentenceTransformer model is freed immediately after encoding finishes. |
-
-To tune the systemd limits for your hardware, edit the `[Service]` section of the unit file (or re-run `install.sh`) and adjust `MemoryHigh` and `MemoryMax` to fit your Pi's available RAM:
-
-| Pi model | Suggested MemoryHigh | Suggested MemoryMax |
-|----------|---------------------|---------------------|
-| Pi 4 2 GB | `700M` | `900M` |
-| Pi 4 4 GB | `1G` | `1400M` |
-| Pi 5 4 GB | `1G` | `1400M` |
-| Pi 5 8 GB | `2G` | `3G` |
-
-To tune the per-child heap limit, change `_MEMORY_LIMIT_BYTES` at the top of `scripts/cluster_topics.py`.
-
----
-
-## Local development (Mac / Linux)
-
-```bash
-cd myrssfeed
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 python main.py
 ```
 
-Open [http://localhost:8080](http://localhost:8080) — no nginx needed during dev.
+Open [http://localhost:8080](http://localhost:8080) — no nginx needed.
 
-**First run:** `feeds/rss.db` is created automatically. The topic clustering model (`all-MiniLM-L6-v2`, ~80 MB) downloads to `~/.cache/huggingface/hub/` the first time clustering runs — nothing lands in the project directory.
+`feeds/rss.db` and `logs/myrssfeed.log` are created automatically on first run.
 
-To use the AI Digest locally, install ollama on your machine and point Settings to `http://localhost:11434`.
+### Running pipeline stages manually
+
+```bash
+python -m scripts.compile_feed    # fetch feeds + prune old entries
+python -m scripts.wordrank        # recompute article scores from likes
+python -m scripts.visualization   # recompute topic map (t-SNE layout)
+python -m scripts.digest          # generate AI digest via ollama
+```
+
+---
+
+## Deploy to Pi (development workflow)
+
+```bash
+rsync -av \
+  --exclude='.venv/' \
+  --exclude='feeds/' \
+  --exclude='logs/' \
+  --exclude='certs/' \
+  --exclude='.git/' \
+  --exclude='__pycache__/' \
+  --exclude='*.pyc' \
+  . pi@myrssfeed.local:/home/pi/myrssfeed/
+ssh pi@myrssfeed.local 'sudo systemctl restart myrssfeed'
+```
 
 ---
 
@@ -185,11 +132,26 @@ docker compose up -d
 ```
 
 - HTTP on port 80 redirects to HTTPS
-- HTTPS on port 443 → nginx → uvicorn app
+- HTTPS on port 443 → nginx → uvicorn
 
-The `feeds/` directory is volume-mounted so the SQLite database survives container restarts.
+The `feeds/` directory is volume-mounted so the database survives restarts.
 
-> **ollama with Docker:** ollama is not included in the Docker image. Point the ollama URL setting to `http://host-gateway:11434` (or your Pi's LAN IP) if you run ollama on the host.
+---
+
+## AI Digest (ollama)
+
+The digest runs after the daily feed fetch. It uses a two-stage pipeline:
+1. **Extractive pre-filter** — select the 2 most relevant sentences per article (no LLM)
+2. **LLM summarize** — ollama generates a thematic digest from the extracts
+
+**Model recommendations:**
+
+| Use case | Model | Pi 5 speed (est.) |
+|----------|-------|-------------------|
+| Dev iteration | `phi3:mini` | ~18 tok/s |
+| Production quality | `llama3.1:8b` | ~8 tok/s, ~2 hrs for 50 articles |
+
+Configure model and ollama URL in **Settings → AI Digest**.
 
 ---
 
@@ -197,34 +159,40 @@ The `feeds/` directory is volume-mounted so the SQLite database survives contain
 
 ```
 myrssfeed/
-├── main.py                    # FastAPI app + startup lifecycle
-├── scheduler.py               # APScheduler: daily 9 AM feed fetch + re-cluster
+├── main.py                      # FastAPI app + logging setup + startup lifecycle
+├── scheduler.py                 # APScheduler: daily pipeline at 6:00 AM
 ├── api/
-│   ├── routes.py              # REST endpoints + HTML UI routes
-│   └── schemas.py             # Pydantic request/response models
+│   ├── routes.py                # All API endpoints + HTML page routes
+│   └── schemas.py               # Pydantic request/response models
 ├── scripts/
-│   ├── compile_feed.py        # Fetches RSS feeds, stores entries in SQLite
-│   └── cluster_topics.py      # sentence-transformers + K-Means topic clustering
+│   ├── compile_feed.py          # Fetch RSS feeds, extract thumbnails, prune entries
+│   ├── wordrank.py              # TF-IDF personalization scoring
+│   ├── visualization.py         # TF-IDF + SVD + t-SNE topic map
+│   └── digest.py                # Extractive filter + ollama AI digest
 ├── utils/
-│   └── helpers.py             # DB connection, schema init, settings helpers
+│   └── helpers.py               # DB connection, schema init + migrations, settings
 ├── web/
-│   └── templates/
-│       ├── index.html         # Main UI (feeds, topics, digest views)
-│       └── settings.html      # Settings page
+│   ├── templates/
+│   │   ├── index.html           # Main feed UI
+│   │   ├── settings.html        # Settings page
+│   │   ├── viz.html             # Topic map page
+│   │   └── digest.html          # AI digest page
+│   └── static/
+│       ├── index.css / index.js
+│       ├── viz.js               # Canvas scatter plot
+│       ├── settings.css / settings.js
 ├── nginx/
-│   ├── myrssfeed.conf         # nginx site config (Pi / bare-metal)
-│   └── nginx-docker.conf      # nginx config for Docker Compose
-├── certs/                     # Mount mkcert .pem files here (gitignored)
+│   ├── myrssfeed.conf           # nginx config (Pi / bare-metal)
+│   └── nginx-docker.conf        # nginx config for Docker Compose
+├── logs/                        # Rotating log files — gitignored
 ├── feeds/
-│   └── rss.db                 # SQLite database — gitignored, auto-created on first run
-├── .env                       # Optional local overrides — gitignored, never committed
+│   └── rss.db                   # SQLite database — gitignored, auto-created
+├── certs/                       # mkcert .pem files — gitignored
 ├── docker-compose.yml
 ├── Dockerfile
 ├── install.sh
 └── requirements.txt
 ```
-
-**Not in this repo (gitignored):** `.venv/`, `feeds/*.db`, `certs/*.pem`, `.env`, `__pycache__`, logs, and build artifacts. The HuggingFace model cache (`~/.cache/huggingface/`) is outside the project entirely.
 
 ---
 
@@ -232,19 +200,20 @@ myrssfeed/
 
 | Method | Path | Description |
 |--------|------|-------------|
-| `GET` | `/` | Web UI |
+| `GET` | `/` | Main feed UI |
+| `GET` | `/viz` | Topic map page |
+| `GET` | `/digest` | AI digest page |
 | `GET` | `/settings` | Settings page |
 | `GET` | `/api/feeds` | List all feeds |
 | `POST` | `/api/feeds` | Add a feed `{"url": "...", "title": "..."}` |
 | `DELETE` | `/api/feeds/{id}` | Remove a feed and its articles |
 | `GET` | `/api/entries` | List entries (`?q=`, `?feed_id=`, `?limit=`) |
-| `POST` | `/api/refresh` | Manually trigger a feed fetch |
-| `GET` | `/api/topics` | List topic clusters with article counts |
-| `GET` | `/api/topics/{id}/entries` | Articles in a topic cluster (`?limit=`, `?offset=`) |
-| `POST` | `/api/recluster` | Re-run the topic clustering pipeline |
-| `GET` | `/api/recluster/status` | Poll the progress of the most recent clustering job |
+| `POST` | `/api/entries/{id}/read` | Mark entry as read |
+| `POST` | `/api/entries/{id}/like` | Toggle like on entry |
+| `GET` | `/api/search` | Live search suggestions + previews (`?q=`) |
+| `POST` | `/api/refresh` | Run full pipeline (fetch → rank → viz → digest) |
+| `GET` | `/api/viz` | Visualization data `{entries, themes}` |
+| `GET` | `/api/digest` | Today's digest or 404 |
+| `GET` | `/api/logs` | Recent log lines (`?lines=100`) |
 | `GET` | `/api/settings` | Get all settings |
 | `POST` | `/api/settings` | Update settings |
-| `GET` | `/api/digest` | Cluster-based bullet digest for a date (`?date=YYYY-MM-DD`) |
-| `POST` | `/api/digest/llm` | Generate (or return cached) AI prose digest via ollama (`?date=YYYY-MM-DD`) |
-| `DELETE` | `/api/digest/llm` | Clear the cached AI digest for a date (`?date=YYYY-MM-DD`) |

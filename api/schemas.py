@@ -10,15 +10,16 @@ class FeedCreate(BaseModel):
 class SettingsUpdate(BaseModel):
     retention_days: Optional[str] = None
     theme: Optional[str] = None
-    num_topic_clusters: Optional[str] = None
     ollama_url: Optional[str] = None
     ollama_model: Optional[str] = None
+    digest_max_articles: Optional[str] = None
 
 
 class FeedOut(BaseModel):
     id: int
     url: str
     title: Optional[str]
+    color: Optional[str] = None
 
 
 class EntryOut(BaseModel):
@@ -29,32 +30,29 @@ class EntryOut(BaseModel):
     link: Optional[str]
     published: Optional[str]
     summary: Optional[str]
-    cluster_id: Optional[int] = None
-    score: Optional[float] = None
-
-
-class TopicOut(BaseModel):
-    id: int
-    label: Optional[str]
-    article_count: int
-
-
-class DigestBullet(BaseModel):
-    label: str
-    headline: str
-    link: Optional[str]
-    feed_title: Optional[str]
-    published: Optional[str]
-    extra_count: int
+    read: int = 0
+    liked: int = 0
+    score: float = 0.0
+    thumbnail_url: Optional[str] = None
 
 
 class DigestOut(BaseModel):
     date: str
-    bullets: list[DigestBullet]
-
-
-class LlmDigestOut(BaseModel):
-    date: str
-    summary: str
+    content: str
     model: str
-    cached: bool
+    created_at: str
+
+
+class VizEntryOut(BaseModel):
+    id: int
+    feed_id: int
+    title: Optional[str]
+    viz_x: Optional[float]
+    viz_y: Optional[float]
+
+
+class VizThemeOut(BaseModel):
+    label: str
+    centroid_x: float
+    centroid_y: float
+    size: int

@@ -1,124 +1,101 @@
-# myRSSfeed: A simple and lightweight self-hosted RSS feed for personal home use
-Runs on a raspberry pi computer and works across a local network
-No intermediaries, just the necessary plumbing for creating a feed
-No algorithms, you can sort your feed as you please
+# myRSSfeed Design Document
 
+A simple, self-hosted RSS aggregator for personal home use on a Raspberry Pi, accessible across the local network. No cloud intermediaries — just the necessary plumbing.
 
-### File directory overview
-rss_aggregator_app/
-├── main.py               # Starts API server & scheduler
-├── scheduler.py          # Handles daily task scheduling
-├── api/
-│   ├── __init__.py
-│   ├── routes.py         # REST endpoints for feed management
-│   └── schemas.py        # Pydantic models for API
-├── web/
-│   ├── templates/        # Optional: HTML pages for UI
-│   └── static/           # CSS/JS if needed
-├── feeds/
-│   └── feeds.json        # Persisted list of RSS feed URLs
-├── scripts/
-│   └── compile_feed.py   # Logic to fetch and merge RSS feeds
-├── utils/
-│   └── helpers.py
-├── requirements.txt
-├── Dockerfile
-├── install.sh            # Optional: sets up system service
-└── create-deb-file.sh    # Optional: packages app for Debian
+---
 
-### Database Schema Example (SQLite)
+## Core principles
 
-```sql
-CREATE TABLE feeds (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    url TEXT UNIQUE,
-    title TEXT
-);
+- Chronological feed by default, with personalized ranking layered on top
+- No accounts, no algorithms forced on the user — just feeds, sorted for you
+- All processing runs on-device; scheduled jobs can take hours if needed
+- Goal: 1 month continuous uptime without reboot or crash; monthly maintenance (log rotation, cache clear) is acceptable
 
-CREATE TABLE entries (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    feed_id INTEGER,
-    title TEXT,
-    link TEXT,
-    published DATETIME,
-    summary TEXT,
-    UNIQUE(feed_id, link),
-    FOREIGN KEY(feed_id) REFERENCES feeds(id)
-);
+---
 
--- Optional: Full-text search
-CREATE VIRTUAL TABLE entries_fts USING fts5(title, summary, content='entries', content_rowid='id');
+## Features
+
+### Feed presentation
+- Clicking an article opens it in a new tab; the article row changes color (read state) when returned to
+- Inline images from article content where available (media:content, enclosures, og:image via feedparser)
+- Feed favicons shown inline per article row using `https://www.google.com/s2/favicons?domain={domain}&sz=32`
+- **Colored feed labels**: auto-assigned by hashing the category portion of the feed title (e.g. "US News" in "WSJ | US News") to a hue. Same category across sources → same hue, varied by source name for lightness/saturation. User can override per-feed color via a color picker in settings (stored in `feeds.color` column).
+
+### Personalization (WordRank)
+- Like button per article captures user preference
+- WordRank model: TF-IDF vectors for all articles, cosine similarity to centroid of liked articles → score stored in `entries.score`
+- Feed sorted by a blend of recency + score
+- Recomputed during daily fetch (scikit-learn, no GPU needed — fast on Pi)
+
+### Visualization
+- A topic landscape view showing major themes across all feeds ("information diet" view)
+- **Implementation**: TF-IDF on titles + summaries → truncated SVD (LSA, 50 dims) → t-SNE to 2D, fixed random seed for layout stability across days
+- KMeans on the 50-dim space extracts top keywords per region to label major themes (e.g. "AI & LLMs", "Markets", "Ukraine")
+- Each article is a dot, colored by feed; hover shows title; click opens article
+- Density heatmap overlay (optional, nice-to-have)
+- Recomputed daily with feed fetch; 2D coordinates stored in `entries` table
+
+### AI Digest
+- Daily digest of top articles powered by ollama, scheduled after feed fetch
+- **Model strategy**: start with a small fast model (phi3:mini or gemma2:2b) for development iteration; target llama3.1:8b or equivalent for production quality
+- **Feasibility on Pi 5 CPU**: llama3.1:8b at ~8 tok/s, 1000 articles at ~50 output tokens each ≈ 1.75 hours generation time — within the 4-hour budget
+- **Approach to stay within budget**:
+  1. Extractive pre-filter: extract 2–3 key sentences per article without LLM (NLTK or similar)
+  2. LLM summarizes the extracts, not the full articles — shorter prompts, fewer tokens
+  3. Optionally: only digest top-N articles by WordRank score to focus on what the user cares about
+- Digest output displayed in a dedicated page/panel
+
+### Manual refresh
+- A "Refresh now" button in the UI triggers the same full pipeline that runs at 06:00: feed fetch → prune → WordRank scoring → visualization recompute → digest
+- This allows fast iteration during development without waiting a full day
+- The existing `/api/refresh` endpoint triggers compile_feed; it needs to be extended to run the full pipeline
+
+### Logging and observability
+- **Server-side**: Python `logging` module with a rotating file handler (`logs/myrssfeed.log`), also emitted to stdout (captured by systemd/journalctl on Pi)
+- **Browser-accessible**: `/api/logs` endpoint returns recent log lines (last N lines from the log file) so the user can inspect live behavior from any device on the LAN without SSH
+- Log levels: INFO for normal operations (fetch started, N entries fetched, digest complete), WARNING for recoverable issues (feed timeout, parse error), ERROR for failures
+- Goal: when the Pi misbehaves, the user can open `/api/logs` in the browser and share the output for debugging
+
+---
+
+## Scheduling (daily pipeline at 06:00)
+
+```
+06:00  compile_feed     — fetch all feeds, upsert entries, prune old entries
+       wordrank         — recompute TF-IDF scores for all entries vs liked articles
+       visualization    — recompute 2D layout (fixed seed), store x/y in entries
+       ai_digest        — extractive pre-filter → LLM summarize → store digest
 ```
 
-AGENT PROMPT
-We have an existing rss feed web app that runs on a raspberry pi as backend and serves a local nginx server to myrssfeed.local. 
-
-The feed is currently organized chronologically or can be searched or use the feed labels to subgroup. 
-
-We need to think of some ideas to present the feed more topically across the separate feeds.
-
-How can we modify the feed to be more engaging to the user? Can we group articles of seemingly similar topics?
-
-Can we use a simple LLM model trained on the words in our database to group into similarity clusters and present a graphical way to navigate for user?
+Each stage logs start/end and item counts. If a stage fails, later stages are skipped and the error is logged.
 
 ---
 
-## Suggested Agent Prompt — Topical Feed Organizer
+## Database additions (planned, not yet implemented)
 
-Use the following prompt when engaging a coding agent (e.g. Cursor, Claude, GPT-4) to implement this feature end-to-end:
+Beyond current tables (`feeds`, `entries`, `entries_fts`, `settings`):
 
----
-
-> **Context**
-> I have a self-hosted RSS aggregator called myRSSfeed. It runs on a Raspberry Pi as a FastAPI/uvicorn app behind nginx. The database is SQLite (`feeds/rss.db`). The schema has two main tables:
-> - `feeds(id, url, title)` — the subscribed RSS sources
-> - `entries(id, feed_id, title, link, published, summary)` — individual articles, with an FTS5 virtual table `entries_fts` over `title` and `summary`
->
-> The frontend is a single Jinja2 template (`web/templates/index.html`) served by FastAPI. The app must remain lightweight — no GPU, no cloud APIs, no heavy external services — because it runs on a Raspberry Pi 4 (4 GB RAM).
->
-> **Goal**
-> Add a "Topics" view that clusters articles by semantic similarity and lets the user browse by topic cluster rather than by feed or chronological order. This should feel like a navigable topic map, not just a flat list.
->
-> **Specific tasks**
->
-> 1. **Embedding + clustering pipeline** (`scripts/cluster_topics.py`)
->    - Use `sentence-transformers` with the `all-MiniLM-L6-v2` model (fast, ~80 MB, CPU-friendly) to generate embeddings from each entry's `title + " " + summary` text.
->    - Run K-Means (scikit-learn) over the embeddings. Start with k=10 clusters; make k a configurable setting stored in the `settings` table via the existing `set_setting` / `get_setting` helpers in `utils/helpers.py`.
->    - Derive a human-readable label for each cluster by extracting the top-5 TF-IDF terms across all articles in that cluster (use `sklearn.feature_extraction.text.TfidfVectorizer`).
->    - Persist results in two new SQLite tables:
->      - `topic_clusters(id INTEGER PRIMARY KEY, label TEXT, centroid BLOB)` — centroid stored as a numpy array serialised with `numpy.tobytes()`.
->      - `entry_topics(entry_id INTEGER, cluster_id INTEGER, score REAL)` — cosine similarity of the entry embedding to its assigned centroid.
->    - Re-run this script automatically after each daily feed fetch by calling it from `scheduler.py` (after `compile_feed.py` finishes).
->    - Add `"topic_clusters"` and `"num_topic_clusters"` (default `"10"`) to the `DEFAULTS` dict in `utils/helpers.py` and create the new tables in `init_db()`.
->
-> 2. **API endpoint** (`api/routes.py` + `api/schemas.py`)
->    - Add `GET /api/topics` — returns a list of `{id, label, article_count}` objects sorted by `article_count DESC`.
->    - Add `GET /api/topics/{cluster_id}/entries` — returns paginated `EntryOut` objects for that cluster, ordered by `score DESC` then `published DESC`. Reuse the existing `EntryOut` Pydantic model; add optional `cluster_id: Optional[int]` and `score: Optional[float]` fields to it.
->    - Wire both routes into the existing `api_router` in `api/routes.py`.
->
-> 3. **Frontend "Topics" view** (`web/templates/index.html`)
->    - Add a **Topics** tab alongside the existing feed-filter bar. Clicking it switches the main content area into topics mode without a page reload (vanilla JS, no framework).
->    - In topics mode, render a **bubble/card grid**: one card per cluster showing the cluster label and article count. Cards should use the existing dark-theme CSS variables already in the template.
->    - Clicking a card fetches `/api/topics/{id}/entries` and renders the articles in the same article-card style used elsewhere in the template.
->    - A **"Back to topics"** breadcrumb link returns to the full cluster grid.
->    - No external JS libraries — keep it vanilla to stay consistent with the rest of the template.
->
-> 4. **Dependencies** (`requirements.txt`)
->    - Add `sentence-transformers`, `scikit-learn`, and `numpy` (pin to versions compatible with Python 3.11 on ARM64/Raspberry Pi OS Bookworm).
->    - Do not add any GPU-specific packages.
->
-> 5. **Manual re-cluster button**
->    - Add a `POST /api/recluster` endpoint that triggers `scripts/cluster_topics.py` synchronously (like the existing `/api/refresh` triggers `compile_feed.py`).
->    - Expose it as a small "Re-cluster topics" button in the settings panel (`web/templates/settings.html`) next to the existing manual refresh button.
->
-> **Constraints**
-> - All new code must follow the existing patterns: plain `sqlite3` (no ORM), FastAPI dependency injection via `Depends(get_db)` is not yet used — just call `get_db()` directly as the existing routes do.
-> - Keep the clustering fully offline — no calls to OpenAI or any remote embedding API.
-> - The clustering script should be idempotent: running it twice produces the same cluster table state (delete + re-insert, don't append).
-> - Preserve all existing routes and UI behaviour; the Topics tab is purely additive.
+| Column / Table | Purpose |
+|----------------|---------|
+| `entries.read` | Boolean, set when user clicks article |
+| `entries.liked` | Boolean, set via like button |
+| `entries.score` | Float, WordRank cosine similarity score |
+| `entries.viz_x`, `entries.viz_y` | Float, 2D coordinates for visualization |
+| `feeds.color` | Optional hex color override |
+| `daily_digests` table | Stores digest text + date |
 
 ---
 
-The clustering needs a progress bar to see how much longer to go. And should be able to be run within feeds as well as across entire feed-base
+## Tech decisions
 
-Is it possible to make an LLM create a bulletpoint highlighted list summarizing the main stories of the day? In a way that groups the similar stories together to be summarized in one neutral bullet. And uses as many bullets as needed to cover all the stories but does not repeat. And prioritizes stories appropriately. How would we best appraoch making this sort of feed?
+| Concern | Decision |
+|---------|----------|
+| Favicons | Google favicon service (`s2/favicons`) — no local caching needed |
+| Feed label colors | Auto-assign from category hash; user override via color picker |
+| Viz layout stability | Fixed random seed in t-SNE/UMAP call |
+| Viz recompute frequency | Daily with feed fetch |
+| WordRank ML | scikit-learn TF-IDF + cosine similarity; no GPU, no sentence-transformers |
+| AI Digest iteration model | phi3:mini or gemma2:2b (fast, for dev) |
+| AI Digest production model | llama3.1:8b or equivalent (best quality within 4-hour Pi budget) |
+| Logging | Python rotating file handler + stdout; `/api/logs` browser endpoint |
+| Uptime target | 1 month continuous; monthly maintenance window acceptable |

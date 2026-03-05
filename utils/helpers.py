@@ -7,10 +7,9 @@ DB_FILE = os.path.normpath(DB_FILE)
 DEFAULTS: dict[str, str] = {
     "retention_days": "90",
     "theme": "system",
-    "num_topic_clusters": "10",
-    "max_entries_to_cluster": "2000",  # 0 = no cap
     "ollama_url": "http://localhost:11434",
-    "ollama_model": "llama3.2:1b",
+    "ollama_model": "phi3:mini",
+    "digest_max_articles": "50",
 }
 
 
@@ -28,16 +27,23 @@ def init_db():
         CREATE TABLE IF NOT EXISTS feeds (
             id    INTEGER PRIMARY KEY AUTOINCREMENT,
             url   TEXT UNIQUE NOT NULL,
-            title TEXT
+            title TEXT,
+            color TEXT
         );
 
         CREATE TABLE IF NOT EXISTS entries (
-            id        INTEGER PRIMARY KEY AUTOINCREMENT,
-            feed_id   INTEGER NOT NULL,
-            title     TEXT,
-            link      TEXT,
-            published TEXT,
-            summary   TEXT,
+            id            INTEGER PRIMARY KEY AUTOINCREMENT,
+            feed_id       INTEGER NOT NULL,
+            title         TEXT,
+            link          TEXT,
+            published     TEXT,
+            summary       TEXT,
+            thumbnail_url TEXT,
+            read          INTEGER DEFAULT 0,
+            liked         INTEGER DEFAULT 0,
+            score         REAL DEFAULT 0.0,
+            viz_x         REAL,
+            viz_y         REAL,
             UNIQUE(feed_id, link),
             FOREIGN KEY(feed_id) REFERENCES feeds(id) ON DELETE CASCADE
         );
@@ -50,46 +56,46 @@ def init_db():
             value TEXT NOT NULL
         );
 
-        CREATE TABLE IF NOT EXISTS topic_clusters (
-            id      INTEGER PRIMARY KEY,
-            label   TEXT,
-            centroid BLOB
-        );
-
-        CREATE TABLE IF NOT EXISTS entry_topics (
-            entry_id   INTEGER NOT NULL,
-            cluster_id INTEGER NOT NULL,
-            score      REAL,
-            PRIMARY KEY (entry_id, cluster_id),
-            FOREIGN KEY (entry_id)   REFERENCES entries(id) ON DELETE CASCADE,
-            FOREIGN KEY (cluster_id) REFERENCES topic_clusters(id) ON DELETE CASCADE
-        );
-
-        CREATE TABLE IF NOT EXISTS cluster_jobs (
-            id          INTEGER PRIMARY KEY AUTOINCREMENT,
-            status      TEXT NOT NULL DEFAULT 'pending',
-            step        TEXT,
-            progress    INTEGER NOT NULL DEFAULT 0,
-            total       INTEGER NOT NULL DEFAULT 0,
-            started_at  TEXT,
-            finished_at TEXT,
-            error_log   TEXT
+        CREATE TABLE IF NOT EXISTS viz_themes (
+            id         INTEGER PRIMARY KEY AUTOINCREMENT,
+            label      TEXT NOT NULL,
+            centroid_x REAL NOT NULL,
+            centroid_y REAL NOT NULL,
+            size       INTEGER NOT NULL
         );
 
         CREATE TABLE IF NOT EXISTS daily_digests (
-            date       TEXT PRIMARY KEY,
-            summary    TEXT NOT NULL,
-            model      TEXT,
+            id         INTEGER PRIMARY KEY AUTOINCREMENT,
+            date       TEXT NOT NULL,
+            content    TEXT NOT NULL,
+            model      TEXT NOT NULL,
             created_at TEXT NOT NULL
         );
     """)
-    # Migrate existing databases that pre-date the error_log column.
-    try:
-        cursor.execute("ALTER TABLE cluster_jobs ADD COLUMN error_log TEXT")
-    except Exception:
-        pass  # column already exists
     conn.commit()
+    _migrate_db(conn)
     conn.close()
+
+
+def _migrate_db(conn: sqlite3.Connection) -> None:
+    """Add new columns to existing databases that predate the current schema."""
+    entry_cols = {r[1] for r in conn.execute("PRAGMA table_info(entries)").fetchall()}
+    for col, definition in [
+        ("thumbnail_url", "TEXT"),
+        ("read", "INTEGER DEFAULT 0"),
+        ("liked", "INTEGER DEFAULT 0"),
+        ("score", "REAL DEFAULT 0.0"),
+        ("viz_x", "REAL"),
+        ("viz_y", "REAL"),
+    ]:
+        if col not in entry_cols:
+            conn.execute(f"ALTER TABLE entries ADD COLUMN {col} {definition}")
+
+    feed_cols = {r[1] for r in conn.execute("PRAGMA table_info(feeds)").fetchall()}
+    if "color" not in feed_cols:
+        conn.execute("ALTER TABLE feeds ADD COLUMN color TEXT")
+
+    conn.commit()
 
 
 def get_setting(key: str) -> str:

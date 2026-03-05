@@ -1,53 +1,46 @@
-import sys
 import logging
-import subprocess
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 
 logger = logging.getLogger(__name__)
 
 
-def _daily_job():
-    from scripts.compile_feed import run_compile_feed
-    from scripts.cluster_topics import start_job, finish_job
-
-    run_compile_feed()
-
-    # Run clustering in a child process so an OOM-kill on the Pi doesn't
-    # bring down the scheduler / web server with it.
-    job_id = start_job()
+def run_pipeline():
+    """Run the full daily pipeline: fetch → rank → visualize → digest."""
+    logger.info("Pipeline starting.")
     try:
-        proc = subprocess.run(
-            [sys.executable, "-m", "scripts.cluster_topics", "--job-id", str(job_id)],
-            capture_output=True,
-            text=True,
-            timeout=600,
-        )
-        if proc.returncode != 0:
-            finish_job(job_id, success=False)
-            logger.error(
-                "Scheduled clustering child exited %d:\n%s",
-                proc.returncode, proc.stderr,
-            )
-        else:
-            logger.info("Scheduled clustering complete.")
-    except subprocess.TimeoutExpired:
-        finish_job(job_id, success=False)
-        logger.error("Scheduled clustering timed out after 10 minutes.")
+        from scripts.compile_feed import run_compile_feed
+        run_compile_feed()
     except Exception:
-        finish_job(job_id, success=False)
-        logger.exception("Scheduled clustering failed.")
+        logger.exception("Pipeline stage compile_feed failed — aborting.")
+        return
+    try:
+        from scripts.wordrank import run_wordrank
+        run_wordrank()
+    except Exception:
+        logger.exception("Pipeline stage wordrank failed — continuing.")
+    try:
+        from scripts.visualization import run_visualization
+        run_visualization()
+    except Exception:
+        logger.exception("Pipeline stage visualization failed — continuing.")
+    try:
+        from scripts.digest import run_digest
+        run_digest()
+    except Exception:
+        logger.exception("Pipeline stage digest failed — continuing.")
+    logger.info("Pipeline complete.")
 
 
 def create_scheduler() -> BackgroundScheduler:
     scheduler = BackgroundScheduler()
     scheduler.add_job(
-        _daily_job,
+        run_pipeline,
         trigger=CronTrigger(hour=6, minute=0),
-        id="daily_feed_compile",
-        name="Fetch RSS feeds and cluster topics at 6:00 AM local time",
+        id="daily_pipeline",
+        name="Daily pipeline at 6:00 AM local time",
         replace_existing=True,
         misfire_grace_time=3600,
     )
-    logger.info("Scheduler configured: RSS fetch + topic cluster daily at 06:00 local time.")
+    logger.info("Scheduler configured: daily pipeline at 06:00 local time.")
     return scheduler

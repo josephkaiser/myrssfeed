@@ -1,4 +1,5 @@
 import logging
+import logging.handlers
 import uvicorn
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
@@ -9,10 +10,22 @@ from utils.helpers import init_db
 from scheduler import create_scheduler
 from api.routes import router
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s  %(levelname)-8s  %(name)s — %(message)s",
-)
+_LOG_DIR = os.path.join(os.path.dirname(__file__), "logs")
+os.makedirs(_LOG_DIR, exist_ok=True)
+LOG_FILE = os.path.join(_LOG_DIR, "myrssfeed.log")
+
+_fmt = logging.Formatter("%(asctime)s  %(levelname)-8s  %(name)s — %(message)s")
+_root = logging.getLogger()
+_root.setLevel(logging.INFO)
+
+_ch = logging.StreamHandler()
+_ch.setFormatter(_fmt)
+_root.addHandler(_ch)
+
+_fh = logging.handlers.RotatingFileHandler(LOG_FILE, maxBytes=10 * 1024 * 1024, backupCount=5)
+_fh.setFormatter(_fmt)
+_root.addHandler(_fh)
+
 logger = logging.getLogger(__name__)
 
 

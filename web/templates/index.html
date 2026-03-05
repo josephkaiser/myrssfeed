@@ -41,6 +41,12 @@
       <a href="#" onclick="openMyFeeds(event)" role="menuitem">
         <span class="menu-icon">📰</span> My Feeds
       </a>
+      <a href="/viz" role="menuitem">
+        <span class="menu-icon">🗺️</span> Topic Map
+      </a>
+      <a href="/digest" role="menuitem">
+        <span class="menu-icon">✨</span> Digest
+      </a>
       <a href="/settings" role="menuitem">
         <span class="menu-icon">⚙️</span> Settings
       </a>
@@ -56,12 +62,6 @@
     <a href="/" class="feed-link {% if not active_feed_id %}active{% endif %}" id="all-articles-link">
       <span>All articles</span>
     </a>
-    <button class="topics-tab-btn" id="topics-tab-btn" onclick="openTopics()">
-      <span>🗂 Topics</span>
-    </button>
-    <button class="topics-tab-btn" id="digest-tab-btn" onclick="openDigest()">
-      <span>📋 Today's Digest</span>
-    </button>
 
     <div style="margin-top:0.75rem; border-top:1px solid var(--border); padding-top:0.75rem;">
       <div class="sidebar-title">My Feeds</div>
@@ -69,6 +69,7 @@
 
     {% for feed in feeds %}
     <a href="/?feed_id={{ feed.id }}" class="feed-link {% if active_feed_id == feed.id %}active{% endif %}">
+      <img class="feed-favicon" src="https://www.google.com/s2/favicons?domain={{ feed_map[feed.id].domain }}&sz=32" width="14" height="14" alt="" loading="lazy" />
       <span title="{{ feed.url }}">{{ feed.title or feed.url }}</span>
       <button class="del-btn" onclick="deleteFeed(event, {{ feed.id }})" title="Remove feed">✕</button>
     </a>
@@ -98,13 +99,18 @@
 
     {% if entries %}
       {% for entry in entries %}
-      <article class="entry-card">
+      <article class="entry-card{% if entry.read %} read{% endif %}" data-entry-id="{{ entry.id }}">
         <div class="entry-meta">
-          <span class="tag">{{ entry.feed_title or "Unknown" }}</span>
+          <img class="entry-favicon" src="https://www.google.com/s2/favicons?domain={{ feed_map[entry.feed_id].domain }}&sz=32" width="14" height="14" alt="" loading="lazy" />
+          <span class="tag" style="--feed-color: {{ feed_map[entry.feed_id].color or '' }}">{{ entry.feed_title or "Unknown" }}</span>
           <span class="entry-date">{{ entry.published[:10] if entry.published else "" }}</span>
+          <button class="like-btn{% if entry.liked %} liked{% endif %}" onclick="toggleLike(event, {{ entry.id }}, this)" title="Like this article" aria-label="Like">♥</button>
         </div>
+        {% if entry.thumbnail_url %}
+        <img class="entry-thumb" src="{{ entry.thumbnail_url }}" alt="" loading="lazy" />
+        {% endif %}
         <div class="entry-title">
-          <a href="{{ entry.link }}" target="_blank" rel="noopener noreferrer">
+          <a href="{{ entry.link }}" target="_blank" rel="noopener noreferrer" onclick="markRead({{ entry.id }}, this)">
             {{ entry.title or "(no title)" }}
           </a>
         </div>
@@ -121,40 +127,15 @@
     {% endif %}
   </main>
 
-  <!-- Digest panel (hidden until Digest tab is clicked) -->
-  <main class="entries" id="digest-panel" style="display:none">
-    <div class="digest-header">
-      <h2 id="digest-header-text">Today's Digest</h2>
-      <span class="digest-date" id="digest-date-label"></span>
-    </div>
-    <!-- AI summary slot -->
-    <div id="ai-summary-slot"></div>
-    <!-- Cluster-top-entry bullets -->
-    <div id="digest-content"></div>
-  </main>
-
-  <!-- Topics panel (hidden until Topics tab is clicked) -->
-  <main class="entries" id="topics-panel" style="display:none">
-    <div id="topics-grid-view">
-      <div class="entries-header">
-        <h2 id="topics-header-text">Topics</h2>
-      </div>
-      <div id="topics-grid-content"></div>
-    </div>
-    <div id="topics-detail-view" style="display:none">
-      <div class="topics-breadcrumb">
-        <a onclick="showTopicsGrid()">← Topics</a>
-        <span class="sep">/</span>
-        <span id="topics-detail-label"></span>
-      </div>
-      <div id="topics-detail-content"></div>
-    </div>
-  </main>
 
 </div>
 
 <div id="toast"></div>
 
+<script>
+  // Feed map for client-side color computation
+  const FEED_MAP = {{ feed_map | tojson }};
+</script>
 <script src="/static/index.js"></script>
 
 </body>

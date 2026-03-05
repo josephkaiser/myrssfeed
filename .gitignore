@@ -1,7 +1,9 @@
 # Python
 .venv/
 __pycache__/
+**/__pycache__/
 *.pyc
+**/*.pyc
 *.egg-info/
 
 # Runtime data
@@ -9,18 +11,19 @@ feeds/*.db
 feeds/*.db-shm
 feeds/*.db-wal
 
-# Secrets & local config
+# Logs (generated at runtime)
+logs/
+*.log
+
+# Secrets & certs (generated on each host)
 .env
 .env.*
 certs/*.pem
 
-# Logs
-*.log
-logs/
-
-# Build artifacts
+# Build / packaging artifacts
 *.deb
 dist/
 
 # OS
 .DS_Store
+Thumbs.db

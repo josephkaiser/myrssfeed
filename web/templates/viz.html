@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Topic Map — myRSSfeed</title>
+  <script>
+    (function() {
+      var t = localStorage.getItem("theme") || "system";
+      var el = document.documentElement;
+      if (t === "light") el.setAttribute("data-theme", "light");
+      else if (t === "dark") el.setAttribute("data-theme", "dark");
+      else el.removeAttribute("data-theme");
+    })();
+  </script>
+  <link rel="stylesheet" href="/static/index.css" />
+  <style>
+    .viz-wrap { max-width: 1200px; margin: 0 auto; padding: 1rem; }
+    .viz-header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 0.75rem; flex-wrap: wrap; gap: 0.5rem; }
+    .viz-header h2 { font-size: 0.95rem; color: var(--muted); font-weight: 500; }
+    #viz-canvas { display: block; width: 100%; border-radius: var(--radius); border: 1px solid var(--border); background: var(--surface); cursor: crosshair; touch-action: none; }
+    #viz-tooltip {
+      position: fixed; pointer-events: none; z-index: 500;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 8px; padding: 0.45rem 0.75rem; font-size: 0.8rem;
+      color: var(--text); max-width: 260px; box-shadow: 0 4px 16px var(--shadow);
+      display: none; line-height: 1.4;
+    }
+    .viz-empty { text-align: center; color: var(--muted); padding: 4rem 1rem; }
+  </style>
+</head>
+<body>
+
+<header>
+  <a href="/" class="header-brand">myRSSfeed</a>
+  <span style="flex:1; font-size:0.9rem; color:var(--muted); padding-left:0.5rem;">Topic Map</span>
+  <div class="hamburger-wrap">
+    <button class="btn icon-btn" id="hamburger-btn" onclick="toggleMenu()" aria-label="Menu" aria-expanded="false">&#9776;</button>
+    <nav class="hamburger-menu" id="hamburger-menu" role="menu">
+      <a href="/" role="menuitem"><span class="menu-icon">📰</span> My Feeds</a>
+      <a href="/viz" class="active-page" role="menuitem"><span class="menu-icon">🗺️</span> Topic Map</a>
+      <a href="/digest" role="menuitem"><span class="menu-icon">✨</span> Digest</a>
+      <a href="/settings" role="menuitem"><span class="menu-icon">⚙️</span> Settings</a>
+    </nav>
+  </div>
+</header>
+
+<div class="viz-wrap">
+  <div class="viz-header">
+    <h2 id="viz-status">Loading topic map…</h2>
+  </div>
+  <canvas id="viz-canvas"></canvas>
+  <div id="viz-tooltip"></div>
+</div>
+
+<div id="toast"></div>
+<script src="/static/viz.js"></script>
+<script>
+  // ── Hamburger ──
+  const hamburgerBtn  = document.getElementById("hamburger-btn");
+  const hamburgerMenu = document.getElementById("hamburger-menu");
+  function toggleMenu() {
+    const open = hamburgerMenu.classList.toggle("open");
+    hamburgerBtn.setAttribute("aria-expanded", open);
+  }
+  document.addEventListener("click", (e) => {
+    if (!hamburgerBtn.contains(e.target) && !hamburgerMenu.contains(e.target)) {
+      hamburgerMenu.classList.remove("open");
+      hamburgerBtn.setAttribute("aria-expanded", "false");
+    }
+  });
+</script>
+</body>
+</html>

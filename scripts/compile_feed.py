@@ -1,5 +1,6 @@
 import sys
 import os
+import re
 import logging
 import feedparser
 from datetime import datetime, timezone, timedelta
@@ -9,6 +10,25 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from utils.helpers import get_db, get_setting
 
 logger = logging.getLogger(__name__)
+
+
+def _extract_thumbnail(entry) -> str | None:
+    for media in getattr(entry, "media_content", []):
+        url = media.get("url", "")
+        mime = media.get("type", "")
+        if mime.startswith("image/") or url.lower().endswith((".jpg", ".jpeg", ".png", ".webp", ".gif")):
+            return url
+    for thumb in getattr(entry, "media_thumbnail", []):
+        if thumb.get("url"):
+            return thumb["url"]
+    for enc in getattr(entry, "enclosures", []):
+        if enc.get("type", "").startswith("image/"):
+            return enc.get("href")
+    summary = getattr(entry, "summary", "") or ""
+    m = re.search(r'<img[^>]+src=["\']([^"\']+)["\']', summary, re.IGNORECASE)
+    if m:
+        return m.group(1)
+    return None
 
 
 def _parse_date(raw: str) -> str:
@@ -55,14 +75,15 @@ def run_compile_feed():
             link = getattr(entry, "link", "")
             published = _parse_date(getattr(entry, "published", ""))
             summary = getattr(entry, "summary", "")
+            thumbnail_url = _extract_thumbnail(entry)
 
             try:
                 cursor.execute(
                     """
-                    INSERT INTO entries (feed_id, title, link, published, summary)
-                    VALUES (?, ?, ?, ?, ?)
+                    INSERT INTO entries (feed_id, title, link, published, summary, thumbnail_url)
+                    VALUES (?, ?, ?, ?, ?, ?)
                     """,
-                    (feed_id, title, link, published, summary),
+                    (feed_id, title, link, published, summary, thumbnail_url),
                 )
                 new_count += 1
             except Exception:

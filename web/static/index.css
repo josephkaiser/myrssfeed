@@ -634,6 +634,45 @@
       flex-shrink: 0;
     }
 
+    /* ── Favicon ── */
+    .feed-favicon, .entry-favicon {
+      width: 14px; height: 14px;
+      border-radius: 2px;
+      object-fit: contain;
+      flex-shrink: 0;
+      opacity: 0.85;
+    }
+    .feed-link { gap: 0.35rem; }
+
+    /* ── Entry thumbnail ── */
+    .entry-thumb {
+      width: 100%;
+      max-height: 180px;
+      object-fit: cover;
+      border-radius: calc(var(--radius) - 2px);
+      margin-bottom: 0.5rem;
+      display: block;
+    }
+
+    /* ── Read state ── */
+    .entry-card.read { opacity: 0.6; }
+    .entry-card.read .entry-title a { color: var(--muted); }
+
+    /* ── Like button ── */
+    .like-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 0.85rem;
+      color: var(--muted);
+      padding: 0 2px;
+      line-height: 1;
+      transition: color .15s, transform .1s;
+      margin-left: auto;
+    }
+    .like-btn:hover { color: var(--danger); transform: scale(1.2); }
+    .like-btn.liked { color: var(--danger); }
+
     /* ── Mobile ── */
     @media (max-width: 640px) {
       .header-brand { display: none; }
