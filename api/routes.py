@@ -586,28 +586,7 @@ def trigger_recluster():
         logger.exception("Failed to launch clustering child")
         raise HTTPException(status_code=500, detail=f"Failed to start clustering process: {exc}") from exc
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-    if proc.returncode != 0:
-        stderr_full = (proc.stderr or "").strip() or "(no stderr)"
-        finish_job(job_id, success=False, error_log=stderr_full)
-        logger.error("Clustering child exited %d:\n%s", proc.returncode, stderr_full)
-        raise HTTPException(
-            status_code=500,
-            detail=f"Clustering failed (exit {proc.returncode}): {stderr_full[-1000:]}",
-        )
-
-    return {"status": "ok", "job_id": job_id, "message": "Re-clustering complete."}
-=======
     return {"status": "ok", "job_id": job_id, "message": "Re-clustering started."}
->>>>>>> 1eff26f (.gitignore additions)
-=======
-    return {"status": "ok", "job_id": job_id, "message": "Re-clustering started."}
->>>>>>> 4f0ee20 (added nginx and updated clustering to leverage ollama llm ai summary)
-=======
-    return {"status": "ok", "job_id": job_id, "message": "Re-clustering started."}
->>>>>>> bd50010 (added nginx and updated clustering to leverage ollama llm ai summary)
 
 
 @router.get("/api/recluster/status")
