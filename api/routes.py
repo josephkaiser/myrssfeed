@@ -13,6 +13,53 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
+# ── In-memory ollama pull state ─────────────────────────────────────────────
+_pull_state: dict = {"status": "idle", "step": "", "pct": 0, "error": ""}
+
+
+def _do_pull(ollama_url: str, model: str) -> None:
+    """Background thread: stream-pull a model from ollama and track progress."""
+    import urllib.request
+    import urllib.error
+    import json as _json
+
+    global _pull_state
+    _pull_state = {"status": "pulling", "step": "Starting…", "pct": 0, "error": ""}
+
+    api_endpoint = ollama_url.rstrip("/") + "/api/pull"
+    payload = _json.dumps({"model": model, "stream": True}).encode()
+    req = urllib.request.Request(
+        api_endpoint,
+        data=payload,
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=600) as resp:
+            for raw_line in resp:
+                line = raw_line.decode().strip()
+                if not line:
+                    continue
+                try:
+                    obj = _json.loads(line)
+                except Exception:
+                    continue
+                status_txt = obj.get("status", "")
+                total     = obj.get("total", 0)
+                completed = obj.get("completed", 0)
+                pct = int(completed / total * 100) if total else _pull_state["pct"]
+                _pull_state["step"] = status_txt
+                _pull_state["pct"]  = pct
+                if status_txt == "success":
+                    _pull_state["status"] = "done"
+                    _pull_state["pct"]    = 100
+                    return
+        _pull_state["status"] = "done"
+        _pull_state["pct"]    = 100
+    except Exception as exc:
+        _pull_state["status"] = "error"
+        _pull_state["error"]  = str(exc)
+
 _templates_dir = os.path.join(os.path.dirname(__file__), "..", "web", "templates")
 templates = Jinja2Templates(directory=_templates_dir)
 
@@ -540,6 +587,7 @@ def trigger_recluster():
         raise HTTPException(status_code=500, detail=f"Failed to start clustering process: {exc}") from exc
 
 <<<<<<< HEAD
+<<<<<<< HEAD
     if proc.returncode != 0:
         stderr_full = (proc.stderr or "").strip() or "(no stderr)"
         finish_job(job_id, success=False, error_log=stderr_full)
@@ -553,6 +601,9 @@ def trigger_recluster():
 =======
     return {"status": "ok", "job_id": job_id, "message": "Re-clustering started."}
 >>>>>>> 1eff26f (.gitignore additions)
+=======
+    return {"status": "ok", "job_id": job_id, "message": "Re-clustering started."}
+>>>>>>> 4f0ee20 (added nginx and updated clustering to leverage ollama llm ai summary)
 
 
 @router.get("/api/recluster/status")
@@ -567,3 +618,61 @@ def recluster_status():
     if not row:
         return {"status": "none"}
     return dict(row)
+
+
+# ---------------------------------------------------------------------------
+# ollama model management
+# ---------------------------------------------------------------------------
+
+@router.get("/api/ollama/status")
+def ollama_model_status():
+    """Check whether ollama is reachable and the configured model is available."""
+    import urllib.request
+    import urllib.error
+    import json as _json
+
+    ollama_url   = get_setting("ollama_url")   or "http://localhost:11434"
+    ollama_model = get_setting("ollama_model") or "llama3.2:1b"
+
+    try:
+        req = urllib.request.Request(ollama_url.rstrip("/") + "/api/tags", method="GET")
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            body = _json.loads(resp.read().decode())
+        models = [m["name"] for m in body.get("models", [])]
+        model_available = any(
+            m == ollama_model or m.split(":")[0] == ollama_model.split(":")[0]
+            for m in models
+        )
+        return {
+            "reachable": True,
+            "model": ollama_model,
+            "model_available": model_available,
+            "available_models": models,
+        }
+    except urllib.error.URLError as exc:
+        return {"reachable": False, "model": ollama_model, "model_available": False, "error": str(exc.reason)}
+    except Exception as exc:
+        return {"reachable": False, "model": ollama_model, "model_available": False, "error": str(exc)}
+
+
+@router.post("/api/ollama/pull", status_code=202)
+def pull_ollama_model():
+    """Start a background thread to pull (or re-pull) the configured ollama model."""
+    import threading
+
+    global _pull_state
+    if _pull_state.get("status") == "pulling":
+        raise HTTPException(status_code=409, detail="A pull is already in progress.")
+
+    ollama_url   = get_setting("ollama_url")   or "http://localhost:11434"
+    ollama_model = get_setting("ollama_model") or "llama3.2:1b"
+
+    t = threading.Thread(target=_do_pull, args=(ollama_url, ollama_model), daemon=True)
+    t.start()
+    return {"status": "ok", "message": f"Pulling {ollama_model}…"}
+
+
+@router.get("/api/ollama/pull/status")
+def ollama_pull_status():
+    """Return the current model pull progress."""
+    return dict(_pull_state)

@@ -132,10 +132,14 @@ The clustering pipeline runs as an isolated child process so an OOM-kill never t
 | **`MemoryMax` (systemd)** | Hard kill ceiling for the entire service cgroup (default: 900 MB). The process is killed before the system OOM-killer fires. |
 | **`MemorySwapMax=0` (systemd)** | Prevents the Pi from thrashing its SD card swap partition; fail fast instead. |
 <<<<<<< HEAD
+<<<<<<< HEAD
 | **`RLIMIT_DATA` (process)** | The clustering child sets a 600 MB heap limit on itself before loading any model weights. `RLIMIT_AS` (virtual address space) is deliberately avoided — Python/torch mmap large virtual regions even when physical RAM is low, causing spurious process kills on import. Only the child is affected. |
 =======
 | **`RLIMIT_DATA` (process)** | The clustering child sets a 600 MB heap limit on itself before loading any model weights. `RLIMIT_AS` (virtual address space) is deliberately avoided — Python/torch mmap large virtual regions even when physical RAM is low, causing spurious kills. Only the child is affected. |
 >>>>>>> 1eff26f (.gitignore additions)
+=======
+| **`RLIMIT_DATA` (process)** | The clustering child sets a 600 MB heap limit on itself before loading any model weights. `RLIMIT_AS` (virtual address space) is deliberately avoided — Python/torch mmap large virtual regions even when physical RAM is low, causing spurious kills. Only the child is affected. |
+>>>>>>> 4f0ee20 (added nginx and updated clustering to leverage ollama llm ai summary)
 | **`max_entries_to_cluster`** | Caps the DB query so the ML pipeline never sees more than N articles, directly reducing the memmap file size and sklearn input. |
 | **memmap embeddings** | Embedding vectors are written to a temp file on disk batch-by-batch rather than held in RAM. |
 | **`del model; gc.collect()`** | The ~90 MB SentenceTransformer model is freed immediately after encoding finishes. |
@@ -151,6 +155,7 @@ To tune the systemd limits for your hardware, edit the `[Service]` section of th
 
 To tune the per-child heap limit, change `_MEMORY_LIMIT_BYTES` at the top of `scripts/cluster_topics.py`.
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 > **Note:** After changing the systemd limits you must reload nginx **and** restart the service:
 > ```bash
@@ -164,6 +169,8 @@ To tune the per-child heap limit, change `_MEMORY_LIMIT_BYTES` at the top of `sc
 The `POST /api/recluster` endpoint is synchronous — nginx must wait for the full clustering run before the response comes back. The default `proxy_read_timeout` of 120 s is too short for a Pi; the recluster location block sets it to 620 s (matching the 10-minute Python subprocess timeout). If you see a `504 Gateway Time-out` in the browser, confirm nginx has picked up the config with the command above.
 =======
 >>>>>>> 1eff26f (.gitignore additions)
+=======
+>>>>>>> 4f0ee20 (added nginx and updated clustering to leverage ollama llm ai summary)
 
 ---
 

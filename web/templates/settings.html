@@ -14,309 +14,7 @@
       else el.removeAttribute("data-theme");
     })();
   </script>
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-    /* ── Dark theme (default) ── */
-    :root {
-      --bg:        #0f1117;
-      --surface:   #1a1d27;
-      --border:    #2a2d3a;
-      --accent:    #5b8cff;
-      --accent-dim:#3a5fbf;
-      --text:      #e2e4ef;
-      --muted:     #7a7f99;
-      --danger:    #e05c5c;
-      --tag-bg:    #252a3d;
-      --shadow:    rgba(0,0,0,.45);
-      --success:   #4caf7d;
-      --radius:    10px;
-      font-size:   16px;
-    }
-
-    /* ── Light theme ── */
-    [data-theme="light"] {
-      --bg:        #f4f5f9;
-      --surface:   #ffffff;
-      --border:    #dde0ea;
-      --accent:    #3b6ef0;
-      --accent-dim:#2754c9;
-      --text:      #1a1d2e;
-      --muted:     #6b7190;
-      --danger:    #d94040;
-      --tag-bg:    #e8ecf8;
-      --shadow:    rgba(0,0,0,.12);
-      --success:   #2e9e62;
-    }
-
-    /* ── System preference ── */
-    @media (prefers-color-scheme: light) {
-      :root:not([data-theme="dark"]) {
-        --bg:        #f4f5f9;
-        --surface:   #ffffff;
-        --border:    #dde0ea;
-        --accent:    #3b6ef0;
-        --accent-dim:#2754c9;
-        --text:      #1a1d2e;
-        --muted:     #6b7190;
-        --danger:    #d94040;
-        --tag-bg:    #e8ecf8;
-        --shadow:    rgba(0,0,0,.12);
-        --success:   #2e9e62;
-      }
-    }
-
-    body {
-      background: var(--bg);
-      color: var(--text);
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      min-height: 100dvh;
-      transition: background .2s, color .2s;
-    }
-
-    /* ── Header ── */
-    header {
-      position: sticky;
-      top: 0;
-      z-index: 100;
-      background: var(--surface);
-      border-bottom: 1px solid var(--border);
-      padding: 0.65rem 1rem;
-      display: flex;
-      align-items: center;
-      gap: 0.75rem;
-    }
-    .header-brand {
-      font-size: 1.1rem;
-      font-weight: 700;
-      letter-spacing: -0.02em;
-      color: var(--accent);
-      flex-shrink: 0;
-      text-decoration: none;
-      white-space: nowrap;
-    }
-    .header-brand:hover { color: var(--accent-dim); }
-    .header-title {
-      flex: 1;
-      font-size: 0.92rem;
-      color: var(--muted);
-      font-weight: 500;
-    }
-
-    .btn {
-      background: var(--accent);
-      color: #fff;
-      border: none;
-      border-radius: var(--radius);
-      padding: 0.45rem 0.85rem;
-      font-size: 0.85rem;
-      font-weight: 600;
-      cursor: pointer;
-      white-space: nowrap;
-      transition: background .15s;
-    }
-    .btn:hover { background: var(--accent-dim); }
-    .btn.ghost {
-      background: transparent;
-      border: 1px solid var(--border);
-      color: var(--muted);
-    }
-    .btn.ghost:hover { border-color: var(--accent); color: var(--accent); }
-    .btn.icon-btn {
-      background: transparent;
-      border: none;
-      color: var(--muted);
-      font-size: 1.3rem;
-      padding: 0.3rem 0.4rem;
-      line-height: 1;
-      border-radius: 6px;
-      flex-shrink: 0;
-    }
-    .btn.icon-btn:hover { color: var(--text); background: var(--tag-bg); }
-
-    /* ── Hamburger ── */
-    .hamburger-wrap {
-      position: relative;
-      flex-shrink: 0;
-    }
-    .hamburger-menu {
-      position: absolute;
-      top: calc(100% + 0.4rem);
-      right: 0;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      min-width: 160px;
-      box-shadow: 0 8px 24px var(--shadow);
-      display: none;
-      z-index: 300;
-      overflow: hidden;
-    }
-    .hamburger-menu.open { display: block; }
-    .hamburger-menu a {
-      display: flex;
-      align-items: center;
-      gap: 0.55rem;
-      padding: 0.65rem 1rem;
-      color: var(--text);
-      text-decoration: none;
-      font-size: 0.9rem;
-      transition: background .15s;
-    }
-    .hamburger-menu a:hover { background: var(--tag-bg); color: var(--accent); }
-    .hamburger-menu a .menu-icon { font-size: 1rem; width: 1.1rem; text-align: center; }
-    .hamburger-menu a.active-page { color: var(--accent); }
-
-    /* ── Settings layout ── */
-    .settings-wrap {
-      max-width: 640px;
-      margin: 2rem auto;
-      padding: 0 1rem;
-    }
-
-    .settings-section {
-      margin-bottom: 2rem;
-    }
-    .settings-section-title {
-      font-size: 0.72rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: .09em;
-      color: var(--muted);
-      margin-bottom: 0.75rem;
-      padding-bottom: 0.4rem;
-      border-bottom: 1px solid var(--border);
-    }
-
-    .setting-row {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 1rem 1.1rem;
-      margin-bottom: 0.6rem;
-      display: flex;
-      align-items: flex-start;
-      gap: 1rem;
-    }
-    .setting-info {
-      flex: 1;
-      min-width: 0;
-    }
-    .setting-label {
-      font-size: 0.95rem;
-      font-weight: 600;
-      color: var(--text);
-      margin-bottom: 0.2rem;
-    }
-    .setting-desc {
-      font-size: 0.8rem;
-      color: var(--muted);
-      line-height: 1.4;
-    }
-    .setting-control {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      flex-shrink: 0;
-    }
-
-    /* Number input */
-    .num-input {
-      background: var(--bg);
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      color: var(--text);
-      padding: 0.38rem 0.65rem;
-      font-size: 0.9rem;
-      width: 72px;
-      text-align: center;
-      outline: none;
-      transition: border-color .2s;
-      -moz-appearance: textfield;
-    }
-    .num-input::-webkit-inner-spin-button,
-    .num-input::-webkit-outer-spin-button { -webkit-appearance: none; }
-    .num-input:focus { border-color: var(--accent); }
-    .num-unit {
-      font-size: 0.8rem;
-      color: var(--muted);
-      white-space: nowrap;
-    }
-
-    /* ── Theme pill toggle ── */
-    .theme-toggle {
-      display: flex;
-      background: var(--bg);
-      border: 1px solid var(--border);
-      border-radius: 999px;
-      padding: 3px;
-      gap: 2px;
-    }
-    .theme-toggle button {
-      background: transparent;
-      border: none;
-      border-radius: 999px;
-      padding: 0.3rem 0.75rem;
-      font-size: 0.8rem;
-      font-weight: 600;
-      color: var(--muted);
-      cursor: pointer;
-      transition: background .15s, color .15s;
-      white-space: nowrap;
-    }
-    .theme-toggle button.active {
-      background: var(--surface);
-      color: var(--accent);
-      box-shadow: 0 1px 4px var(--shadow);
-    }
-    .theme-toggle button:not(.active):hover { color: var(--text); }
-
-    /* Save bar */
-    .save-bar {
-      position: sticky;
-      bottom: 0;
-      background: var(--surface);
-      border-top: 1px solid var(--border);
-      padding: 0.85rem 1rem;
-      display: flex;
-      align-items: center;
-      justify-content: flex-end;
-      gap: 0.75rem;
-    }
-    .save-status {
-      font-size: 0.82rem;
-      color: var(--success);
-      opacity: 0;
-      transition: opacity .3s;
-    }
-    .save-status.show { opacity: 1; }
-
-    /* ── Toast ── */
-    #toast {
-      position: fixed;
-      bottom: 4rem;
-      left: 50%;
-      transform: translateX(-50%) translateY(2rem);
-      background: var(--surface);
-      border: 1px solid var(--border);
-      color: var(--text);
-      padding: 0.6rem 1.2rem;
-      border-radius: 30px;
-      font-size: 0.88rem;
-      opacity: 0;
-      transition: opacity .3s, transform .3s;
-      pointer-events: none;
-      z-index: 999;
-    }
-    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
-
-    @media (max-width: 640px) {
-      .header-brand { display: none; }
-      .settings-wrap { margin: 1rem auto; }
-      .setting-row { flex-direction: column; gap: 0.75rem; }
-      .setting-control { justify-content: flex-start; }
-    }
-  </style>
+  <link rel="stylesheet" href="/static/settings.css" />
 </head>
 <body>
 
@@ -480,6 +178,37 @@
         />
       </div>
     </div>
+
+    <div class="setting-row" style="flex-direction:column; gap:0.75rem;">
+      <div style="display:flex; align-items:flex-start; gap:1rem; width:100%;">
+        <div class="setting-info">
+          <div class="setting-label">Model status</div>
+          <div class="setting-desc">
+            Check whether ollama is reachable and the configured model is available.
+            Use <strong>Pull / Reset</strong> to download or re-download the model
+            if it is missing or corrupted.
+          </div>
+        </div>
+        <div class="setting-control" style="flex-direction:column; align-items:flex-end; gap:0.5rem;">
+          <span id="ollama-status-badge" class="ollama-status-badge">—</span>
+          <div style="display:flex; gap:0.4rem;">
+            <button class="btn ghost" id="ollama-check-btn" onclick="checkOllamaStatus()">Check</button>
+            <button class="btn ghost" id="ollama-pull-btn" onclick="pullModel()">Pull / Reset</button>
+          </div>
+        </div>
+      </div>
+      <!-- pull progress bar — hidden until a pull starts -->
+      <div id="ollama-pull-progress-wrap" style="display:none; width:100%;">
+        <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:0.3rem;">
+          <span id="ollama-pull-step" style="font-size:0.8rem; color:var(--muted);">—</span>
+          <span id="ollama-pull-pct"  style="font-size:0.8rem; color:var(--muted);">0%</span>
+        </div>
+        <div style="background:var(--bg); border:1px solid var(--border); border-radius:999px; height:8px; overflow:hidden;">
+          <div id="ollama-pull-bar"
+               style="height:100%; width:0%; background:var(--accent); border-radius:999px; transition:width .4s ease;"></div>
+        </div>
+      </div>
+    </div>
   </div>
 
 </div>
@@ -492,6 +221,7 @@
 
 <div id="toast"></div>
 
+<<<<<<< HEAD
 <script>
   // ── Hamburger ───────────────────────────────────────────────────
   const hamburgerBtn  = document.getElementById("hamburger-btn");
@@ -748,6 +478,9 @@
     _reclusterPollTimer = setTimeout(_pollStatus, 800);
   }
 </script>
+=======
+<script src="/static/settings.js"></script>
+>>>>>>> 4f0ee20 (added nginx and updated clustering to leverage ollama llm ai summary)
 
 </body>
 </html>
