@@ -8,6 +8,9 @@ A simple, self-hosted RSS aggregator for personal home use on a Raspberry Pi, ac
 - sync back to shannon
 - install again
 - test refresh call. Build idempotence into refresh call so that user can refresh feed without retriggering lengthly LLM process in motion. Be anti-greedy
+- Scale down images a lot
+- Add time to time/date stamp
+- Can we do any interesting analysis with the images or are they way too much data and trouble than they're worth?
 
 ---
 
