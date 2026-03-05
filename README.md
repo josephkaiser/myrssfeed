@@ -35,10 +35,11 @@ bash install.sh
 `install.sh` does everything in one shot:
 
 1. Creates a Python virtualenv and installs all dependencies
-2. Registers the app as a **systemd service** (binds to `127.0.0.1:8080`)
-3. Installs **nginx** and proxies HTTPS → uvicorn
-4. Installs **mkcert**, generates a locally-trusted TLS certificate for `myrssfeed.local`
-5. Sets the Pi's mDNS hostname via **avahi** so the `.local` name resolves on the LAN
+2. Installs **ollama**, registers it as a systemd service, and pulls `phi3:mini`
+3. Registers the app as a **systemd service** (binds to `127.0.0.1:8080`, starts after ollama)
+4. Installs **nginx** and proxies HTTPS → uvicorn
+5. Installs **mkcert**, generates a locally-trusted TLS certificate for `myrssfeed.local`
+6. Sets the Pi's mDNS hostname via **avahi** so the `.local` name resolves on the LAN
 
 Open on any device on the same Wi-Fi:
 
@@ -76,15 +77,18 @@ journalctl -u myrssfeed -f    # live logs
 ## Local development
 
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-python main.py
+bash start.sh
 ```
 
-Open [http://localhost:8080](http://localhost:8080) — no nginx needed.
+That's it. `start.sh` handles everything in one shot:
+1. Creates `.venv` if it doesn't exist
+2. Installs / syncs all Python dependencies
+3. Starts ollama if it isn't already running (logs to `logs/ollama.log`)
+4. Pulls `phi3:mini` if not already available
+5. Starts the app at [http://localhost:8080](http://localhost:8080)
 
 `feeds/rss.db` and `logs/myrssfeed.log` are created automatically on first run.
+Press **Ctrl+C** to stop.
 
 ### Running pipeline stages manually
 

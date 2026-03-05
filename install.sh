@@ -3,11 +3,12 @@
 #
 # What this does:
 #   1. Creates a Python venv and installs dependencies
-#   2. Registers the app as a systemd service (port 8080, loopback only)
-#   3. Installs nginx and mkcert
-#   4. Generates a locally-trusted TLS certificate for myrssfeed.local
-#   5. Drops the nginx site config in place and enables it
-#   6. Sets the Pi's mDNS hostname so the site resolves as myrssfeed.local
+#   2. Installs ollama and pulls the default model (phi3:mini)
+#   3. Registers the app as a systemd service (port 8080, loopback only)
+#   4. Installs nginx and mkcert
+#   5. Generates a locally-trusted TLS certificate for myrssfeed.local
+#   6. Drops the nginx site config in place and enables it
+#   7. Sets the Pi's mDNS hostname so the site resolves as myrssfeed.local
 #
 # After running:   https://myrssfeed.local  (from any device on the same network)
 set -euo pipefail
@@ -26,12 +27,34 @@ $PYTHON -m venv "$VENV_DIR"
 "$VENV_DIR/bin/pip" install --upgrade pip -q
 "$VENV_DIR/bin/pip" install -r "$APP_DIR/requirements.txt" -q
 
-# ── 2. systemd service (binds only to loopback) ─────────────────────────────
+# ── 2. ollama ────────────────────────────────────────────────────────────────
+echo "==> Installing ollama…"
+if ! command -v ollama &>/dev/null; then
+    curl -fsSL https://ollama.ai/install.sh | sh
+    echo "    ollama installed."
+else
+    echo "    ollama already installed — skipping."
+fi
+
+# Ensure the ollama systemd service is enabled and running
+# (the official install script creates /etc/systemd/system/ollama.service)
+sudo systemctl daemon-reload
+sudo systemctl enable --now ollama
+echo "    ollama service enabled."
+
+# Pull the default model if not already available
+DEFAULT_MODEL="phi3:mini"
+echo "==> Pulling default model '$DEFAULT_MODEL' (may take a few minutes)…"
+ollama pull "$DEFAULT_MODEL"
+echo "    Model '$DEFAULT_MODEL' ready."
+
+# ── 3. systemd service (binds only to loopback) ─────────────────────────────
 echo "==> Writing systemd unit for myRSSfeed…"
 sudo tee /etc/systemd/system/${SERVICE_NAME}.service > /dev/null <<EOF
 [Unit]
 Description=myRSSfeed — personal RSS aggregator
-After=network.target
+After=network.target ollama.service
+Wants=ollama.service
 
 [Service]
 Type=simple
@@ -43,7 +66,7 @@ RestartSec=10
 # Memory throttling: the kernel reclaims pages and slows the process once it
 # crosses MemoryHigh, then hard-kills it only if it reaches MemoryMax.
 # This keeps the Pi responsive under load instead of triggering a system OOM.
-# Adjust to fit your Pi's available RAM (Pi 4 4 GB → raise to 1G/1200M, etc.)
+# Adjust to fit your Pi's available RAM (Pi 5 8 GB → adjust as needed)
 MemoryHigh=700M
 MemoryMax=900M
 MemorySwapMax=0
@@ -56,12 +79,12 @@ sudo systemctl daemon-reload
 sudo systemctl enable --now ${SERVICE_NAME}.service
 echo "    myRSSfeed service started on 127.0.0.1:8080"
 
-# ── 3. Install nginx ─────────────────────────────────────────────────────────
+# ── 4. Install nginx ─────────────────────────────────────────────────────────
 echo "==> Installing nginx…"
 sudo apt-get update -q
 sudo apt-get install -y -q nginx
 
-# ── 4. Install mkcert and generate a trusted local certificate ───────────────
+# ── 5. Install mkcert and generate a trusted local certificate ───────────────
 echo "==> Installing mkcert…"
 if ! command -v mkcert &>/dev/null; then
     # Prefer the distro package; fall back to the upstream binary
@@ -98,7 +121,7 @@ popd > /dev/null
 sudo chmod 640 "$CERT_DIR/myrssfeed.local-key.pem"
 sudo chown root:www-data "$CERT_DIR/myrssfeed.local-key.pem"
 
-# ── 5. nginx site config ─────────────────────────────────────────────────────
+# ── 6. nginx site config ─────────────────────────────────────────────────────
 echo "==> Configuring nginx…"
 sudo cp "$APP_DIR/nginx/myrssfeed.conf" /etc/nginx/sites-available/myrssfeed
 sudo ln -sf /etc/nginx/sites-available/myrssfeed /etc/nginx/sites-enabled/myrssfeed
@@ -110,7 +133,7 @@ sudo systemctl enable --now nginx
 sudo systemctl reload nginx
 echo "    nginx configured and reloaded."
 
-# ── 6. mDNS hostname ─────────────────────────────────────────────────────────
+# ── 7. mDNS hostname ─────────────────────────────────────────────────────────
 echo "==> Setting mDNS hostname to ${HOSTNAME_MDNS}…"
 sudo hostnamectl set-hostname "$HOSTNAME_MDNS"
 # avahi-daemon provides .local mDNS resolution on the LAN
@@ -127,7 +150,15 @@ echo " myRSSfeed is ready!"
 echo " Open on any device on this network:"
 echo "   https://myrssfeed.local"
 echo ""
+echo " AI Digest is powered by ollama (model: phi3:mini)."
+echo " To use a smarter model, go to Settings → AI Digest"
+echo " and set the model to llama3.1:8b, then run:"
+echo "   ollama pull llama3.1:8b"
+echo ""
 echo " To trust the certificate on each device, copy the mkcert CA from:"
 echo "   \$(mkcert -CAROOT)/rootCA.pem"
 echo " and install it as a trusted CA on each browser / OS."
+echo ""
+echo " View live logs from any browser on the LAN:"
+echo "   https://myrssfeed.local/api/logs"
 echo "=========================================="
