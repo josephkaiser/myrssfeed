@@ -133,6 +133,7 @@ The clustering pipeline runs as an isolated child process so an OOM-kill never t
 | **`MemorySwapMax=0` (systemd)** | Prevents the Pi from thrashing its SD card swap partition; fail fast instead. |
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 | **`RLIMIT_DATA` (process)** | The clustering child sets a 600 MB heap limit on itself before loading any model weights. `RLIMIT_AS` (virtual address space) is deliberately avoided — Python/torch mmap large virtual regions even when physical RAM is low, causing spurious process kills on import. Only the child is affected. |
 =======
 | **`RLIMIT_DATA` (process)** | The clustering child sets a 600 MB heap limit on itself before loading any model weights. `RLIMIT_AS` (virtual address space) is deliberately avoided — Python/torch mmap large virtual regions even when physical RAM is low, causing spurious kills. Only the child is affected. |
@@ -140,6 +141,9 @@ The clustering pipeline runs as an isolated child process so an OOM-kill never t
 =======
 | **`RLIMIT_DATA` (process)** | The clustering child sets a 600 MB heap limit on itself before loading any model weights. `RLIMIT_AS` (virtual address space) is deliberately avoided — Python/torch mmap large virtual regions even when physical RAM is low, causing spurious kills. Only the child is affected. |
 >>>>>>> 4f0ee20 (added nginx and updated clustering to leverage ollama llm ai summary)
+=======
+| **`RLIMIT_DATA` (process)** | The clustering child sets a 600 MB heap limit on itself before loading any model weights. `RLIMIT_AS` (virtual address space) is deliberately avoided — Python/torch mmap large virtual regions even when physical RAM is low, causing spurious kills. Only the child is affected. |
+>>>>>>> bd50010 (added nginx and updated clustering to leverage ollama llm ai summary)
 | **`max_entries_to_cluster`** | Caps the DB query so the ML pipeline never sees more than N articles, directly reducing the memmap file size and sklearn input. |
 | **memmap embeddings** | Embedding vectors are written to a temp file on disk batch-by-batch rather than held in RAM. |
 | **`del model; gc.collect()`** | The ~90 MB SentenceTransformer model is freed immediately after encoding finishes. |
@@ -154,6 +158,7 @@ To tune the systemd limits for your hardware, edit the `[Service]` section of th
 | Pi 5 8 GB | `2G` | `3G` |
 
 To tune the per-child heap limit, change `_MEMORY_LIMIT_BYTES` at the top of `scripts/cluster_topics.py`.
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 
@@ -171,6 +176,8 @@ The `POST /api/recluster` endpoint is synchronous — nginx must wait for the fu
 >>>>>>> 1eff26f (.gitignore additions)
 =======
 >>>>>>> 4f0ee20 (added nginx and updated clustering to leverage ollama llm ai summary)
+=======
+>>>>>>> bd50010 (added nginx and updated clustering to leverage ollama llm ai summary)
 
 ---
 

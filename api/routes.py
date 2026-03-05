@@ -588,6 +588,7 @@ def trigger_recluster():
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
     if proc.returncode != 0:
         stderr_full = (proc.stderr or "").strip() or "(no stderr)"
         finish_job(job_id, success=False, error_log=stderr_full)
@@ -604,6 +605,9 @@ def trigger_recluster():
 =======
     return {"status": "ok", "job_id": job_id, "message": "Re-clustering started."}
 >>>>>>> 4f0ee20 (added nginx and updated clustering to leverage ollama llm ai summary)
+=======
+    return {"status": "ok", "job_id": job_id, "message": "Re-clustering started."}
+>>>>>>> bd50010 (added nginx and updated clustering to leverage ollama llm ai summary)
 
 
 @router.get("/api/recluster/status")
