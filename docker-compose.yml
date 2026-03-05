@@ -1,12 +1,26 @@
 services:
 
+  ollama:
+    image: ollama/ollama
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:11434:11434"   # loopback only — not exposed to LAN
+    volumes:
+      - ollama_data:/root/.ollama
+    mem_limit: 2g
+    memswap_limit: 2g             # prevents swap from absorbing overages
+
   app:
     build: .
     restart: unless-stopped
     expose:
       - "8080"
     volumes:
-      - ./feeds:/app/feeds   # persists rss.db across restarts
+      - ./feeds:/app/feeds         # persists rss.db across restarts
+    environment:
+      - MYRSSFEED_OLLAMA_URL=http://ollama:11434
+    depends_on:
+      - ollama
 
   nginx:
     image: nginx:stable-alpine
@@ -19,3 +33,6 @@ services:
       - ./certs:/etc/ssl/myrssfeed:ro           # mount cert + key here
     depends_on:
       - app
+
+volumes:
+  ollama_data:

@@ -105,6 +105,11 @@ def _migrate_db(conn: sqlite3.Connection) -> None:
 
 
 def get_setting(key: str) -> str:
+    # Allow docker-compose (and other env-based deployments) to override settings
+    # without touching the DB. Env var name: MYRSSFEED_<KEY_UPPER>.
+    env_val = os.environ.get(f"MYRSSFEED_{key.upper()}")
+    if env_val is not None:
+        return env_val
     conn = get_db()
     row = conn.execute("SELECT value FROM settings WHERE key = ?", (key,)).fetchone()
     conn.close()

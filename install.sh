@@ -27,25 +27,50 @@ $PYTHON -m venv "$VENV_DIR"
 "$VENV_DIR/bin/pip" install --upgrade pip -q
 "$VENV_DIR/bin/pip" install -r "$APP_DIR/requirements.txt" -q
 
-# ── 2. ollama ────────────────────────────────────────────────────────────────
-echo "==> Installing ollama…"
-if ! command -v ollama &>/dev/null; then
-    curl -fsSL https://ollama.ai/install.sh | sh
-    echo "    ollama installed."
+# ── 2. ollama (Docker container with 2 GB memory cap) ────────────────────────
+echo "==> Installing Docker (for ollama)…"
+if ! command -v docker &>/dev/null; then
+    curl -fsSL https://get.docker.com | sh
+    sudo usermod -aG docker "$USER"
+    echo "    Docker installed. NOTE: log out and back in for group membership to take effect."
 else
-    echo "    ollama already installed — skipping."
+    echo "    Docker already installed — skipping."
+fi
+sudo systemctl enable --now docker
+
+echo "==> Stopping native ollama service if running (port 11434 must be free)…"
+if sudo systemctl is-active --quiet ollama 2>/dev/null; then
+    sudo systemctl disable --now ollama
+    echo "    Native ollama service stopped and disabled."
 fi
 
-# Ensure the ollama systemd service is enabled and running
-# (the official install script creates /etc/systemd/system/ollama.service)
-sudo systemctl daemon-reload
-sudo systemctl enable --now ollama
-echo "    ollama service enabled."
+echo "==> Starting ollama container (2 GB memory limit)…"
+if sudo docker ps -a --format '{{.Names}}' | grep -q '^ollama$'; then
+    echo "    ollama container already exists — skipping creation."
+    sudo docker start ollama 2>/dev/null || true
+else
+    sudo docker run -d \
+        --name ollama \
+        --restart unless-stopped \
+        -p 127.0.0.1:11434:11434 \
+        -v ollama_data:/root/.ollama \
+        --memory 2g \
+        --memory-swap 2g \
+        ollama/ollama
+    echo "    ollama container started with 2 GB memory cap."
+fi
+
+# Wait for ollama to be ready before pulling
+echo "    Waiting for ollama to be ready…"
+for i in $(seq 1 30); do
+    if sudo docker exec ollama ollama list &>/dev/null; then break; fi
+    sleep 2
+done
 
 # Pull the default model if not already available
 DEFAULT_MODEL="phi3:mini"
 echo "==> Pulling default model '$DEFAULT_MODEL' (may take a few minutes)…"
-ollama pull "$DEFAULT_MODEL"
+sudo docker exec ollama ollama pull "$DEFAULT_MODEL"
 echo "    Model '$DEFAULT_MODEL' ready."
 
 # ── 3. systemd service (binds only to loopback) ─────────────────────────────
@@ -53,8 +78,8 @@ echo "==> Writing systemd unit for myRSSfeed…"
 sudo tee /etc/systemd/system/${SERVICE_NAME}.service > /dev/null <<EOF
 [Unit]
 Description=myRSSfeed — personal RSS aggregator
-After=network.target ollama.service
-Wants=ollama.service
+After=network.target docker.service
+Wants=docker.service
 
 [Service]
 Type=simple
