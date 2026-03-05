@@ -1,12 +1,50 @@
 import logging
+import threading
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 
 logger = logging.getLogger(__name__)
 
+_pipeline_lock = threading.Lock()
+_pipeline_running = False
+
+
+def is_pipeline_running() -> bool:
+    return _pipeline_running
+
 
 def run_pipeline():
-    """Run the full daily pipeline: fetch → rank → visualize → digest."""
+    """Run the full daily pipeline: fetch → rank → visualize → digest.
+
+    Silently skips if a run is already in progress (prevents OOM from
+    concurrent ollama calls on the Pi).
+    """
+    global _pipeline_running
+    if not _pipeline_lock.acquire(blocking=False):
+        logger.info("Pipeline already running — skipping concurrent start.")
+        return
+    _pipeline_running = True
+    try:
+        _do_pipeline()
+    finally:
+        _pipeline_running = False
+        _pipeline_lock.release()
+
+
+def run_pipeline_async() -> bool:
+    """Start the pipeline in a daemon thread.
+
+    Returns True if started, False if already running.
+    """
+    if _pipeline_running:
+        return False
+    t = threading.Thread(target=run_pipeline, daemon=True, name="pipeline")
+    t.start()
+    return True
+
+
+def _do_pipeline():
+    """Actual pipeline logic (called with lock held)."""
     logger.info("Pipeline starting.")
     try:
         from scripts.compile_feed import run_compile_feed

@@ -2,6 +2,13 @@
 
 A simple, self-hosted RSS aggregator for personal home use on a Raspberry Pi, accessible across the local network. No cloud intermediaries — just the necessary plumbing.
 
+# TODO
+- fix ollama ram limit overhang
+- let claude finish what it was doing on Euler
+- sync back to shannon
+- install again
+- test refresh call. Build idempotence into refresh call so that user can refresh feed without retriggering lengthly LLM process in motion. Be anti-greedy
+
 ---
 
 ## Core principles

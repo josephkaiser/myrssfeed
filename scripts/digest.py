@@ -117,8 +117,16 @@ def _build_prompt(extracts: list) -> str:
 
 
 def _call_ollama(ollama_url: str, model: str, prompt: str):
+    """Stream tokens from ollama to avoid buffering the full response in RAM."""
     url = f"{ollama_url.rstrip('/')}/api/generate"
-    payload = json.dumps({"model": model, "prompt": prompt, "stream": False}).encode()
+    payload = json.dumps({
+        "model": model,
+        "prompt": prompt,
+        "stream": True,
+        "options": {
+            "num_predict": 600,   # cap output tokens; digest doesn't need more
+        },
+    }).encode()
     req = urllib.request.Request(
         url,
         data=payload,
@@ -126,8 +134,22 @@ def _call_ollama(ollama_url: str, model: str, prompt: str):
         method="POST",
     )
     try:
-        with urllib.request.urlopen(req, timeout=300) as resp:
-            body = resp.read().decode("utf-8")
+        chunks: list[str] = []
+        with urllib.request.urlopen(req, timeout=600) as resp:
+            for raw_line in resp:
+                raw_line = raw_line.strip()
+                if not raw_line:
+                    continue
+                try:
+                    data = json.loads(raw_line.decode("utf-8"))
+                except json.JSONDecodeError:
+                    continue
+                token = data.get("response", "")
+                if token:
+                    chunks.append(token)
+                if data.get("done"):
+                    break
+        return "".join(chunks) if chunks else None
     except urllib.error.URLError as exc:
         logger.warning("Ollama request failed (URL error): %s", exc)
         return None
@@ -136,13 +158,6 @@ def _call_ollama(ollama_url: str, model: str, prompt: str):
         return None
     except Exception as exc:
         logger.warning("Ollama request failed: %s", exc)
-        return None
-
-    try:
-        data = json.loads(body)
-        return data["response"]
-    except (json.JSONDecodeError, KeyError) as exc:
-        logger.warning("Failed to parse ollama response: %s", exc)
         return None
 
 

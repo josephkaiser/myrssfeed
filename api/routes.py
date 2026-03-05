@@ -197,14 +197,14 @@ def update_settings(payload: SettingsUpdate):
 
 @router.post("/api/refresh", status_code=202)
 def trigger_refresh():
-    """Manually kick off the full daily pipeline."""
-    from scheduler import run_pipeline
-    try:
-        run_pipeline()
-    except Exception as exc:
-        logger.exception("Manual refresh failed")
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
-    return {"status": "ok", "message": "Pipeline complete."}
+    """Kick off the full daily pipeline in the background."""
+    from scheduler import run_pipeline_async, is_pipeline_running
+    if is_pipeline_running():
+        return {"status": "running", "message": "Pipeline already in progress."}
+    started = run_pipeline_async()
+    if not started:
+        return {"status": "running", "message": "Pipeline already in progress."}
+    return {"status": "started", "message": "Pipeline started in background."}
 
 
 # ---------------------------------------------------------------------------
