@@ -644,15 +644,70 @@
     }
     .feed-link { gap: 0.35rem; }
 
+    /* ── Entry body layout ── */
+    .entry-body {
+      display: flex;
+      gap: 0.75rem;
+      align-items: flex-start;
+    }
+    .entry-content {
+      flex: 1;
+      min-width: 0;
+    }
+
     /* ── Entry thumbnail ── */
     .entry-thumb {
-      width: 100%;
-      max-height: 180px;
-      object-fit: cover;
+      flex-shrink: 0;
+      width: 33%;
+      max-height: 20vh;
+      object-fit: contain;
+      object-position: top center;
       border-radius: calc(var(--radius) - 2px);
-      margin-bottom: 0.5rem;
-      display: block;
+      align-self: flex-start;
+      cursor: zoom-in;
     }
+
+    /* ── Image lightbox ── */
+    #img-lightbox {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 1000;
+      background: rgba(0, 0, 0, 0.82);
+      align-items: center;
+      justify-content: center;
+      overscroll-behavior: contain;
+    }
+    #img-lightbox.open {
+      display: flex;
+    }
+    #img-lightbox img {
+      max-width: 90vw;
+      max-height: 90vh;
+      object-fit: contain;
+      border-radius: var(--radius);
+      box-shadow: 0 8px 48px rgba(0,0,0,.6);
+    }
+    #img-lightbox-close {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-size: 1.4rem;
+      line-height: 1;
+      width: 2.2rem;
+      height: 2.2rem;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1001;
+      transition: background .15s, color .15s;
+    }
+    #img-lightbox-close:hover { background: var(--danger); color: #fff; border-color: var(--danger); }
 
     /* ── Read state ── */
     .entry-card.read { opacity: 0.6; }

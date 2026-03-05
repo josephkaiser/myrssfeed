@@ -71,6 +71,12 @@ def init_db():
             model      TEXT NOT NULL,
             created_at TEXT NOT NULL
         );
+
+        CREATE TABLE IF NOT EXISTS devices (
+            id         INTEGER PRIMARY KEY AUTOINCREMENT,
+            name       TEXT NOT NULL,
+            added_at   TEXT NOT NULL DEFAULT (datetime('now'))
+        );
     """)
     conn.commit()
     _migrate_db(conn)

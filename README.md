@@ -47,21 +47,19 @@ Open on any device on the same Wi-Fi:
 https://myrssfeed.local
 ```
 
-### Trusting the certificate on each device
+### Adding devices (phones, laptops)
 
-```bash
-# On the Pi — find the CA file
-mkcert -CAROOT
+On each device, open a browser and go to:
+
+```
+http://myrssfeed.local/devices
 ```
 
-Copy `rootCA.pem` to each device and install it:
+The page works over plain HTTP before the certificate is trusted. Pick your OS and follow the instructions — one download and install, then `https://myrssfeed.local` works without warnings.
 
-| Device | Steps |
-|--------|-------|
-| **iOS** | AirDrop or email → Settings → tap the profile → trust it |
-| **Android** | Settings → Security → Install from storage |
-| **macOS** | Double-click → Keychain Access → set "Always Trust" for SSL |
-| **Windows** | Double-click → Install Certificate → Trusted Root Certification Authorities |
+**Shortcuts:**
+- **iPhone/iPad** — tap "Install profile" in Safari; iOS handles everything
+- **Mac** — download and double-click `bootstrap.command` from the same page; it installs the cert automatically
 
 ### Managing the service
 

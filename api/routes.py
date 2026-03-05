@@ -1,13 +1,16 @@
 import logging
 from fastapi import APIRouter, HTTPException, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, Response
 from fastapi.templating import Jinja2Templates
 from typing import Optional
 import os
 
 from utils.helpers import get_db, get_setting, set_setting, DEFAULTS
-from api.schemas import FeedCreate, FeedOut, EntryOut, SettingsUpdate, DigestOut, VizEntryOut, VizThemeOut
+from api.schemas import FeedCreate, FeedOut, EntryOut, SettingsUpdate, DigestOut, VizEntryOut, VizThemeOut, DeviceCreate, DeviceOut
 from scripts.compile_feed import run_compile_feed
+
+MAX_DEVICES = 5
+CERT_DIR = "/etc/ssl/myrssfeed"
 
 logger = logging.getLogger(__name__)
 
@@ -20,6 +23,129 @@ templates = Jinja2Templates(directory=_templates_dir)
 # ---------------------------------------------------------------------------
 # UI
 # ---------------------------------------------------------------------------
+
+@router.get("/devices", response_class=HTMLResponse)
+def devices_page(request: Request):
+    conn = get_db()
+    rows = conn.execute("SELECT id, name, added_at FROM devices ORDER BY added_at").fetchall()
+    conn.close()
+    return templates.TemplateResponse(
+        "device.html",
+        {"request": request, "devices": [dict(r) for r in rows], "max_devices": MAX_DEVICES},
+    )
+
+
+@router.get("/ca.crt")
+def download_ca_cert():
+    ca_path = os.path.join(CERT_DIR, "rootCA.pem")
+    if not os.path.exists(ca_path):
+        raise HTTPException(status_code=404, detail="CA certificate not found. Run install.sh first.")
+    with open(ca_path, "rb") as f:
+        data = f.read()
+    return Response(
+        content=data,
+        media_type="application/x-x509-ca-cert",
+        headers={"Content-Disposition": "attachment; filename=myrssfeed-ca.crt"},
+    )
+
+
+@router.get("/bootstrap.command")
+def download_bootstrap():
+    """Mac bootstrap script — served directly so no GitHub link is needed."""
+    script_path = os.path.join(os.path.dirname(__file__), "..", "bootstrap.command")
+    script_path = os.path.normpath(script_path)
+    if not os.path.exists(script_path):
+        raise HTTPException(status_code=404, detail="bootstrap.command not found.")
+    with open(script_path, "rb") as f:
+        data = f.read()
+    return Response(
+        content=data,
+        media_type="text/plain",
+        headers={"Content-Disposition": "attachment; filename=bootstrap.command"},
+    )
+
+
+@router.get("/ca.mobileconfig")
+def download_mobileconfig():
+    """Apple Configuration Profile — installs the CA cert on iOS/macOS via one tap."""
+    import uuid, base64, re as _re
+    ca_path = os.path.join(CERT_DIR, "rootCA.pem")
+    if not os.path.exists(ca_path):
+        raise HTTPException(status_code=404, detail="CA certificate not found. Run install.sh first.")
+    with open(ca_path, "r") as f:
+        pem = f.read()
+    # Strip PEM headers — the body is already base64-encoded DER
+    b64 = "".join(_re.sub(r"-----.*?-----", "", pem).split())
+    # Stable UUIDs derived from the cert so re-downloads produce the same profile
+    payload_uuid = str(uuid.uuid5(uuid.NAMESPACE_DNS, "myrssfeed.ca.payload." + b64[:32]))
+    profile_uuid = str(uuid.uuid5(uuid.NAMESPACE_DNS, "myrssfeed.ca.profile." + b64[:32]))
+    xml = f"""<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>PayloadContent</key>
+  <array>
+    <dict>
+      <key>PayloadCertificateFileName</key><string>myrssfeed-ca.crt</string>
+      <key>PayloadContent</key><data>{b64}</data>
+      <key>PayloadDescription</key><string>Trusts the myRSSfeed local CA so https://myrssfeed.local works without warnings.</string>
+      <key>PayloadDisplayName</key><string>myRSSfeed CA</string>
+      <key>PayloadIdentifier</key><string>local.myrssfeed.ca.cert</string>
+      <key>PayloadType</key><string>com.apple.security.root</string>
+      <key>PayloadUUID</key><string>{payload_uuid}</string>
+      <key>PayloadVersion</key><integer>1</integer>
+    </dict>
+  </array>
+  <key>PayloadDescription</key><string>Allows your device to connect to myRSSfeed over HTTPS without security warnings.</string>
+  <key>PayloadDisplayName</key><string>myRSSfeed</string>
+  <key>PayloadIdentifier</key><string>local.myrssfeed.ca</string>
+  <key>PayloadRemovalDisallowed</key><false/>
+  <key>PayloadType</key><string>Configuration</string>
+  <key>PayloadUUID</key><string>{profile_uuid}</string>
+  <key>PayloadVersion</key><integer>1</integer>
+</dict>
+</plist>"""
+    return Response(
+        content=xml.encode(),
+        media_type="application/x-apple-aspen-config",
+        headers={"Content-Disposition": "attachment; filename=myrssfeed.mobileconfig"},
+    )
+
+
+@router.get("/api/devices", response_model=list[DeviceOut])
+def list_devices():
+    conn = get_db()
+    rows = conn.execute("SELECT id, name, added_at FROM devices ORDER BY added_at").fetchall()
+    conn.close()
+    return [dict(r) for r in rows]
+
+
+@router.post("/api/devices", response_model=DeviceOut, status_code=201)
+def add_device(device: DeviceCreate):
+    name = device.name.strip()
+    if not name:
+        raise HTTPException(status_code=422, detail="Device name cannot be empty.")
+    conn = get_db()
+    count = conn.execute("SELECT COUNT(*) FROM devices").fetchone()[0]
+    if count >= MAX_DEVICES:
+        conn.close()
+        raise HTTPException(status_code=409, detail=f"Maximum of {MAX_DEVICES} devices reached. Remove one first.")
+    row = conn.execute(
+        "INSERT INTO devices (name) VALUES (?) RETURNING id, name, added_at",
+        (name,),
+    ).fetchone()
+    conn.commit()
+    conn.close()
+    return dict(row)
+
+
+@router.delete("/api/devices/{device_id}", status_code=204)
+def remove_device(device_id: int):
+    conn = get_db()
+    conn.execute("DELETE FROM devices WHERE id = ?", (device_id,))
+    conn.commit()
+    conn.close()
+
 
 @router.get("/settings", response_class=HTMLResponse)
 def settings_page(request: Request):

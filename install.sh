@@ -121,6 +121,12 @@ popd > /dev/null
 sudo chmod 640 "$CERT_DIR/myrssfeed.local-key.pem"
 sudo chown root:www-data "$CERT_DIR/myrssfeed.local-key.pem"
 
+# Copy the CA root certificate so the app can serve it to new devices
+CAROOT="$(mkcert -CAROOT)"
+sudo cp "$CAROOT/rootCA.pem" "$CERT_DIR/rootCA.pem"
+sudo chmod 644 "$CERT_DIR/rootCA.pem"
+echo "    CA root certificate saved to $CERT_DIR/rootCA.pem"
+
 # ── 6. nginx site config ─────────────────────────────────────────────────────
 echo "==> Configuring nginx…"
 sudo cp "$APP_DIR/nginx/myrssfeed.conf" /etc/nginx/sites-available/myrssfeed
@@ -147,17 +153,18 @@ echo "    Hostname set. The Pi will respond to ${HOSTNAME_MDNS}.local on the net
 echo ""
 echo "=========================================="
 echo " myRSSfeed is ready!"
+echo ""
 echo " Open on any device on this network:"
 echo "   https://myrssfeed.local"
+echo ""
+echo " To add a phone, laptop, or other device:"
+echo "   http://myrssfeed.local/devices"
+echo "   (use http:// — the page works before the certificate is trusted)"
 echo ""
 echo " AI Digest is powered by ollama (model: phi3:mini)."
 echo " To use a smarter model, go to Settings → AI Digest"
 echo " and set the model to llama3.1:8b, then run:"
 echo "   ollama pull llama3.1:8b"
-echo ""
-echo " To trust the certificate on each device, copy the mkcert CA from:"
-echo "   \$(mkcert -CAROOT)/rootCA.pem"
-echo " and install it as a trusted CA on each browser / OS."
 echo ""
 echo " View live logs from any browser on the LAN:"
 echo "   https://myrssfeed.local/api/logs"

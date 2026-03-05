@@ -1,4 +1,5 @@
 # Requires: scikit-learn>=1.5.0, numpy>=1.26.0
+import gc
 import sys
 import os
 import re
@@ -134,6 +135,12 @@ def run_visualization() -> None:
 
     conn.commit()
     conn.close()
+
+    # Explicitly free large arrays so memory is returned to the OS before
+    # the next pipeline stage (digest) asks ollama to load the LLM.
+    del tfidf_matrix, tfidf_dense, svd_coords, tsne_coords, cluster_labels
+    gc.collect()
+
     logger.info("Visualization: done")
 
 

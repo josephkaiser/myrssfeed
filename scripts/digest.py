@@ -5,6 +5,7 @@ import os
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
+import gc
 import json
 import logging
 import re
@@ -123,8 +124,10 @@ def _call_ollama(ollama_url: str, model: str, prompt: str):
         "model": model,
         "prompt": prompt,
         "stream": True,
+        "keep_alive": 0,          # unload model from RAM immediately when done
         "options": {
             "num_predict": 600,   # cap output tokens; digest doesn't need more
+            "num_ctx": 4096,      # cap KV cache; default 128k uses several GB on Pi
         },
     }).encode()
     req = urllib.request.Request(
@@ -203,6 +206,10 @@ def run_digest() -> None:
     logger.info("Extractive pre-filter done (%d extracts).", len(extracts))
 
     prompt = _build_prompt(extracts)
+
+    # Free memory from prior pipeline stages (wordrank/visualization sklearn objects)
+    # before asking ollama to load the model into RAM.
+    gc.collect()
 
     logger.info("Calling ollama model=%s at %s", model, ollama_url)
     digest_text = _call_ollama(ollama_url, model, prompt)

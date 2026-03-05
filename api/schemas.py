@@ -56,3 +56,13 @@ class VizThemeOut(BaseModel):
     centroid_x: float
     centroid_y: float
     size: int
+
+
+class DeviceCreate(BaseModel):
+    name: str
+
+
+class DeviceOut(BaseModel):
+    id: int
+    name: str
+    added_at: str

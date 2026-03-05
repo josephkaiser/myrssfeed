@@ -21,6 +21,36 @@
     document.getElementById("sidebar").classList.toggle("open");
   }
 
+  // ── Image lightbox ──────────────────────────────────────────────
+  const lightbox    = document.getElementById("img-lightbox");
+  const lightboxImg = document.getElementById("img-lightbox-img");
+
+  function openLightbox(src) {
+    lightboxImg.src = src;
+    lightbox.classList.add("open");
+    document.body.style.overflow = "hidden";
+  }
+
+  function closeLightbox() {
+    lightbox.classList.remove("open");
+    lightboxImg.src = "";
+    document.body.style.overflow = "";
+  }
+
+  lightbox.addEventListener("click", (e) => {
+    if (e.target === lightbox) closeLightbox();
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && lightbox.classList.contains("open")) closeLightbox();
+  });
+
+  document.addEventListener("click", (e) => {
+    if (e.target.classList.contains("entry-thumb")) {
+      openLightbox(e.target.src);
+    }
+  });
+
   // ── Toast ───────────────────────────────────────────────────────
   function toast(msg, ok = true) {
     const el = document.getElementById("toast");
