@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>My Feeds — myRSSfeed</title>
+  <script>
+    (function() {
+      var t = localStorage.getItem("theme") || "system";
+      var el = document.documentElement;
+      if (t === "light") el.setAttribute("data-theme", "light");
+      else if (t === "dark") el.setAttribute("data-theme", "dark");
+      else el.removeAttribute("data-theme");
+    })();
+  </script>
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+
+<header>
+  <a class="header-brand" onclick="openNav()" role="button" tabindex="0">myRSSfeed</a>
+</header>
+
+<!-- Overlay nav drawer -->
+<div class="nav-overlay" id="nav-overlay" onclick="closeNav()">
+  <nav class="nav-drawer" onclick="event.stopPropagation()">
+    <div class="nav-drawer-header">
+      <span class="nav-drawer-brand">myRSSfeed</span>
+      <button class="nav-drawer-close" onclick="closeNav()">&times;</button>
+    </div>
+    <div class="nav-drawer-links">
+      <a href="/">
+        <span class="nav-icon">&#128196;</span> Articles
+      </a>
+      <a href="/feeds" class="active">
+        <span class="nav-icon">&#128218;</span> My Feeds
+      </a>
+      <a href="/discover">
+        <span class="nav-icon">&#128269;</span> Discover
+      </a>
+      <a href="/settings">
+        <span class="nav-icon">&#9881;</span> Settings
+      </a>
+    </div>
+  </nav>
+</div>
+
+<div class="discover-wrap">
+
+  <!-- Detect from URL -->
+  <div class="discover-section">
+    <div class="discover-section-title">Add a feed</div>
+    <p class="discover-section-desc">Paste any website URL and we'll find its RSS feed, or enter a feed URL directly.</p>
+    <div class="detect-row">
+      <input type="url" id="detect-input" class="detect-input"
+        placeholder="https://example.com" autocomplete="off" />
+      <button class="btn" id="detect-btn" onclick="detectFeeds()">Detect</button>
+    </div>
+    <div id="detect-results"></div>
+
+    <div style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--border);">
+      <div class="discover-section-desc" style="margin:0 0 0.5rem">Or add a feed URL directly:</div>
+      <div class="detect-row">
+        <input type="url" id="direct-url" class="detect-input" placeholder="https://example.com/feed.xml" autocomplete="off" />
+        <input type="text" id="direct-title" class="detect-input" placeholder="Label (optional)" style="max-width:180px" />
+        <button class="btn" onclick="addDirect()">Add</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Subscribed feeds grid -->
+  <div class="discover-section">
+    <div class="discover-section-title">My subscribed feeds</div>
+
+    <div class="catalog-search-row">
+      <input type="search" id="feeds-search" class="catalog-search-input"
+        placeholder="Filter my feeds..." oninput="renderFeeds()" autocomplete="off" />
+    </div>
+
+    <div class="catalog-grid" id="feeds-grid"></div>
+  </div>
+
+</div>
+
+<div id="toast"></div>
+
+<script>
+const FEEDS = {{ feeds_json | safe }};
+
+function openNav() {
+  document.getElementById('nav-overlay').classList.add('open');
+}
+function closeNav() {
+  document.getElementById('nav-overlay').classList.remove('open');
+}
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') closeNav();
+});
+
+function esc(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+function getDomain(url) {
+  try { return new URL(url).hostname; } catch(e) { return ''; }
+}
+
+function toggleDesc(el) {
+  el.closest('.catalog-card').classList.toggle('desc-open');
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+function renderFeeds() {
+  const q = (document.getElementById('feeds-search').value || '').toLowerCase();
+  const grid = document.getElementById('feeds-grid');
+
+  const filtered = FEEDS.filter(f => {
+    if (q && !(f.title || '').toLowerCase().includes(q) && !f.url.toLowerCase().includes(q)) return false;
+    return true;
+  });
+
+  if (filtered.length === 0) {
+    grid.innerHTML = '<p class="catalog-empty">No subscribed feeds' + (q ? ' match your filter.' : ' yet. Use the options above to add feeds.') + '</p>';
+    return;
+  }
+
+  grid.innerHTML = filtered.map(feed => {
+    const domain = getDomain(feed.url);
+    const favicon = domain ? `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=128` : '';
+    return `
+      <div class="catalog-card" data-id="${feed.id}" data-url="${esc(feed.url)}">
+        ${favicon ? `<img class="catalog-card-img" src="${favicon}" alt="" loading="lazy" />` : '<div class="catalog-card-img catalog-card-img-placeholder"></div>'}
+        <span class="catalog-card-name" onclick="toggleDesc(this)">${esc(feed.title || feed.url)}</span>
+        <p class="catalog-card-desc">${esc(feed.url)}</p>
+        <div class="catalog-card-bottom">
+          <button class="btn danger catalog-add-btn" onclick="removeFeed(${feed.id}, this)">Remove</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+async function removeFeed(id, btn) {
+  if (!confirm('Remove this feed and all its articles?')) return;
+  btn.disabled = true;
+  btn.textContent = '...';
+  const res = await fetch('/api/feeds/' + id, { method: 'DELETE' });
+  if (res.ok) {
+    const idx = FEEDS.findIndex(f => f.id === id);
+    if (idx !== -1) FEEDS.splice(idx, 1);
+    renderFeeds();
+    showToast('Feed removed.');
+  } else {
+    showToast('Could not remove feed.');
+    btn.disabled = false;
+    btn.textContent = 'Remove';
+  }
+}
+
+async function addDirect() {
+  const urlInput = document.getElementById('direct-url');
+  const titleInput = document.getElementById('direct-title');
+  const url = urlInput.value.trim();
+  const title = titleInput.value.trim();
+  if (!url) return;
+  const res = await fetch('/api/feeds', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({url, title: title || null})
+  });
+  if (res.ok) {
+    const data = await res.json();
+    FEEDS.push(data);
+    renderFeeds();
+    urlInput.value = '';
+    titleInput.value = '';
+    showToast('Feed added: ' + (data.title || url));
+  } else if (res.status === 409) {
+    showToast('Already subscribed.');
+  } else {
+    const data = await res.json().catch(() => ({}));
+    showToast('Error: ' + (data.detail || res.status));
+  }
+}
+
+async function detectFeeds() {
+  const input = document.getElementById('detect-input');
+  const resultsEl = document.getElementById('detect-results');
+  const btn = document.getElementById('detect-btn');
+  const url = input.value.trim();
+  if (!url) return;
+
+  btn.disabled = true;
+  btn.textContent = 'Detecting...';
+  resultsEl.innerHTML = '<p class="detect-status">Checking...</p>';
+
+  try {
+    const res = await fetch('/api/discover/detect', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({url})
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      resultsEl.innerHTML = `<p class="detect-error">${esc(data.detail || 'Detection failed')}</p>`;
+      return;
+    }
+
+    if (!data.feeds || data.feeds.length === 0) {
+      resultsEl.innerHTML = '<p class="detect-status">No RSS feeds found at that URL.</p>';
+      return;
+    }
+
+    const subscribedUrls = new Set(FEEDS.map(f => f.url));
+    resultsEl.innerHTML = `
+      <div class="detect-results-list">
+        ${data.feeds.map(f => {
+          const subscribed = subscribedUrls.has(f.url);
+          return `
+            <div class="detect-result-row" data-url="${esc(f.url)}">
+              <div class="detect-result-info">
+                <span class="detect-result-name">${esc(f.name || 'RSS Feed')}</span>
+                <span class="detect-result-url">${esc(f.url)}</span>
+              </div>
+              ${subscribed
+                ? '<span class="catalog-added-badge">&#10003; Added</span>'
+                : `<button class="btn catalog-add-btn" onclick="addDetected('${esc(f.url)}', '${esc(f.name || 'RSS Feed')}', this)">+ Add</button>`
+              }
+            </div>
+          `;
+        }).join('')}
+      </div>
+    `;
+  } catch (e) {
+    resultsEl.innerHTML = '<p class="detect-error">Network error.</p>';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Detect';
+  }
+}
+
+async function addDetected(url, name, btn) {
+  btn.disabled = true;
+  btn.textContent = '...';
+  try {
+    const res = await fetch('/api/feeds', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({url, title: name})
+    });
+    if (res.ok || res.status === 409) {
+      if (res.ok) {
+        const data = await res.json();
+        FEEDS.push(data);
+        renderFeeds();
+      }
+      const row = btn.closest('.detect-result-row');
+      btn.replaceWith(Object.assign(document.createElement('span'), {
+        className: 'catalog-added-badge',
+        innerHTML: '&#10003; Added'
+      }));
+      showToast(res.status === 409 ? 'Already subscribed' : `Added: ${name}`);
+    } else {
+      const data = await res.json().catch(() => ({}));
+      showToast('Error: ' + (data.detail || res.status));
+      btn.disabled = false;
+      btn.textContent = '+ Add';
+    }
+  } catch (e) {
+    showToast('Network error');
+    btn.disabled = false;
+    btn.textContent = '+ Add';
+  }
+}
+
+document.getElementById('detect-input').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') detectFeeds();
+});
+
+renderFeeds();
+</script>
+</body>
+</html>
