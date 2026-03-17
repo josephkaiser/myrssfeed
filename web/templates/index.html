@@ -138,9 +138,12 @@
       {% set display_title = entry.og_title or entry.title %}
       {% set display_summary = entry.og_description or entry.summary %}
       {% set display_thumb = entry.og_image_url or entry.thumbnail_url %}
-      <article class="entry-card{% if entry.read %} read{% endif %}{% if display_thumb %} has-thumb{% endif %}" data-entry-id="{{ entry.id }}">
+      <article
+        class="entry-card{% if entry.read %} read{% endif %}{% if display_thumb %} has-thumb{% endif %}"
+        data-entry-id="{{ entry.id }}"
+        tabindex="0"
+      >
         <div class="entry-header-row">
-          <button type="button" class="entry-toggle-btn" aria-label="Expand article" aria-expanded="false">+</button>
           <div class="entry-title">
             {{ display_title or "(no title)" }}
           </div>
@@ -149,7 +152,6 @@
           <img class="entry-favicon" src="https://www.google.com/s2/favicons?domain={{ feed_map[entry.feed_id].domain }}&sz=32" width="14" height="14" alt="" loading="lazy" />
           <span class="tag" style="--feed-color: {{ feed_map[entry.feed_id].color or '' }}">{{ entry.feed_title or "Unknown" }}</span>
           <span class="entry-date">{{ entry.published[:10] if entry.published else "" }}</span>
-          <button class="like-btn{% if entry.liked %} liked{% endif %}" onclick="toggleLike(event, {{ entry.id }}, this)" title="Like this article" aria-label="Like">&#9829;</button>
         </div>
         <div class="entry-body">
           <div class="entry-content">
@@ -209,6 +211,24 @@
 <div id="img-lightbox" role="dialog" aria-modal="true" aria-label="Image preview">
   <button id="img-lightbox-close" onclick="closeLightbox()" aria-label="Close">&#10005;</button>
   <img id="img-lightbox-img" src="" alt="" />
+</div>
+
+<div id="reader-overlay" role="dialog" aria-modal="true" aria-hidden="true">
+  <div class="reader-dialog">
+    <button class="reader-close-btn" type="button" onclick="closeReader()" aria-label="Close article view">&times;</button>
+    <div class="reader-meta-row">
+      <span class="reader-source"></span>
+      <span class="reader-date"></span>
+    </div>
+    <h2 class="reader-title"></h2>
+    <div class="reader-thumb-wrap">
+      <img class="reader-thumb" alt="" />
+    </div>
+    <div class="reader-body"></div>
+    <div class="reader-link-row">
+      <a href="#" target="_blank" rel="noopener noreferrer" class="reader-open-link">Open original article</a>
+    </div>
+  </div>
 </div>
 
 <script>

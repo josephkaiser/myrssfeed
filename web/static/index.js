@@ -172,55 +172,102 @@
     }
   });
 
-  // ── Read / Like ──────────────────────────────────────────────────
-  function markRead(entryId, linkEl) {
-    const card = linkEl.closest(".entry-card");
+  // ── Read state ──────────────────────────────────────────────────
+  function markRead(entryId, el) {
+    const card = el.closest(".entry-card");
     if (card && !card.classList.contains("read")) {
       card.classList.add("read");
       fetch(`/api/entries/${entryId}/read`, { method: "POST" }).catch(() => {});
     }
   }
 
-  async function toggleLike(e, entryId, btn) {
-    e.preventDefault();
-    e.stopPropagation();
-    const res = await fetch(`/api/entries/${entryId}/like`, { method: "POST" });
-    if (res.ok) {
-      const data = await res.json();
-      btn.classList.toggle("liked", data.liked);
+  // ── Reader overlay ───────────────────────────────────────────────
+  const readerOverlay = document.getElementById("reader-overlay");
+  const readerTitle   = readerOverlay ? readerOverlay.querySelector(".reader-title") : null;
+  const readerSource  = readerOverlay ? readerOverlay.querySelector(".reader-source") : null;
+  const readerDate    = readerOverlay ? readerOverlay.querySelector(".reader-date") : null;
+  const readerBody    = readerOverlay ? readerOverlay.querySelector(".reader-body") : null;
+  const readerLink    = readerOverlay ? readerOverlay.querySelector(".reader-open-link") : null;
+  const readerThumb   = readerOverlay ? readerOverlay.querySelector(".reader-thumb") : null;
+
+  function openReader(card) {
+    if (!readerOverlay) return;
+    const entryId = card.getAttribute("data-entry-id");
+    if (entryId) {
+      markRead(entryId, card);
     }
+
+    const titleEl = card.querySelector(".entry-title");
+    const feedEl  = card.querySelector(".tag");
+    const dateEl  = card.querySelector(".entry-date");
+    const summaryEl = card.querySelector(".entry-summary");
+    const linkEl = card.querySelector(".entry-link-row a");
+    const thumbEl = card.querySelector(".entry-thumb");
+
+    if (readerTitle) {
+      readerTitle.textContent = titleEl ? titleEl.textContent.trim() : "";
+    }
+    if (readerSource) {
+      readerSource.textContent = feedEl ? feedEl.textContent.trim() : "";
+    }
+    if (readerDate) {
+      readerDate.textContent = dateEl ? dateEl.textContent.trim() : "";
+    }
+    if (readerBody) {
+      readerBody.innerHTML = summaryEl ? summaryEl.innerHTML : "";
+    }
+    if (readerLink) {
+      if (linkEl && linkEl.href) {
+        readerLink.href = linkEl.href;
+        readerLink.style.display = "";
+      } else {
+        readerLink.href = "#";
+        readerLink.style.display = "none";
+      }
+    }
+    if (readerThumb) {
+      if (thumbEl && thumbEl.src) {
+        readerThumb.src = thumbEl.src;
+        readerThumb.style.display = "";
+      } else {
+        readerThumb.src = "";
+        readerThumb.style.display = "none";
+      }
+    }
+
+    readerOverlay.classList.add("open");
+    readerOverlay.setAttribute("aria-hidden", "false");
+    document.body.style.overflow = "hidden";
   }
 
-  // ── Entry expand/collapse (+ / -) ───────────────────────────────────
-  (function() {
-    const cards = document.querySelectorAll(".entry-card");
-    if (!cards.length) return;
+  function closeReader() {
+    if (!readerOverlay) return;
+    readerOverlay.classList.remove("open");
+    readerOverlay.setAttribute("aria-hidden", "true");
+    document.body.style.overflow = "";
+  }
 
-    cards.forEach((card) => {
-      const toggleBtn = card.querySelector(".entry-toggle-btn");
-      if (!toggleBtn) return;
+  window.closeReader = closeReader;
 
-      const setExpanded = (expanded) => {
-        card.classList.toggle("expanded", expanded);
-        toggleBtn.textContent = expanded ? "−" : "+";
-        toggleBtn.setAttribute("aria-expanded", expanded ? "true" : "false");
-      };
+  document.addEventListener("click", (e) => {
+    const card = e.target.closest(".entry-card");
+    if (card && !e.target.closest("a") && !e.target.closest("button")) {
+      openReader(card);
+    }
+    if (readerOverlay && e.target === readerOverlay) {
+      closeReader();
+    }
+  });
 
-      toggleBtn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        const isExpanded = card.classList.contains("expanded");
-        const next = !isExpanded;
-        setExpanded(next);
-        if (next) {
-          try {
-            card.scrollIntoView({ behavior: "smooth", block: "start" });
-          } catch (_) {
-            card.scrollIntoView(true);
-          }
-        }
-      });
-    });
-  })();
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && readerOverlay && readerOverlay.classList.contains("open")) {
+      closeReader();
+    }
+    if ((e.key === "Enter" || e.key === " ") && document.activeElement && document.activeElement.classList.contains("entry-card")) {
+      e.preventDefault();
+      openReader(document.activeElement);
+    }
+  });
 
   // ── Delete feed from sidebar/nav ────────────────────────────────────
   async function deleteFeed(feedId, btn) {
