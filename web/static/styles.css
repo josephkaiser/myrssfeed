@@ -577,6 +577,10 @@ header {
   padding: 0.9rem 1rem;
   margin-bottom: 0.65rem;
   transition: border-color .2s, transform .1s;
+  max-height: calc((100dvh - 8rem) / 4);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 .entry-card:hover { border-color: var(--accent); transform: translateY(-1px); }
 .entry-card.read {
@@ -585,7 +589,11 @@ header {
 }
 
 .entry-card-link {
-  display: block;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
   text-decoration: none;
   color: inherit;
   outline: none;
@@ -594,6 +602,7 @@ header {
 .entry-card-link:hover .entry-title { color: var(--accent); }
 
 .entry-card .entry-link-row {
+  flex-shrink: 0;
   margin-top: 0.4rem;
   padding-top: 0.35rem;
   border-top: 1px solid var(--border);
@@ -939,6 +948,25 @@ header {
   gap: 0.75rem;
   align-items: flex-start;
 }
+
+.entry-card-link .entry-body {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.entry-card-link .entry-content {
+  overflow: hidden;
+}
+
+.entry-card-link .entry-summary {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+  line-clamp: 4;
+}
+
 .entry-content {
   flex: 1;
   min-width: 0;
