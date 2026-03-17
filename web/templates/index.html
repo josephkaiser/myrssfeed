@@ -149,7 +149,7 @@
           <div class="entry-body">
             <div class="entry-content">
               {% if entry.summary %}
-              <div class="entry-summary">{{ entry.summary | safe }}</div>
+              <div class="entry-summary">{{ entry.summary | striptags }}</div>
               {% endif %}
             </div>
             {% if card_thumb %}

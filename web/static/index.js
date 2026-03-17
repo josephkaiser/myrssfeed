@@ -183,7 +183,6 @@
 
   // ── Delete feed from sidebar/nav ────────────────────────────────────
   async function deleteFeed(feedId, btn) {
-    if (!confirm("Remove this feed and all its articles?")) return;
     if (btn) btn.disabled = true;
     try {
       const res = await fetch(`/api/feeds/${feedId}`, { method: "DELETE" });
