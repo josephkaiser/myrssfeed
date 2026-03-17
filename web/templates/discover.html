@@ -18,22 +18,16 @@
 <body>
 
 <header>
-  <a class="header-brand" onclick="openNav()" role="button" tabindex="0">myRSSfeed</a>
+  <button class="hamburger-btn" type="button" onclick="toggleNav()" aria-label="Open navigation">
+    <span></span>
+    <span></span>
+    <span></span>
+  </button>
+  <a class="header-brand" href="/">myRSSfeed</a>
 
-  <!-- Global search bar (posts to main articles page) -->
   <form class="search-bar" method="get" action="/" id="search-form">
-    {% if active_feed_id %}
-    <input type="hidden" name="feed_id" value="{{ active_feed_id }}" />
-    {% endif %}
     <div class="search-input-wrap">
-      <input
-        type="search"
-        name="q"
-        id="search-input"
-        value="{{ q }}"
-        placeholder="Search articles..."
-        autocomplete="off"
-      />
+      <input type="search" name="q" id="search-input" value="{{ q }}" placeholder="Search articles..." autocomplete="off" />
       <div class="search-dropdown" id="search-dropdown" style="display:none"></div>
     </div>
     <button class="btn pill" type="submit">Go</button>
@@ -43,7 +37,7 @@
   </form>
 </header>
 
-<!-- Overlay nav drawer -->
+<!-- Overlay nav drawer (mobile only) -->
 <div class="nav-overlay" id="nav-overlay" onclick="closeNav()">
   <nav class="nav-drawer" onclick="event.stopPropagation()">
     <div class="nav-drawer-header">
@@ -63,11 +57,62 @@
       <a href="/settings">
         <span class="nav-icon">&#9881;</span> Settings
       </a>
+      <div class="nav-section">Subscriptions</div>
+      <button class="nav-feeds-toggle" id="nav-feeds-toggle" onclick="toggleNavFeeds()">
+        <span class="nav-icon">&#128240;</span> My Feeds
+        <span class="chevron">&#9654;</span>
+      </button>
+      <div class="nav-feeds-list" id="nav-feeds-list">
+        {% for feed in feeds %}
+        <div class="nav-feeds-row" data-feed-id="{{ feed.id }}">
+          <a href="/?feed_id={{ feed.id }}">
+            <img class="nav-feed-favicon" src="https://www.google.com/s2/favicons?domain={{ feed_map[feed.id].domain }}&sz=32" width="14" height="14" alt="" loading="lazy" />
+            <span class="nav-feed-label">{{ feed.title or feed.url }}</span>
+          </a>
+          <button type="button" class="nav-feed-remove" onclick="deleteFeed({{ feed.id }}, this)" title="Remove feed" aria-label="Remove feed">&times;</button>
+        </div>
+        {% endfor %}
+      </div>
     </div>
   </nav>
 </div>
 
-<div class="discover-wrap">
+<div class="layout layout-two-col">
+  <aside class="sidebar-left">
+    <div class="sidebar-section">
+      <div class="sidebar-section-title">Navigation</div>
+      <nav class="sidebar-nav">
+        <a href="/">
+          <span class="nav-icon">&#128196;</span> Articles
+        </a>
+        <a href="/feeds">
+          <span class="nav-icon">&#128218;</span> My Feeds
+        </a>
+        <a href="/discover">
+          <span class="nav-icon">&#128269;</span> Discover
+        </a>
+        <a href="/settings">
+          <span class="nav-icon">&#9881;</span> Settings
+        </a>
+      </nav>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-section-title">Subscriptions</div>
+      <div class="sidebar-feeds">
+        {% for feed in feeds %}
+        <div class="sidebar-feeds-row" data-feed-id="{{ feed.id }}">
+          <a href="/?feed_id={{ feed.id }}">
+            <img class="sidebar-feed-favicon" src="https://www.google.com/s2/favicons?domain={{ feed_map[feed.id].domain }}&sz=32" width="14" height="14" alt="" loading="lazy" />
+            <span class="sidebar-feed-label">{{ feed.title or feed.url }}</span>
+          </a>
+          <button type="button" class="sidebar-feed-remove" onclick="deleteFeed({{ feed.id }}, this)" title="Remove feed" aria-label="Remove feed">&times;</button>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </aside>
+
+  <div class="discover-wrap">
 
   <!-- Detect from URL -->
   <div class="discover-section">
@@ -97,10 +142,12 @@
     <div class="catalog-grid" id="catalog-grid"></div>
   </div>
 
+  </div>
 </div>
 
 <div id="toast"></div>
 
+<script src="/static/index.js"></script>
 <script>
 // Data passed from server
 const CATALOG = {{ catalog_json | safe }};
@@ -312,15 +359,6 @@ function showToast(msg) {
 renderCatalog();
 
 // Simple nav drawer behaviour (shared pattern with other pages)
-function openNav() {
-  document.getElementById('nav-overlay').classList.add('open');
-}
-function closeNav() {
-  document.getElementById('nav-overlay').classList.remove('open');
-}
-document.addEventListener('keydown', function(e) {
-  if (e.key === 'Escape') closeNav();
-});
 </script>
 </body>
 </html>

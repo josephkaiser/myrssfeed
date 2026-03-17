@@ -374,6 +374,10 @@ header {
   gap: 1rem;
 }
 
+.layout.layout-two-col {
+  grid-template-columns: 260px minmax(0, 1fr);
+}
+
 .sidebar-left,
 .sidebar-right {
   position: sticky;
@@ -1462,13 +1466,13 @@ header {
 
 /* ── Mobile ── */
 @media (max-width: 640px) {
-  .layout {
-    grid-template-columns: minmax(0, 1fr);
-    padding: 0.75rem;
+  header {
+    padding: 0.5rem 0.4rem;
+    gap: 0.5rem;
   }
-  .sidebar-left,
-  .sidebar-right {
-    display: none;
+  .header-brand,
+  .header-metrics {
+    display: none !important;
   }
   .hamburger-btn {
     display: inline-flex;
@@ -1476,13 +1480,28 @@ header {
     justify-content: center;
     align-items: center;
   }
-  .entries { padding: 0.75rem 0.75rem 1rem; }
-  .entry-card { padding: 0.75rem; }
+  .search-bar {
+    flex: 1;
+    min-width: 0;
+    margin: 0;
+    max-width: none;
+  }
+  .layout {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 0.35rem;
+  }
+  .sidebar-left,
+  .sidebar-right {
+    display: none;
+  }
+  .entries { padding: 0.35rem 0.4rem 0.75rem; }
+  .entry-card { padding: 0.6rem 0.5rem; }
   .entry-title { font-size: 0.95rem; }
   .topics-grid { grid-template-columns: 1fr 1fr; }
   .catalog-grid { grid-template-columns: 1fr; }
-  .settings-wrap { margin: 1rem auto; }
+  .settings-wrap { margin: 0.75rem auto; padding: 0 0.4rem; }
   .setting-row { flex-direction: column; gap: 0.75rem; }
   .setting-control { justify-content: flex-start; }
   .search-bar { flex-wrap: wrap; }
+  .discover-wrap { padding: 0.75rem 0.4rem; }
 }

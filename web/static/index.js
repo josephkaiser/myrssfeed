@@ -1,9 +1,15 @@
-  // ── Nav drawer ───────────────────────────────────────────────────
+  // ── Nav drawer (overlay only on mobile; desktop uses sidebar) ─────
   const navOverlay = document.getElementById("nav-overlay");
   const NAV_OPEN_KEY = "nav-open";
+  const MOBILE_MAX = 640;
+
+  function isMobileViewport() {
+    return typeof window !== "undefined" && window.innerWidth <= MOBILE_MAX;
+  }
 
   function openNav() {
     if (!navOverlay) return;
+    if (!isMobileViewport()) return;
     navOverlay.classList.add("open");
     try { localStorage.setItem(NAV_OPEN_KEY, "1"); } catch (_) {}
   }
@@ -16,6 +22,7 @@
 
   function toggleNav() {
     if (!navOverlay) return;
+    if (!isMobileViewport()) return;
     if (navOverlay.classList.contains("open")) {
       closeNav();
     } else {
@@ -23,10 +30,10 @@
     }
   }
 
-  // Restore nav state across page loads so the menu
-  // can stay open while navigating between feeds.
+  // Restore nav state only on mobile so the menu can stay open while navigating.
   (function restoreNavState() {
     if (!navOverlay) return;
+    if (!isMobileViewport()) return;
     try {
       if (localStorage.getItem(NAV_OPEN_KEY) === "1") {
         navOverlay.classList.add("open");

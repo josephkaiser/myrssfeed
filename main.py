@@ -347,18 +347,33 @@ def index(request: Request, q: Optional[str] = None, feed_id: Optional[int] = No
     })
 
 
+def _build_feed_map(feeds: list[dict]) -> dict:
+    out = {}
+    for f in feeds:
+        parsed = urllib.parse.urlparse(f["url"])
+        out[f["id"]] = {
+            "title": f.get("title"),
+            "url": f.get("url"),
+            "domain": parsed.netloc,
+            "color": f.get("color"),
+        }
+    return out
+
+
 @app.get("/feeds", response_class=HTMLResponse)
 def feeds_page(request: Request):
     conn = get_db()
     rows = conn.execute("SELECT id, url, title, color FROM feeds ORDER BY title").fetchall()
     conn.close()
     feeds = [dict(r) for r in rows]
+    feed_map = _build_feed_map(feeds)
     return templates.TemplateResponse(
         "feeds.html",
         {
             "request": request,
+            "feeds": feeds,
+            "feed_map": feed_map,
             "feeds_json": json.dumps(feeds),
-            # For the global search bar in the header; these default to "no filter".
             "q": "",
             "active_feed_id": None,
         },
@@ -368,16 +383,19 @@ def feeds_page(request: Request):
 @app.get("/discover", response_class=HTMLResponse)
 def discover_page(request: Request):
     conn = get_db()
-    rows = conn.execute("SELECT url FROM feeds").fetchall()
+    rows = conn.execute("SELECT id, url, title, color FROM feeds ORDER BY title").fetchall()
     conn.close()
+    feeds = [dict(r) for r in rows]
+    feed_map = _build_feed_map(feeds)
     subscribed = [r["url"] for r in rows]
     return templates.TemplateResponse(
         "discover.html",
         {
             "request": request,
+            "feeds": feeds,
+            "feed_map": feed_map,
             "catalog_json": json.dumps(_get_full_catalog()),
             "subscribed_json": json.dumps(subscribed),
-            # Used by the global search bar in the header.
             "q": "",
             "active_feed_id": None,
         },
@@ -386,10 +404,12 @@ def discover_page(request: Request):
 
 @app.get("/settings", response_class=HTMLResponse)
 def settings_page(request: Request):
-    # Include all known settings, including max_entries for article limit.
+    conn = get_db()
+    rows = conn.execute("SELECT id, url, title, color FROM feeds ORDER BY title").fetchall()
+    conn.close()
+    feeds = [dict(r) for r in rows]
+    feed_map = _build_feed_map(feeds)
     current = {key: get_setting(key) for key in DEFAULTS}
-    # Also surface max_entries explicitly in case it was created before DEFAULTS
-    # contained this key.
     if "max_entries" not in current:
         current["max_entries"] = get_setting("max_entries")
 
@@ -397,6 +417,8 @@ def settings_page(request: Request):
         "settings.html",
         {
             "request": request,
+            "feeds": feeds,
+            "feed_map": feed_map,
             "settings": current,
             "q": "",
             "active_feed_id": None,
