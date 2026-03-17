@@ -49,6 +49,9 @@ DB_FILE = os.path.normpath(os.path.join(os.path.dirname(__file__), "feeds", "rss
 DEFAULTS: dict[str, str] = {
     "retention_days": "90",
     "theme": "system",
+    # Maximum number of articles to show on the main page.
+    # Stored in the DB but also exposed here so it can be managed via /api/settings.
+    "max_entries": "1000",
 }
 
 
@@ -216,6 +219,7 @@ class EntryOut(BaseModel):
 class SettingsUpdate(BaseModel):
     retention_days: Optional[str] = None
     theme: Optional[str] = None
+    max_entries: Optional[str] = None
 
 
 class DetectRequest(BaseModel):
@@ -354,6 +358,9 @@ def feeds_page(request: Request):
         {
             "request": request,
             "feeds_json": json.dumps(feeds),
+            # For the global search bar in the header; these default to "no filter".
+            "q": "",
+            "active_feed_id": None,
         },
     )
 
@@ -364,20 +371,37 @@ def discover_page(request: Request):
     rows = conn.execute("SELECT url FROM feeds").fetchall()
     conn.close()
     subscribed = [r["url"] for r in rows]
-    return templates.TemplateResponse("discover.html", {
-        "request": request,
-        "catalog_json": json.dumps(_get_full_catalog()),
-        "subscribed_json": json.dumps(subscribed),
-    })
+    return templates.TemplateResponse(
+        "discover.html",
+        {
+            "request": request,
+            "catalog_json": json.dumps(_get_full_catalog()),
+            "subscribed_json": json.dumps(subscribed),
+            # Used by the global search bar in the header.
+            "q": "",
+            "active_feed_id": None,
+        },
+    )
 
 
 @app.get("/settings", response_class=HTMLResponse)
 def settings_page(request: Request):
+    # Include all known settings, including max_entries for article limit.
     current = {key: get_setting(key) for key in DEFAULTS}
-    return templates.TemplateResponse("settings.html", {
-        "request": request,
-        "settings": current,
-    })
+    # Also surface max_entries explicitly in case it was created before DEFAULTS
+    # contained this key.
+    if "max_entries" not in current:
+        current["max_entries"] = get_setting("max_entries")
+
+    return templates.TemplateResponse(
+        "settings.html",
+        {
+            "request": request,
+            "settings": current,
+            "q": "",
+            "active_feed_id": None,
+        },
+    )
 
 
 # ── Feed API ──────────────────────────────────────────────────────────────────

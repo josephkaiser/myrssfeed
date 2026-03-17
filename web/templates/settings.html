@@ -19,30 +19,54 @@
 <body>
 
 <header>
-  <a href="/" class="header-brand">myRSSfeed</a>
+  <a class="header-brand" onclick="openNav()" role="button" tabindex="0">myRSSfeed</a>
 
-  <div class="nav-links">
-    <a href="/discover" class="nav-link">Discover</a>
-    <a href="/settings" class="nav-link active">Settings</a>
-  </div>
-
-  <div style="flex:1"></div>
-
-  <div class="hamburger-wrap">
-    <button class="btn icon-btn" id="hamburger-btn" onclick="toggleMenu()" aria-label="Menu" aria-expanded="false">&#9776;</button>
-    <nav class="hamburger-menu" id="hamburger-menu" role="menu">
-      <a href="/" role="menuitem">
-        <span class="menu-icon">📰</span> My Feeds
-      </a>
-      <a href="/discover" role="menuitem">
-        <span class="menu-icon">🔍</span> Discover
-      </a>
-      <a href="/settings" class="active-page" role="menuitem">
-        <span class="menu-icon">⚙️</span> Settings
-      </a>
-    </nav>
-  </div>
+  <!-- Global search bar (posts to main articles page) -->
+  <form class="search-bar" method="get" action="/" id="search-form">
+    {% if active_feed_id %}
+    <input type="hidden" name="feed_id" value="{{ active_feed_id }}" />
+    {% endif %}
+    <div class="search-input-wrap">
+      <input
+        type="search"
+        name="q"
+        id="search-input"
+        value="{{ q }}"
+        placeholder="Search articles..."
+        autocomplete="off"
+      />
+      <div class="search-dropdown" id="search-dropdown" style="display:none"></div>
+    </div>
+    <button class="btn pill" type="submit">Go</button>
+    {% if q %}
+    <a href="/" class="btn ghost pill">Clear</a>
+    {% endif %}
+  </form>
 </header>
+
+<!-- Overlay nav drawer -->
+<div class="nav-overlay" id="nav-overlay" onclick="closeNav()">
+  <nav class="nav-drawer" onclick="event.stopPropagation()">
+    <div class="nav-drawer-header">
+      <span class="nav-drawer-brand">myRSSfeed</span>
+      <button class="nav-drawer-close" onclick="closeNav()">&times;</button>
+    </div>
+    <div class="nav-drawer-links">
+      <a href="/">
+        <span class="nav-icon">&#128196;</span> Articles
+      </a>
+      <a href="/feeds">
+        <span class="nav-icon">&#128218;</span> My Feeds
+      </a>
+      <a href="/discover">
+        <span class="nav-icon">&#128269;</span> Discover
+      </a>
+      <a href="/settings" class="active">
+        <span class="nav-icon">&#9881;</span> Settings
+      </a>
+    </div>
+  </nav>
+</div>
 
 <div class="settings-wrap">
 
@@ -139,6 +163,19 @@
 <div id="toast"></div>
 
 <script src="/static/settings.js"></script>
+
+<script>
+  // Simple nav drawer behaviour (matches other pages)
+  function openNav() {
+    document.getElementById('nav-overlay').classList.add('open');
+  }
+  function closeNav() {
+    document.getElementById('nav-overlay').classList.remove('open');
+  }
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeNav();
+  });
+</script>
 
 </body>
 </html>

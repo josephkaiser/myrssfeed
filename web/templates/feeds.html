@@ -19,6 +19,28 @@
 
 <header>
   <a class="header-brand" onclick="openNav()" role="button" tabindex="0">myRSSfeed</a>
+
+  <!-- Global search bar always posts back to the main articles page -->
+  <form class="search-bar" method="get" action="/" id="search-form">
+    {% if active_feed_id %}
+    <input type="hidden" name="feed_id" value="{{ active_feed_id }}" />
+    {% endif %}
+    <div class="search-input-wrap">
+      <input
+        type="search"
+        name="q"
+        id="search-input"
+        value="{{ q }}"
+        placeholder="Search articles..."
+        autocomplete="off"
+      />
+      <div class="search-dropdown" id="search-dropdown" style="display:none"></div>
+    </div>
+    <button class="btn pill" type="submit">Go</button>
+    {% if q %}
+    <a href="/" class="btn ghost pill">Clear</a>
+    {% endif %}
+  </form>
 </header>
 
 <!-- Overlay nav drawer -->

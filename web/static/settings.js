@@ -1,19 +1,3 @@
-  // ── Hamburger ───────────────────────────────────────────────────
-  const hamburgerBtn  = document.getElementById("hamburger-btn");
-  const hamburgerMenu = document.getElementById("hamburger-menu");
-
-  function toggleMenu() {
-    const open = hamburgerMenu.classList.toggle("open");
-    hamburgerBtn.setAttribute("aria-expanded", open);
-  }
-
-  document.addEventListener("click", (e) => {
-    if (!hamburgerBtn.contains(e.target) && !hamburgerMenu.contains(e.target)) {
-      hamburgerMenu.classList.remove("open");
-      hamburgerBtn.setAttribute("aria-expanded", "false");
-    }
-  });
-
   // ── Theme toggle ────────────────────────────────────────────────
   function applyTheme(t) {
     const el = document.documentElement;
@@ -60,11 +44,20 @@
       return;
     }
 
+    const maxEntriesInput = document.getElementById("max_entries");
+    const maxEntriesVal = parseInt(maxEntriesInput.value, 10);
+    if (isNaN(maxEntriesVal) || maxEntriesVal < 50 || maxEntriesVal > 5000) {
+      toast("Maximum articles must be between 50 and 5000.", false);
+      maxEntriesInput.focus();
+      return;
+    }
+
     const theme = localStorage.getItem("theme") || "system";
 
     const payload = {
       retention_days: String(days),
       theme,
+      max_entries: String(maxEntriesVal),
     };
 
     const res = await fetch("/api/settings", {
