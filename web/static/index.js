@@ -184,14 +184,12 @@
   // ── Delete feed from sidebar/nav ────────────────────────────────────
   async function deleteFeed(feedId, btn) {
     if (!confirm("Remove this feed and all its articles?")) return;
-    btn.disabled = true;
-    const row = btn.closest("[data-feed-id]");
+    if (btn) btn.disabled = true;
     try {
       const res = await fetch(`/api/feeds/${feedId}`, { method: "DELETE" });
       if (res.ok) {
-        if (row) {
-          row.remove();
-        }
+        // Remove this feed from both sidebar and overlay nav lists
+        document.querySelectorAll(`[data-feed-id="${feedId}"]`).forEach((row) => row.remove());
         // If we were viewing this feed, send user back to main list
         const params = new URLSearchParams(window.location.search);
         if (params.get("feed_id") === String(feedId)) {
@@ -204,9 +202,10 @@
     } catch (_) {
       toast("Network error removing feed.", false);
     } finally {
-      btn.disabled = false;
+      if (btn) btn.disabled = false;
     }
   }
+  window.deleteFeed = deleteFeed;
 
   // ── Helpers ──────────────────────────────────────────────────────
   function escHtml(s) {

@@ -176,7 +176,6 @@
       {% if trending %}
       <div class="trending-list">
         {% for entry in trending %}
-        {% set display_title = entry.og_title or entry.title %}
         <article class="trending-item">
           <div class="trending-meta">
             <img class="sidebar-feed-favicon" src="https://www.google.com/s2/favicons?domain={{ feed_map[entry.feed_id].domain }}&sz=32" width="14" height="14" alt="" loading="lazy" />
@@ -184,7 +183,7 @@
             <span class="trending-date">{{ entry.published[:10] if entry.published else "" }}</span>
           </div>
           <a class="trending-title" href="{{ entry.link }}" target="_blank" rel="noopener noreferrer" onclick="markRead({{ entry.id }}, this)">
-            {{ display_title or "(no title)" }}
+            {{ entry.title or "(no title)" }}
           </a>
         </article>
         {% endfor %}

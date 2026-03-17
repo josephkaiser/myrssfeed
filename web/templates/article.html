@@ -43,11 +43,12 @@
       {{ body | safe }}
       {% endif %}
     </div>
-    {% if entry.link %}
-    <p class="article-original-link">
+    <div class="article-original-link">
+      {% if entry.link %}
       <a href="{{ entry.link }}" target="_blank" rel="noopener noreferrer">Open original article</a>
-    </p>
-    {% endif %}
+      {% endif %}
+      <button class="btn ghost" id="fetch-full-btn" type="button" data-entry-id="{{ entry.id }}">Fetch full article</button>
+    </div>
   </div>
 </article>
 
@@ -55,5 +56,31 @@
   const FEED_MAP = {{ feed_map | tojson }};
 </script>
 <script src="/static/index.js"></script>
+<script>
+  (function() {
+    const btn = document.getElementById("fetch-full-btn");
+    if (!btn) return;
+    btn.addEventListener("click", async () => {
+      const entryId = btn.getAttribute("data-entry-id");
+      if (!entryId) return;
+      btn.disabled = true;
+      const oldText = btn.textContent;
+      btn.textContent = "Fetching…";
+      try {
+        const res = await fetch(`/api/render_article/${entryId}`, { method: "POST" });
+        if (res.ok) {
+          // Reload to show newly stored full_content.
+          window.location.reload();
+        } else {
+          btn.textContent = "Failed. Try again";
+          setTimeout(() => { btn.textContent = oldText; btn.disabled = false; }, 2500);
+        }
+      } catch (_) {
+        btn.textContent = "Error. Try again";
+        setTimeout(() => { btn.textContent = oldText; btn.disabled = false; }, 2500);
+      }
+    });
+  })();
+</script>
 </body>
 </html>

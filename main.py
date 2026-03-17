@@ -583,6 +583,26 @@ def trigger_refresh():
     return {"status": "started", "message": "Pipeline started in background."}
 
 
+# ── HTML reader (browser-based full-content fetch) ────────────────────────────
+
+@app.post("/api/render_article/{entry_id}")
+def render_article(entry_id: int):
+    """Fetch full article HTML using a headless browser and store it as full_content.
+
+    This runs synchronously for now; if it feels slow on the Pi we can move it
+    into a background thread or job.
+    """
+    try:
+        from scripts.browser_reader import fetch_full_article_sync
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail="Browser reader not available") from exc
+
+    ok = fetch_full_article_sync(entry_id)
+    if not ok:
+        raise HTTPException(status_code=502, detail="Could not fetch full article content.")
+    return {"ok": True}
+
+
 # ── Search API ────────────────────────────────────────────────────────────────
 
 @app.get("/api/search")
