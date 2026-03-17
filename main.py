@@ -105,6 +105,10 @@ def init_db():
         ("thumbnail_url", "TEXT"),
         ("read", "INTEGER DEFAULT 0"),
         ("liked", "INTEGER DEFAULT 0"),
+        ("og_title", "TEXT"),
+        ("og_description", "TEXT"),
+        ("og_image_url", "TEXT"),
+        ("full_content", "TEXT"),
     ]:
         if col not in entry_cols:
             conn.execute(f"ALTER TABLE entries ADD COLUMN {col} {definition}")
@@ -344,6 +348,42 @@ def index(request: Request, q: Optional[str] = None, feed_id: Optional[int] = No
         "entries": [dict(e) for e in entries],
         "q": q or "",
         "active_feed_id": feed_id,
+    })
+
+
+@app.get("/article/{entry_id}", response_class=HTMLResponse)
+def article_page(request: Request, entry_id: int):
+    conn = get_db()
+    row = conn.execute(
+        """
+        SELECT e.id, e.feed_id, f.title AS feed_title,
+               e.title, e.link, e.published, e.summary,
+               e.thumbnail_url,
+               e.og_title, e.og_description, e.og_image_url, e.full_content,
+               COALESCE(e.read, 0) AS read
+        FROM entries e
+        JOIN feeds f ON f.id = e.feed_id
+        WHERE e.id = ?
+        """,
+        (entry_id,),
+    ).fetchone()
+    if not row:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Article not found.")
+    entry = dict(row)
+    feed_row = conn.execute("SELECT id, url, title, color FROM feeds WHERE id = ?", (entry["feed_id"],)).fetchone()
+    conn.execute("UPDATE entries SET read = 1 WHERE id = ?", (entry_id,))
+    conn.commit()
+    conn.close()
+
+    if feed_row:
+        feed_map = _build_feed_map([dict(feed_row)])
+    else:
+        feed_map = {entry["feed_id"]: {"title": entry["feed_title"], "domain": "", "color": None}}
+    return templates.TemplateResponse("article.html", {
+        "request": request,
+        "entry": entry,
+        "feed_map": feed_map,
     })
 
 

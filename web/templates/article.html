@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{{ (entry.og_title or entry.title) or "Article" }} — myRSSfeed</title>
+  <script>
+    (function() {
+      var t = localStorage.getItem("theme") || "system";
+      var el = document.documentElement;
+      if (t === "light") el.setAttribute("data-theme", "light");
+      else if (t === "dark") el.setAttribute("data-theme", "dark");
+      else el.removeAttribute("data-theme");
+    })();
+  </script>
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body class="article-page">
+
+<header class="article-header">
+  <a class="back-link" href="/">&larr; Back to feed</a>
+  <a class="header-brand" href="/">myRSSfeed</a>
+</header>
+
+<article class="article-view">
+  <div class="article-meta">
+    <img class="article-favicon" src="https://www.google.com/s2/favicons?domain={{ feed_map[entry.feed_id].domain }}&sz=32" width="14" height="14" alt="" />
+    <span class="article-source">{{ entry.feed_title or "Unknown" }}</span>
+    <span class="article-date">{{ entry.published[:10] if entry.published else "" }}</span>
+  </div>
+  <h1 class="article-title">{{ (entry.og_title or entry.title) or "(no title)" }}</h1>
+
+  <div class="article-content">
+    {% set article_image = entry.og_image_url or entry.thumbnail_url %}
+    {% if article_image %}
+    <figure class="article-figure">
+      <img class="article-img" src="{{ article_image }}" alt="" loading="eager" />
+    </figure>
+    {% endif %}
+    <div class="article-body">
+      {% set body = entry.full_content or entry.og_description or entry.summary %}
+      {% if body %}
+      {{ body | safe }}
+      {% endif %}
+    </div>
+    {% if entry.link %}
+    <p class="article-original-link">
+      <a href="{{ entry.link }}" target="_blank" rel="noopener noreferrer">Open original article</a>
+    </p>
+    {% endif %}
+  </div>
+</article>
+
+<script>
+  const FEED_MAP = {{ feed_map | tojson }};
+</script>
+<script src="/static/index.js"></script>
+</body>
+</html>
