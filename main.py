@@ -14,13 +14,13 @@ from html.parser import HTMLParser
 from typing import Optional
 
 import uvicorn
-from apscheduler.schedulers.background import BackgroundScheduler
-from apscheduler.triggers.cron import CronTrigger
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, HttpUrl
+from scripts.scheduler import create_scheduler, run_pipeline_async, is_pipeline_running
+from scripts.scraper import run_scraper_async, is_scraper_running
 
 
 # ── Logging ───────────────────────────────────────────────────────────────────
@@ -137,60 +137,6 @@ def set_setting(key: str, value: str) -> None:
     )
     conn.commit()
     conn.close()
-
-
-# ── Pipeline / scheduler ──────────────────────────────────────────────────────
-
-_pipeline_lock = threading.Lock()
-_pipeline_running = False
-
-
-def is_pipeline_running() -> bool:
-    return _pipeline_running
-
-
-def _do_pipeline():
-    global _pipeline_running
-    logger.info("Pipeline starting.")
-    try:
-        from scripts.compile_feed import run_compile_feed
-        run_compile_feed()
-    except Exception:
-        logger.exception("Pipeline: compile_feed failed.")
-    finally:
-        _pipeline_running = False
-        _pipeline_lock.release()
-    logger.info("Pipeline complete.")
-
-
-def run_pipeline():
-    global _pipeline_running
-    if not _pipeline_lock.acquire(blocking=False):
-        logger.info("Pipeline already running — skipping.")
-        return
-    _pipeline_running = True
-    _do_pipeline()
-
-
-def run_pipeline_async() -> bool:
-    if _pipeline_running:
-        return False
-    t = threading.Thread(target=run_pipeline, daemon=True, name="pipeline")
-    t.start()
-    return True
-
-
-def create_scheduler() -> BackgroundScheduler:
-    scheduler = BackgroundScheduler()
-    scheduler.add_job(
-        run_pipeline,
-        trigger=CronTrigger(hour=6, minute=0),
-        id="daily_pipeline",
-        replace_existing=True,
-        misfire_grace_time=3600,
-    )
-    logger.info("Scheduler: daily feed fetch at 06:00.")
-    return scheduler
 
 
 # ── Schemas ───────────────────────────────────────────────────────────────────
@@ -583,24 +529,16 @@ def trigger_refresh():
     return {"status": "started", "message": "Pipeline started in background."}
 
 
-# ── HTML reader (browser-based full-content fetch) ────────────────────────────
+# ── Scrape/enrichment API ─────────────────────────────────────────────────────
 
-@app.post("/api/render_article/{entry_id}")
-def render_article(entry_id: int):
-    """Fetch full article HTML using a headless browser and store it as full_content.
-
-    This runs synchronously for now; if it feels slow on the Pi we can move it
-    into a background thread or job.
-    """
-    try:
-        from scripts.browser_reader import fetch_full_article_sync
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail="Browser reader not available") from exc
-
-    ok = fetch_full_article_sync(entry_id)
-    if not ok:
-        raise HTTPException(status_code=502, detail="Could not fetch full article content.")
-    return {"ok": True}
+@app.post("/api/scrape", status_code=202)
+def trigger_scrape():
+    if is_scraper_running():
+        return {"status": "running", "message": "Scraper already in progress."}
+    started = run_scraper_async()
+    if not started:
+        return {"status": "running", "message": "Scraper already in progress."}
+    return {"status": "started", "message": "Scrape job started in background."}
 
 
 # ── Search API ────────────────────────────────────────────────────────────────
