@@ -39,12 +39,68 @@
     {% endif %}
   </form>
 
-  <div class="header-metrics">
-    <span class="header-count">
-      {{ entries|length }} article{% if entries|length != 1 %}s{% endif %}
-      {% if active_feed_id %} · filtered{% endif %}
-      {% if q %} · "{{ q }}"{% endif %}
-    </span>
+  <div class="header-right">
+    <div class="header-metrics">
+      <span class="header-count">
+        {{ entries|length }} article{% if entries|length != 1 %}s{% endif %}
+        {% if active_feed_id %} · filtered{% endif %}
+        {% if q %} · "{{ q }}"{% endif %}
+      </span>
+    </div>
+    <div class="header-actions" aria-label="Quick actions">
+      <div class="header-action">
+        <button
+          class="btn icon-btn"
+          id="header-refresh-btn"
+          type="button"
+          title="Fetch latest from all feeds"
+          onclick="headerRefreshNow()"
+        >
+          &#10227;
+        </button>
+        <div class="refresh-status header-refresh-status" aria-live="polite">
+          <span class="refresh-status-dot" id="header-refresh-status-dot" aria-hidden="true"></span>
+        </div>
+      </div>
+      <div class="header-action">
+        <button
+          class="btn icon-btn"
+          id="header-scrape-btn"
+          type="button"
+          title="Enrich articles with metadata"
+          onclick="headerScrapeNow()"
+        >
+          &#8681;
+        </button>
+        <div class="refresh-status header-scrape-status" aria-live="polite">
+          <span class="refresh-status-dot" id="header-scrape-status-dot" aria-hidden="true"></span>
+        </div>
+      </div>
+      <div class="header-action">
+        <button
+          class="btn icon-btn"
+          id="header-wordrank-btn"
+          type="button"
+          title="Recompute personalized scores (WordRank)"
+          onclick="headerWordrankNow()"
+        >
+          WR
+        </button>
+        <div class="refresh-status header-wordrank-status" aria-live="polite">
+          <span class="refresh-status-dot" id="header-wordrank-status-dot" aria-hidden="true"></span>
+        </div>
+      </div>
+      <div class="header-action">
+        <a
+          href="/settings"
+          class="btn icon-btn header-gear-link"
+          title="Settings"
+          aria-label="Settings"
+        >
+          &#9881;
+        </a>
+      </div>
+    </div>
   </div>
 </header>
 

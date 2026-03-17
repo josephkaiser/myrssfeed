@@ -202,6 +202,39 @@
 
     <div class="setting-row">
       <div class="setting-info">
+        <div class="setting-label">Enrich articles with metadata</div>
+        <div class="setting-desc">
+          Scrape article pages to backfill titles, descriptions, and images for existing entries.
+          Respects your scrape limits in settings.
+        </div>
+      </div>
+      <div class="setting-control">
+        <button class="btn" id="scrape-now-btn" onclick="scrapeNow()">Enrich now</button>
+        <div class="refresh-status" id="scrape-status" aria-live="polite">
+          <span class="refresh-status-dot" id="scrape-status-dot" aria-hidden="true"></span>
+          <span class="refresh-status-text" id="scrape-status-text">Checking status…</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="setting-row">
+      <div class="setting-info">
+        <div class="setting-label">Recompute personalized scores (WordRank)</div>
+        <div class="setting-desc">
+          Update article recommendation scores based on your liked articles. This can take a bit longer on large libraries.
+        </div>
+      </div>
+      <div class="setting-control">
+        <button class="btn" id="wordrank-now-btn" onclick="wordrankNow()">Run WordRank</button>
+        <div class="refresh-status" id="wordrank-status" aria-live="polite">
+          <span class="refresh-status-dot" id="wordrank-status-dot" aria-hidden="true"></span>
+          <span class="refresh-status-text" id="wordrank-status-text">Idle</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="setting-row">
+      <div class="setting-info">
         <div class="setting-label">Automatic refresh schedule</div>
         <div class="setting-desc">
           Control how often the full pipeline (fetch → rank → visualize → digest) runs automatically.
@@ -235,39 +268,6 @@
         <div class="refresh-status" id="pipeline-status" aria-live="polite">
           <span class="refresh-status-dot" id="pipeline-status-dot" aria-hidden="true"></span>
           <span class="refresh-status-text" id="pipeline-status-text">No runs yet</span>
-        </div>
-      </div>
-    </div>
-
-    <div class="setting-row">
-      <div class="setting-info">
-        <div class="setting-label">Enrich articles with metadata</div>
-        <div class="setting-desc">
-          Scrape article pages to backfill titles, descriptions, and images for existing entries.
-          Respects your scrape limits in settings.
-        </div>
-      </div>
-      <div class="setting-control">
-        <button class="btn" id="scrape-now-btn" onclick="scrapeNow()">Enrich now</button>
-        <div class="refresh-status" id="scrape-status" aria-live="polite">
-          <span class="refresh-status-dot" id="scrape-status-dot" aria-hidden="true"></span>
-          <span class="refresh-status-text" id="scrape-status-text">Checking status…</span>
-        </div>
-      </div>
-    </div>
-
-    <div class="setting-row">
-      <div class="setting-info">
-        <div class="setting-label">Recompute personalized scores (WordRank)</div>
-        <div class="setting-desc">
-          Update article recommendation scores based on your liked articles. This can take a bit longer on large libraries.
-        </div>
-      </div>
-      <div class="setting-control">
-        <button class="btn" id="wordrank-now-btn" onclick="wordrankNow()">Run WordRank</button>
-        <div class="refresh-status" id="wordrank-status" aria-live="polite">
-          <span class="refresh-status-dot" id="wordrank-status-dot" aria-hidden="true"></span>
-          <span class="refresh-status-text" id="wordrank-status-text">Idle</span>
         </div>
       </div>
     </div>
