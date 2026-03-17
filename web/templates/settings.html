@@ -141,13 +141,26 @@
 
     <div class="setting-row">
       <div class="setting-info">
-        <div class="setting-label">Fetch latest from all feeds</div>
+      <div class="setting-label">Fetch latest from all feeds</div>
         <div class="setting-desc">
           Run the feed refresh now instead of waiting for the next automatic update.
         </div>
       </div>
       <div class="setting-control">
         <button class="btn" id="refresh-now-btn" onclick="refreshNow()">Refresh now</button>
+      </div>
+    </div>
+
+    <div class="setting-row">
+      <div class="setting-info">
+        <div class="setting-label">Enrich articles with metadata</div>
+        <div class="setting-desc">
+          Scrape article pages to backfill titles, descriptions, and images for existing entries.
+          Respects your scrape limits in settings.
+        </div>
+      </div>
+      <div class="setting-control">
+        <button class="btn" id="scrape-now-btn" onclick="scrapeNow()">Enrich now</button>
       </div>
     </div>
   </div>

@@ -9,6 +9,7 @@ from typing import Optional
 from utils.helpers import get_db, get_setting, set_setting, DEFAULTS
 from api.schemas import FeedCreate, FeedOut, EntryOut, SettingsUpdate, DigestOut, VizEntryOut, VizThemeOut, DeviceCreate, DeviceOut, DetectRequest
 from scripts.compile_feed import run_compile_feed
+from scripts.scraper import run_scraper_async, is_scraper_running
 
 _CATALOG_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "feed_catalog.json")
 try:
@@ -397,6 +398,17 @@ def trigger_refresh():
     if not started:
         return {"status": "running", "message": "Pipeline already in progress."}
     return {"status": "started", "message": "Pipeline started in background."}
+
+
+@router.post("/api/scrape", status_code=202)
+def trigger_scrape():
+    """Kick off a background job to scrape/enrich existing entries."""
+    if is_scraper_running():
+        return {"status": "running", "message": "Scraper already in progress."}
+    started = run_scraper_async()
+    if not started:
+        return {"status": "running", "message": "Scraper already in progress."}
+    return {"status": "started", "message": "Scrape job started in background."}
 
 
 # ---------------------------------------------------------------------------

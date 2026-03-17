@@ -99,3 +99,27 @@
       btn.textContent = originalText;
     }
   }
+
+  // ── Manual scrape/enrichment ────────────────────────────────────
+  async function scrapeNow() {
+    const btn = document.getElementById("scrape-now-btn");
+    if (!btn) return;
+    btn.disabled = true;
+    const originalText = btn.textContent;
+    btn.textContent = "Enriching...";
+    try {
+      const res = await fetch("/api/scrape", { method: "POST" });
+      if (res.ok) {
+        const data = await res.json().catch(() => ({}));
+        toast(data.message || "Scrape started.");
+      } else {
+        const data = await res.json().catch(() => ({}));
+        toast(data.detail || "Could not start scrape.", false);
+      }
+    } catch (e) {
+      toast("Network error starting scrape.", false);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = originalText;
+    }
+  }
