@@ -67,18 +67,6 @@
       theme,
     };
 
-    const ollamaUrl = document.getElementById("ollama_url");
-    if (ollamaUrl) payload.ollama_url = ollamaUrl.value.trim() || "http://localhost:11434";
-
-    const ollamaModel = document.getElementById("ollama_model");
-    if (ollamaModel) payload.ollama_model = ollamaModel.value.trim() || "phi3:mini";
-
-    const digestMax = document.getElementById("digest_max_articles");
-    if (digestMax) {
-      const n = parseInt(digestMax.value, 10);
-      payload.digest_max_articles = String(isNaN(n) ? 50 : Math.max(10, Math.min(500, n)));
-    }
-
     const res = await fetch("/api/settings", {
       method: "POST",
       headers: { "Content-Type": "application/json" },

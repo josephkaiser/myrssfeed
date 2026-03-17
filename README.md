@@ -24,42 +24,20 @@ A self-hosted RSS aggregator for your local network. Runs on a Raspberry Pi 5, f
 
 ---
 
-## Raspberry Pi install (production)
+## install
 
 ```bash
-git clone <your-repo> ~/myrssfeed
 cd ~/myrssfeed
 bash install.sh
 ```
 
 `install.sh` does everything in one shot:
 
-1. Creates a Python virtualenv and installs all dependencies
-2. Installs **ollama**, registers it as a systemd service, and pulls `phi3:mini`
-3. Registers the app as a **systemd service** (binds to `127.0.0.1:8080`, starts after ollama)
-4. Installs **nginx** and proxies HTTPS → uvicorn
-5. Installs **mkcert**, generates a locally-trusted TLS certificate for `myrssfeed.local`
-6. Sets the Pi's mDNS hostname via **avahi** so the `.local` name resolves on the LAN
-
 Open on any device on the same Wi-Fi:
 
 ```
 https://myrssfeed.local
 ```
-
-### Adding devices (phones, laptops)
-
-On each device, open a browser and go to:
-
-```
-http://myrssfeed.local/devices
-```
-
-The page works over plain HTTP before the certificate is trusted. Pick your OS and follow the instructions — one download and install, then `https://myrssfeed.local` works without warnings.
-
-**Shortcuts:**
-- **iPhone/iPad** — tap "Install profile" in Safari; iOS handles everything
-- **Mac** — download and double-click `bootstrap.command` from the same page; it installs the cert automatically
 
 ### Managing the service
 

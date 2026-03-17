@@ -14,13 +14,19 @@
       else el.removeAttribute("data-theme");
     })();
   </script>
-  <link rel="stylesheet" href="/static/settings.css" />
+  <link rel="stylesheet" href="/static/styles.css" />
 </head>
 <body>
 
 <header>
   <a href="/" class="header-brand">myRSSfeed</a>
-  <span class="header-title">Settings</span>
+
+  <div class="nav-links">
+    <a href="/discover" class="nav-link">Discover</a>
+    <a href="/settings" class="nav-link active">Settings</a>
+  </div>
+
+  <div style="flex:1"></div>
 
   <div class="hamburger-wrap">
     <button class="btn icon-btn" id="hamburger-btn" onclick="toggleMenu()" aria-label="Menu" aria-expanded="false">&#9776;</button>
@@ -28,17 +34,11 @@
       <a href="/" role="menuitem">
         <span class="menu-icon">📰</span> My Feeds
       </a>
-      <a href="/viz" role="menuitem">
-        <span class="menu-icon">🗺️</span> Topic Map
-      </a>
-      <a href="/digest" role="menuitem">
-        <span class="menu-icon">✨</span> Digest
+      <a href="/discover" role="menuitem">
+        <span class="menu-icon">🔍</span> Discover
       </a>
       <a href="/settings" class="active-page" role="menuitem">
         <span class="menu-icon">⚙️</span> Settings
-      </a>
-      <a href="/devices" role="menuitem">
-        <span class="menu-icon">📱</span> Add a Device
       </a>
     </nav>
   </div>
@@ -67,43 +67,6 @@
   </div>
 
   <div class="settings-section">
-    <div class="settings-section-title">AI Digest (ollama)</div>
-
-    <div class="setting-row">
-      <div class="setting-info">
-        <div class="setting-label">Ollama URL</div>
-        <div class="setting-desc">Base URL of your ollama instance.</div>
-      </div>
-      <div class="setting-control">
-        <input class="num-input" type="text" id="ollama_url" style="width:220px;font-size:0.82rem"
-          value="{{ settings.ollama_url }}" placeholder="http://localhost:11434" />
-      </div>
-    </div>
-
-    <div class="setting-row">
-      <div class="setting-info">
-        <div class="setting-label">Model</div>
-        <div class="setting-desc">ollama model name. Use <code>phi3:mini</code> for fast iteration, <code>llama3.1:8b</code> for production quality.</div>
-      </div>
-      <div class="setting-control">
-        <input class="num-input" type="text" id="ollama_model" style="width:160px;font-size:0.82rem"
-          value="{{ settings.ollama_model }}" placeholder="phi3:mini" />
-      </div>
-    </div>
-
-    <div class="setting-row">
-      <div class="setting-info">
-        <div class="setting-label">Articles per digest</div>
-        <div class="setting-desc">How many top-ranked articles to include in the daily digest.</div>
-      </div>
-      <div class="setting-control">
-        <input class="num-input" type="number" id="digest_max_articles" min="10" max="500"
-          value="{{ settings.digest_max_articles }}" />
-      </div>
-    </div>
-  </div>
-
-  <div class="settings-section">
     <div class="settings-section-title">Storage &amp; Pruning</div>
 
     <div class="setting-row">
@@ -127,7 +90,6 @@
       </div>
     </div>
   </div>
-
 
 </div>
 

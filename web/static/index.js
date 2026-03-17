@@ -1,25 +1,76 @@
-  // ── Hamburger menu ──────────────────────────────────────────────
-  const hamburgerBtn  = document.getElementById("hamburger-btn");
-  const hamburgerMenu = document.getElementById("hamburger-menu");
+  // ── Nav drawer ───────────────────────────────────────────────────
+  const navOverlay = document.getElementById("nav-overlay");
 
-  function toggleMenu() {
-    const open = hamburgerMenu.classList.toggle("open");
-    hamburgerBtn.setAttribute("aria-expanded", open);
+  function openNav() {
+    navOverlay.classList.add("open");
   }
 
-  document.addEventListener("click", (e) => {
-    if (!hamburgerBtn.contains(e.target) && !hamburgerMenu.contains(e.target)) {
-      hamburgerMenu.classList.remove("open");
-      hamburgerBtn.setAttribute("aria-expanded", "false");
-    }
+  function closeNav() {
+    navOverlay.classList.remove("open");
+  }
+
+  function toggleNavFeeds() {
+    const btn = document.getElementById("nav-feeds-toggle");
+    const list = document.getElementById("nav-feeds-list");
+    btn.classList.toggle("open");
+    list.classList.toggle("open");
+  }
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && navOverlay.classList.contains("open")) closeNav();
   });
 
-  function openMyFeeds(e) {
-    e.preventDefault();
-    hamburgerMenu.classList.remove("open");
-    hamburgerBtn.setAttribute("aria-expanded", "false");
-    document.getElementById("sidebar").classList.toggle("open");
-  }
+  // ── Pull to refresh ────────────────────────────────────────────
+  (function() {
+    const panel = document.getElementById("entries-panel");
+    const indicator = document.getElementById("ptr-indicator");
+    if (!panel || !indicator) return;
+    const textEl = indicator.querySelector(".ptr-text");
+    let startY = 0;
+    let pulling = false;
+    const threshold = 80;
+
+    panel.addEventListener("touchstart", (e) => {
+      if (panel.scrollTop <= 0) {
+        startY = e.touches[0].clientY;
+        pulling = true;
+      }
+    }, { passive: true });
+
+    panel.addEventListener("touchmove", (e) => {
+      if (!pulling) return;
+      const dy = e.touches[0].clientY - startY;
+      if (dy > 10) {
+        indicator.classList.add("pulling");
+        textEl.textContent = dy > threshold ? "Release to refresh" : "Pull to refresh";
+      }
+    }, { passive: true });
+
+    panel.addEventListener("touchend", async (e) => {
+      if (!pulling) return;
+      const dy = (e.changedTouches[0] || {}).clientY - startY;
+      pulling = false;
+      if (dy > threshold) {
+        indicator.classList.remove("pulling");
+        indicator.classList.add("refreshing");
+        textEl.innerHTML = '<span class="ptr-spinner"></span> Refreshing...';
+        try {
+          const res = await fetch("/api/refresh", { method: "POST" });
+          if (res.ok) {
+            textEl.innerHTML = '<span class="ptr-spinner"></span> Loading...';
+            setTimeout(() => location.reload(), 1500);
+            return;
+          }
+        } catch (_) {}
+        textEl.textContent = "Refresh failed";
+        setTimeout(() => {
+          indicator.classList.remove("refreshing");
+        }, 2000);
+      } else {
+        indicator.classList.remove("pulling");
+      }
+    });
+  })();
 
   // ── Image lightbox ──────────────────────────────────────────────
   const lightbox    = document.getElementById("img-lightbox");
@@ -76,7 +127,6 @@
     return `hsl(${hue},${sat}%,${lite}%)`;
   }
 
-  // Apply colors to all feed tags on load
   document.querySelectorAll(".tag[style]").forEach((tag) => {
     const feedColor = tag.style.getPropertyValue("--feed-color").trim();
     const color = feedColor || _feedColor(tag.textContent.trim());
@@ -104,49 +154,6 @@
     if (res.ok) {
       const data = await res.json();
       btn.classList.toggle("liked", data.liked);
-    }
-  }
-
-  // ── Feed actions ────────────────────────────────────────────────
-  async function addFeed(e) {
-    e.preventDefault();
-    const url   = document.getElementById("new-url").value.trim();
-    const title = document.getElementById("new-title").value.trim();
-    const res = await fetch("/api/feeds", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ url, title: title || null }),
-    });
-    if (res.ok) {
-      toast("Feed added — refresh to load articles.");
-      setTimeout(() => location.reload(), 1200);
-    } else {
-      const data = await res.json().catch(() => ({}));
-      toast(data.detail || "Could not add feed.", false);
-    }
-  }
-
-  async function deleteFeed(e, id) {
-    e.preventDefault();
-    e.stopPropagation();
-    if (!confirm("Remove this feed and all its articles?")) return;
-    const res = await fetch(`/api/feeds/${id}`, { method: "DELETE" });
-    if (res.ok) {
-      toast("Feed removed.");
-      setTimeout(() => location.reload(), 900);
-    } else {
-      toast("Could not remove feed.", false);
-    }
-  }
-
-  async function refreshFeeds() {
-    toast("Fetching feeds…");
-    const res = await fetch("/api/refresh", { method: "POST" });
-    if (res.ok) {
-      toast("Done! Reloading…");
-      setTimeout(() => location.reload(), 1200);
-    } else {
-      toast("Refresh failed.", false);
     }
   }
 
@@ -188,7 +195,6 @@
     }
   });
 
-  // Close dropdown when clicking outside
   document.addEventListener("click", (e) => {
     if (!searchInput.contains(e.target) && !searchDropdown.contains(e.target)) {
       _closeDropdown();
@@ -204,11 +210,10 @@
     try {
       const res = await fetch("/api/search?q=" + encodeURIComponent(q) + "&limit=8");
       if (!res.ok) return;
-      // Ignore stale responses
       if (q !== searchInput.value.trim()) return;
       const data = await res.json();
       _renderDropdown(q, data);
-    } catch (_) { /* silent — live search is best-effort */ }
+    } catch (_) {}
   }
 
   function _renderDropdown(q, { suggestions, entries }) {
@@ -220,7 +225,6 @@
 
     const frag = document.createDocumentFragment();
 
-    // Word-completion chips
     if (suggestions.length) {
       const row = document.createElement("div");
       row.className = "search-suggestions";
@@ -236,7 +240,6 @@
       frag.appendChild(row);
     }
 
-    // Matching article rows
     entries.forEach((e) => {
       const a = document.createElement("a");
       a.className = "search-result-item";

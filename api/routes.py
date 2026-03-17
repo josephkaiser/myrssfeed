@@ -1,16 +1,23 @@
+import json
 import logging
+import os
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse, Response
 from fastapi.templating import Jinja2Templates
 from typing import Optional
-import os
 
 from utils.helpers import get_db, get_setting, set_setting, DEFAULTS
-from api.schemas import FeedCreate, FeedOut, EntryOut, SettingsUpdate, DigestOut, VizEntryOut, VizThemeOut, DeviceCreate, DeviceOut
+from api.schemas import FeedCreate, FeedOut, EntryOut, SettingsUpdate, DigestOut, VizEntryOut, VizThemeOut, DeviceCreate, DeviceOut, DetectRequest
 from scripts.compile_feed import run_compile_feed
 
+_CATALOG_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "feed_catalog.json")
+try:
+    with open(_CATALOG_PATH, "r", encoding="utf-8") as _f:
+        _FEED_CATALOG = json.load(_f)
+except Exception:
+    _FEED_CATALOG = []
+
 MAX_DEVICES = 5
-CERT_DIR = "/etc/ssl/myrssfeed"
 
 logger = logging.getLogger(__name__)
 
@@ -34,82 +41,6 @@ def devices_page(request: Request):
         {"request": request, "devices": [dict(r) for r in rows], "max_devices": MAX_DEVICES},
     )
 
-
-@router.get("/ca.crt")
-def download_ca_cert():
-    ca_path = os.path.join(CERT_DIR, "rootCA.pem")
-    if not os.path.exists(ca_path):
-        raise HTTPException(status_code=404, detail="CA certificate not found. Run install.sh first.")
-    with open(ca_path, "rb") as f:
-        data = f.read()
-    return Response(
-        content=data,
-        media_type="application/x-x509-ca-cert",
-        headers={"Content-Disposition": "attachment; filename=myrssfeed-ca.crt"},
-    )
-
-
-@router.get("/bootstrap.command")
-def download_bootstrap():
-    """Mac bootstrap script — served directly so no GitHub link is needed."""
-    script_path = os.path.join(os.path.dirname(__file__), "..", "bootstrap.command")
-    script_path = os.path.normpath(script_path)
-    if not os.path.exists(script_path):
-        raise HTTPException(status_code=404, detail="bootstrap.command not found.")
-    with open(script_path, "rb") as f:
-        data = f.read()
-    return Response(
-        content=data,
-        media_type="text/plain",
-        headers={"Content-Disposition": "attachment; filename=bootstrap.command"},
-    )
-
-
-@router.get("/ca.mobileconfig")
-def download_mobileconfig():
-    """Apple Configuration Profile — installs the CA cert on iOS/macOS via one tap."""
-    import uuid, base64, re as _re
-    ca_path = os.path.join(CERT_DIR, "rootCA.pem")
-    if not os.path.exists(ca_path):
-        raise HTTPException(status_code=404, detail="CA certificate not found. Run install.sh first.")
-    with open(ca_path, "r") as f:
-        pem = f.read()
-    # Strip PEM headers — the body is already base64-encoded DER
-    b64 = "".join(_re.sub(r"-----.*?-----", "", pem).split())
-    # Stable UUIDs derived from the cert so re-downloads produce the same profile
-    payload_uuid = str(uuid.uuid5(uuid.NAMESPACE_DNS, "myrssfeed.ca.payload." + b64[:32]))
-    profile_uuid = str(uuid.uuid5(uuid.NAMESPACE_DNS, "myrssfeed.ca.profile." + b64[:32]))
-    xml = f"""<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-  <key>PayloadContent</key>
-  <array>
-    <dict>
-      <key>PayloadCertificateFileName</key><string>myrssfeed-ca.crt</string>
-      <key>PayloadContent</key><data>{b64}</data>
-      <key>PayloadDescription</key><string>Trusts the myRSSfeed local CA so https://myrssfeed.local works without warnings.</string>
-      <key>PayloadDisplayName</key><string>myRSSfeed CA</string>
-      <key>PayloadIdentifier</key><string>local.myrssfeed.ca.cert</string>
-      <key>PayloadType</key><string>com.apple.security.root</string>
-      <key>PayloadUUID</key><string>{payload_uuid}</string>
-      <key>PayloadVersion</key><integer>1</integer>
-    </dict>
-  </array>
-  <key>PayloadDescription</key><string>Allows your device to connect to myRSSfeed over HTTPS without security warnings.</string>
-  <key>PayloadDisplayName</key><string>myRSSfeed</string>
-  <key>PayloadIdentifier</key><string>local.myrssfeed.ca</string>
-  <key>PayloadRemovalDisallowed</key><false/>
-  <key>PayloadType</key><string>Configuration</string>
-  <key>PayloadUUID</key><string>{profile_uuid}</string>
-  <key>PayloadVersion</key><integer>1</integer>
-</dict>
-</plist>"""
-    return Response(
-        content=xml.encode(),
-        media_type="application/x-apple-aspen-config",
-        headers={"Content-Disposition": "attachment; filename=myrssfeed.mobileconfig"},
-    )
 
 
 @router.get("/api/devices", response_model=list[DeviceOut])
@@ -145,6 +76,116 @@ def remove_device(device_id: int):
     conn.execute("DELETE FROM devices WHERE id = ?", (device_id,))
     conn.commit()
     conn.close()
+
+
+@router.get("/discover", response_class=HTMLResponse)
+def discover_page(request: Request):
+    conn = get_db()
+    rows = conn.execute("SELECT url FROM feeds").fetchall()
+    conn.close()
+    subscribed = [r["url"] for r in rows]
+    return templates.TemplateResponse(
+        "discover.html",
+        {
+            "request": request,
+            "catalog_json": json.dumps(_FEED_CATALOG),
+            "subscribed_json": json.dumps(subscribed),
+        },
+    )
+
+
+@router.post("/api/discover/detect")
+def detect_feeds(payload: DetectRequest):
+    """Fetch a URL and return any RSS/Atom feeds found on the page."""
+    import urllib.request
+    import urllib.error
+    import urllib.parse
+    from html.parser import HTMLParser
+
+    raw_url = payload.url.strip()
+    if not raw_url.startswith(("http://", "https://")):
+        raw_url = "https://" + raw_url
+
+    parsed = urllib.parse.urlparse(raw_url)
+    if not parsed.netloc:
+        raise HTTPException(status_code=422, detail="Invalid URL.")
+
+    # Reject private/loopback addresses from being fetched
+    import socket
+    try:
+        addr = socket.getaddrinfo(parsed.hostname, None)[0][4][0]
+        if any(addr.startswith(p) for p in ("127.", "10.", "192.168.", "169.254.", "::1")):
+            raise HTTPException(status_code=422, detail="Private network addresses are not allowed.")
+    except HTTPException:
+        raise
+    except Exception:
+        pass
+
+    class LinkParser(HTMLParser):
+        def __init__(self):
+            super().__init__()
+            self.feeds = []
+        def handle_starttag(self, tag, attrs):
+            if tag.lower() != "link":
+                return
+            d = dict(attrs)
+            t = d.get("type", "").lower()
+            if t in ("application/rss+xml", "application/atom+xml", "application/rdf+xml"):
+                href = d.get("href", "")
+                if href:
+                    title = d.get("title", "")
+                    self.feeds.append({"name": title, "url": href})
+
+    headers = {"User-Agent": "myRSSfeed/1.0 (RSS discovery)"}
+    req = urllib.request.Request(raw_url, headers=headers)
+    try:
+        with urllib.request.urlopen(req, timeout=8) as resp:
+            content_type = resp.headers.get("Content-Type", "")
+            body = resp.read(512 * 1024).decode("utf-8", errors="replace")
+    except urllib.error.URLError as exc:
+        raise HTTPException(status_code=422, detail=f"Could not reach URL: {exc.reason}")
+    except Exception as exc:
+        raise HTTPException(status_code=422, detail=f"Request failed: {exc}")
+
+    # If the URL itself is an RSS/Atom feed, return it directly
+    if any(t in content_type for t in ("rss", "atom", "xml")):
+        title = ""
+        import re
+        m = re.search(r"<title[^>]*>([^<]{1,120})</title>", body, re.IGNORECASE)
+        if m:
+            title = m.group(1).strip()
+        return {"feeds": [{"name": title or "Feed", "url": raw_url}]}
+
+    parser = LinkParser()
+    parser.feed(body)
+
+    # Resolve relative URLs
+    feeds = []
+    seen = set()
+    for f in parser.feeds:
+        url = urllib.parse.urljoin(raw_url, f["url"])
+        if url not in seen:
+            seen.add(url)
+            feeds.append({"name": f["name"], "url": url})
+
+    # If nothing found, probe common paths
+    if not feeds:
+        base = f"{parsed.scheme}://{parsed.netloc}"
+        common = ["/rss", "/feed", "/rss.xml", "/atom.xml", "/feed.xml", "/blog/feed", "/blog/rss"]
+        for path in common:
+            probe_url = base + path
+            try:
+                probe_req = urllib.request.Request(probe_url, headers=headers, method="HEAD")
+                with urllib.request.urlopen(probe_req, timeout=4) as r:
+                    ct = r.headers.get("Content-Type", "")
+                    if any(t in ct for t in ("rss", "atom", "xml")):
+                        if probe_url not in seen:
+                            seen.add(probe_url)
+                            feeds.append({"name": "", "url": probe_url})
+            except Exception:
+                continue
+
+    return {"feeds": feeds[:8]}
 
 
 @router.get("/settings", response_class=HTMLResponse)
@@ -486,5 +527,3 @@ def get_logs(lines: int = 100):
     except Exception as exc:
         logger.warning("Could not read log file: %s", exc)
         return {"lines": []}
-
-

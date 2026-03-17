@@ -66,3 +66,7 @@ class DeviceOut(BaseModel):
     id: int
     name: str
     added_at: str
+
+
+class DetectRequest(BaseModel):
+    url: str
