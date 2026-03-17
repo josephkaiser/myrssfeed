@@ -248,7 +248,7 @@
             <span class="trending-date">{{ entry.published[:10] if entry.published else "" }}</span>
           </div>
           <a class="trending-title" href="{{ entry.link }}" target="_blank" rel="noopener noreferrer" onclick="markRead({{ entry.id }}, this)">
-            {{ entry.title or "(no title)" }}
+            {{ loop.index }}. {{ entry.title or "(no title)" }}
           </a>
         </article>
         {% endfor %}

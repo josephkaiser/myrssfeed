@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime, timezone
 import socket
 import threading
 import urllib.error
@@ -28,6 +29,9 @@ def _record_scrape_status(status: str) -> None:
     """
     try:
         set_setting("scrape_last_status", status)
+        if status == "success":
+            # Record timestamp of last successful run for age display.
+            set_setting("scrape_last_success_ts", datetime.now(timezone.utc).isoformat())
     except Exception:
         logger.exception("Could not record scrape status %r", status)
 

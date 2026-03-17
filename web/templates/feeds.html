@@ -134,7 +134,7 @@
         placeholder="https://example.com or https://example.com/feed.xml"
         autocomplete="off"
       />
-      <button class="btn" id="feed-btn" onclick="handleFeedInput()">Add</button>
+      <button class="btn" id="feed-btn" onclick="handleFeedInput()">Find feeds</button>
     </div>
     <div id="detect-results"></div>
   </div>
@@ -202,6 +202,7 @@ function renderFeeds() {
         <span class="catalog-card-name" onclick="toggleDesc(this)">${esc(feed.title || feed.url)}</span>
         <p class="catalog-card-desc">${esc(feed.url)}</p>
         <div class="catalog-card-bottom">
+          <button class="btn ghost catalog-rename-btn" onclick="renameFeed(${feed.id})">Rename</button>
           <button class="btn danger catalog-add-btn" onclick="removeFeed(${feed.id}, this)">Remove</button>
         </div>
       </div>
@@ -299,18 +300,26 @@ async function detectFeeds(url) {
     resultsEl.innerHTML = '<p class="detect-error">Network error.</p>';
   } finally {
     btn.disabled = false;
-    btn.textContent = 'Add';
+    btn.textContent = 'Find feeds';
   }
 }
 
 async function addDetected(url, name, btn) {
   btn.disabled = true;
   btn.textContent = '...';
+  const currentName = name || url;
+  const newName = prompt('Name this feed:', currentName);
+  if (newName === null) {
+    btn.disabled = false;
+    btn.textContent = '+ Add';
+    return;
+  }
+  const title = newName.trim() || null;
   try {
     const res = await fetch('/api/feeds', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({url, title: name})
+      body: JSON.stringify({url, title})
     });
     if (res.ok || res.status === 409) {
       if (res.ok) {
@@ -343,9 +352,43 @@ function handleFeedInput() {
   if (!value) return;
   const isProbablyFeedUrl = /^https?:\/\//i.test(value) && /\.xml(\?|#|$)/i.test(value);
   if (isProbablyFeedUrl) {
-    addFeed(value, null);
+    const suggested = getDomain(value) || value;
+    const name = prompt('Name this feed (optional):', suggested);
+    if (name === null) return;
+    const title = (name || '').trim() || null;
+    addFeed(value, title);
   } else {
     detectFeeds(value);
+  }
+}
+
+async function renameFeed(id) {
+  const feed = FEEDS.find(f => f.id === id);
+  if (!feed) return;
+  const currentName = feed.title || feed.url;
+  const newName = prompt('Rename feed:', currentName);
+  if (newName === null) return;
+  const title = newName.trim();
+  if (!title || title === currentName) return;
+  try {
+    const res = await fetch('/api/feeds/' + id, {
+      method: 'PATCH',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ title })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok) {
+      const idx = FEEDS.findIndex(f => f.id === id);
+      if (idx !== -1) FEEDS[idx] = data;
+      renderFeeds();
+      document.querySelectorAll('[data-feed-id="' + id + '"] .nav-feed-label, [data-feed-id="' + id + '"] .sidebar-feed-label')
+        .forEach(el => { el.textContent = data.title || data.url; });
+      showToast('Feed renamed.');
+    } else {
+      showToast('Error: ' + (data.detail || res.status));
+    }
+  } catch (e) {
+    showToast('Network error');
   }
 }
 

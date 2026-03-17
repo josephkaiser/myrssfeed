@@ -174,7 +174,12 @@
     switch (state.last_status) {
       case "success":
         dot.classList.add("success");
-        text.textContent = "Last job completed";
+        if (typeof state.minutes_since_last_success === "number") {
+          const mins = state.minutes_since_last_success;
+          text.textContent = mins === 0 ? "Just now" : `${mins} min ago`;
+        } else {
+          text.textContent = "Last job completed";
+        }
         break;
       case "error":
         dot.classList.add("error");
@@ -195,9 +200,15 @@
       updateRefreshStatusUI({
         running: !!data.running,
         last_status: data.last_status || "never",
+        minutes_since_last_success: typeof data.minutes_since_last_success === "number"
+          ? data.minutes_since_last_success
+          : null,
       });
       updatePipelineStatusUI({
         last_status: data.last_status || "never",
+        minutes_since_last_success: typeof data.minutes_since_last_success === "number"
+          ? data.minutes_since_last_success
+          : null,
       });
     } catch {
       // Silently ignore; status light is best-effort only.
@@ -220,7 +231,12 @@
     switch (state.last_status) {
       case "success":
         dot.classList.add("success");
-        text.textContent = "Last job completed";
+        if (typeof state.minutes_since_last_success === "number") {
+          const mins = state.minutes_since_last_success;
+          text.textContent = mins === 0 ? "Just now" : `${mins} min ago`;
+        } else {
+          text.textContent = "Last job completed";
+        }
         break;
       case "error":
         dot.classList.add("error");
@@ -241,6 +257,9 @@
       updateScrapeStatusUI({
         running: !!data.running,
         last_status: data.last_status || "never",
+        minutes_since_last_success: typeof data.minutes_since_last_success === "number"
+          ? data.minutes_since_last_success
+          : null,
       });
     } catch {
       // Best-effort only.
@@ -326,7 +345,12 @@
     switch (state.last_status) {
       case "success":
         dot.classList.add("success");
-        text.textContent = "Last automatic run succeeded";
+        if (typeof state.minutes_since_last_success === "number") {
+          const mins = state.minutes_since_last_success;
+          text.textContent = mins === 0 ? "Last run just now" : `Last run ${mins} min ago`;
+        } else {
+          text.textContent = "Last automatic run succeeded";
+        }
         break;
       case "error":
         dot.classList.add("error");
@@ -360,7 +384,12 @@
     switch (state.last_status) {
       case "success":
         dot.classList.add("success");
-        text.textContent = "Last run completed";
+        if (typeof state.minutes_since_last_success === "number") {
+          const mins = state.minutes_since_last_success;
+          text.textContent = mins === 0 ? "Last run just now" : `Last run ${mins} min ago`;
+        } else {
+          text.textContent = "Last run completed";
+        }
         break;
       case "error":
         dot.classList.add("error");
@@ -369,6 +398,20 @@
       default:
         text.textContent = "Idle";
         break;
+    }
+  }
+
+  async function fetchWordrankStatus() {
+    try {
+      const res = await fetch("/api/wordrank/status");
+      if (!res.ok) return;
+      const data = await res.json().catch(() => ({}));
+      updateWordrankStatusUI({
+        running: false,
+        last_status: data.last_status || "never",
+      });
+    } catch {
+      // best-effort only
     }
   }
 
@@ -404,5 +447,10 @@
     if (freqSelect) {
       freqSelect.addEventListener("change", updateScheduleTimeFields);
       updateScheduleTimeFields();
+    }
+
+    const wordrankDot = document.getElementById("wordrank-status-dot");
+    if (wordrankDot) {
+      fetchWordrankStatus();
     }
   })();

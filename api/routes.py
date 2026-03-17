@@ -308,7 +308,7 @@ def stats_page(request: Request):
         },
     )
 
-def _compute_trending(entries: list[dict], limit: int = 8) -> list[dict]:
+def _compute_trending(entries: list[dict], limit: int = 10) -> list[dict]:
     """
     Build a small "trending" set that:
     - favours recency (entries are already newest-first)

@@ -1,5 +1,6 @@
 import logging
 import threading
+from datetime import datetime, timezone
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 
@@ -25,6 +26,9 @@ def _record_pipeline_status(status: str) -> None:
     """
     try:
         set_setting("pipeline_last_status", status)
+        if status == "success":
+            # Record timestamp of last successful run for age display.
+            set_setting("pipeline_last_success_ts", datetime.now(timezone.utc).isoformat())
     except Exception:
         logger.exception("Could not record pipeline status %r", status)
 

@@ -55,6 +55,9 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   min-height: 100dvh;
   transition: background .2s, color .2s;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden; /* prevent page scroll, let columns scroll instead */
 }
 
 /* ── Header ── */
@@ -68,6 +71,7 @@ header {
   display: flex;
   align-items: center;
   gap: 0.75rem;
+  flex-shrink: 0; /* keep header height fixed above scrollable layout */
 }
 .hamburger-btn {
   display: none;
@@ -430,6 +434,8 @@ header {
   display: grid;
   grid-template-columns: 260px minmax(0, 1fr) 280px;
   gap: 1rem;
+  flex: 1;
+  min-height: 0;
 }
 
 .layout.layout-two-col {
@@ -438,9 +444,9 @@ header {
 
 .sidebar-left,
 .sidebar-right {
-  position: sticky;
-  top: 4.25rem; /* header height + spacing */
-  align-self: flex-start;
+  height: 100%;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
 }
 
 .sidebar-section {
@@ -616,6 +622,9 @@ header {
   padding: 0.5rem 1.25rem 1rem;
   min-width: 0;
   max-width: 100%;
+  height: 100%;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
 }
 .entries-header {
   display: flex;
@@ -1266,6 +1275,11 @@ header {
   flex-wrap: wrap;
 }
 
+.setting-control-stacked {
+  flex-direction: column;
+  align-items: flex-start;
+}
+
 .select-input {
   background: var(--bg);
   border: 1px solid var(--border);
@@ -1285,8 +1299,7 @@ header {
 }
 
 .setting-control-schedule {
-  position: relative;
-  padding-right: 9.5rem; /* reserve space for inline status on wider screens */
+  align-items: center;
 }
 
 .time-sep {
@@ -1301,17 +1314,6 @@ header {
   gap: 0.4rem;
   font-size: 0.78rem;
   color: var(--muted);
-}
-
-/* Position the schedule status inline with the time controls on wider screens. */
-@media (min-width: 768px) {
-  .setting-control-schedule .refresh-status {
-    position: absolute;
-    top: 50%;
-    right: 1.1rem;
-    transform: translateY(-50%);
-    justify-content: flex-end;
-  }
 }
 
 .refresh-status-dot {

@@ -30,6 +30,8 @@ DEFAULTS: dict[str, str] = {
     "pipeline_last_status": "never",
     # Scraper status (for manual enrich jobs)
     "scrape_last_status": "never",
+    # WordRank status (for manual/scheduled recomputes)
+    "wordrank_last_status": "never",
 }
 
 

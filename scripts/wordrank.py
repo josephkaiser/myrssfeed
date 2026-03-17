@@ -4,9 +4,10 @@ import os
 import sys
 import re
 import logging
+from datetime import datetime, timezone
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-from utils.helpers import get_db
+from utils.helpers import get_db, set_setting  # type: ignore[import-not-found]
 
 logger = logging.getLogger(__name__)
 
@@ -45,7 +46,16 @@ def run_wordrank() -> None:
             "(install scikit-learn and numpy to enable). Error: %s",
             exc,
         )
+        try:
+            set_setting("wordrank_last_status", "error")
+        except Exception:
+            logger.exception("WordRank: could not record status 'error'")
         return
+
+    try:
+        set_setting("wordrank_last_status", "running")
+    except Exception:
+        logger.exception("WordRank: could not record status 'running'")
 
     _ensure_columns()
 
@@ -58,6 +68,11 @@ def run_wordrank() -> None:
 
     if not rows:
         logger.info("WordRank: no entries found, skipping")
+        try:
+            set_setting("wordrank_last_status", "success")
+            set_setting("wordrank_last_success_ts", datetime.now(timezone.utc).isoformat())
+        except Exception:
+            logger.exception("WordRank: could not record status 'success' for empty dataset")
         return
 
     ids = [r["id"] for r in rows]
@@ -69,25 +84,37 @@ def run_wordrank() -> None:
 
     logger.info("WordRank: %d entries, %d liked", len(ids), sum(liked_mask))
 
-    vectorizer = TfidfVectorizer(max_features=5000, stop_words="english")
-    tfidf_matrix = vectorizer.fit_transform(texts)
+    try:
+        vectorizer = TfidfVectorizer(max_features=5000, stop_words="english")
+        tfidf_matrix = vectorizer.fit_transform(texts)
 
-    if any(liked_mask):
-        liked_indices = [i for i, v in enumerate(liked_mask) if v]
-        centroid = np.asarray(tfidf_matrix[liked_indices].mean(axis=0))
-        scores = cosine_similarity(tfidf_matrix, centroid).flatten().tolist()
-    else:
-        scores = [0.0] * len(ids)
+        if any(liked_mask):
+            liked_indices = [i for i, v in enumerate(liked_mask) if v]
+            centroid = np.asarray(tfidf_matrix[liked_indices].mean(axis=0))
+            scores = cosine_similarity(tfidf_matrix, centroid).flatten().tolist()
+        else:
+            scores = [0.0] * len(ids)
 
-    conn = get_db()
-    conn.executemany(
-        "UPDATE entries SET score = ? WHERE id = ?",
-        [(score, entry_id) for score, entry_id in zip(scores, ids)],
-    )
-    conn.commit()
-    conn.close()
+        conn = get_db()
+        conn.executemany(
+            "UPDATE entries SET score = ? WHERE id = ?",
+            [(score, entry_id) for score, entry_id in zip(scores, ids)],
+        )
+        conn.commit()
+        conn.close()
 
-    logger.info("WordRank: scores written for %d entries", len(ids))
+        logger.info("WordRank: scores written for %d entries", len(ids))
+        try:
+            set_setting("wordrank_last_status", "success")
+            set_setting("wordrank_last_success_ts", datetime.now(timezone.utc).isoformat())
+        except Exception:
+            logger.exception("WordRank: could not record status 'success'")
+    except Exception:
+        logger.exception("WordRank: scoring pipeline failed")
+        try:
+            set_setting("wordrank_last_status", "error")
+        except Exception:
+            logger.exception("WordRank: could not record status 'error' after failure")
 
 
 if __name__ == "__main__":

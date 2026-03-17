@@ -73,5 +73,51 @@
   {"name": "DistroWatch", "url": "https://distrowatch.com/news/dw.xml", "category": "Linux", "description": "Linux distribution news and package updates"},
   {"name": "It's FOSS", "url": "https://itsfoss.com/feed/", "category": "Linux", "description": "Linux news, tutorials, and open-source software"},
   {"name": "OpenSource.com", "url": "https://opensource.com/feed", "category": "Linux", "description": "Open-source tools, culture, and community"},
-  {"name": "Linux Journal", "url": "https://www.linuxjournal.com/node/feed", "category": "Linux", "description": "Linux technology news and tutorials"}
+  {"name": "Linux Journal", "url": "https://www.linuxjournal.com/node/feed", "category": "Linux", "description": "Linux technology news and tutorials"},
+
+  {"name": "NYT Home Page", "url": "https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml", "category": "News", "description": "Top stories from The New York Times home page"},
+  {"name": "NYT World", "url": "https://rss.nytimes.com/services/xml/rss/nyt/World.xml", "category": "News", "description": "World news from The New York Times"},
+  {"name": "NYT US News", "url": "https://rss.nytimes.com/services/xml/rss/nyt/US.xml", "category": "News", "description": "U.S. news from The New York Times"},
+  {"name": "NYT Business", "url": "https://rss.nytimes.com/services/xml/rss/nyt/Business.xml", "category": "Finance", "description": "Business news from The New York Times"},
+  {"name": "NYT Technology", "url": "https://rss.nytimes.com/services/xml/rss/nyt/Technology.xml", "category": "Tech", "description": "Technology coverage from The New York Times"},
+  {"name": "NYT Sports", "url": "https://rss.nytimes.com/services/xml/rss/nyt/Sports.xml", "category": "Sports", "description": "Sports news from The New York Times"},
+  {"name": "NYT Science", "url": "https://rss.nytimes.com/services/xml/rss/nyt/Science.xml", "category": "Science", "description": "Science and research coverage from The New York Times"},
+  {"name": "NYT Health", "url": "https://rss.nytimes.com/services/xml/rss/nyt/Health.xml", "category": "Health", "description": "Health and wellness news from The New York Times"},
+  {"name": "NYT Sunday Review", "url": "https://rss.nytimes.com/services/xml/rss/nyt/sunday-review.xml", "category": "Opinion", "description": "Sunday opinion and commentary from The New York Times"},
+
+  {"name": "WSJ Opinion", "url": "https://feeds.content.dowjones.io/public/rss/RSSOpinion", "category": "Opinion", "description": "Opinion and commentary from The Wall Street Journal"},
+  {"name": "WSJ World News", "url": "https://feeds.content.dowjones.io/public/rss/RSSWorldNews", "category": "News", "description": "World news from The Wall Street Journal"},
+  {"name": "WSJ US Business", "url": "https://feeds.content.dowjones.io/public/rss/WSJcomUSBusiness", "category": "Finance", "description": "U.S. business coverage from The Wall Street Journal"},
+  {"name": "WSJ Markets Main", "url": "https://feeds.content.dowjones.io/public/rss/RSSMarketsMain", "category": "Finance", "description": "Markets and investing news from The Wall Street Journal"},
+  {"name": "WSJ Technology What's News", "url": "https://feeds.content.dowjones.io/public/rss/RSSWSJD", "category": "Tech", "description": "Technology news from The Wall Street Journal"},
+  {"name": "WSJ Lifestyle", "url": "https://feeds.content.dowjones.io/public/rss/RSSLifestyle", "category": "Lifestyle", "description": "Lifestyle coverage from The Wall Street Journal"},
+  {"name": "WSJ US News", "url": "https://feeds.content.dowjones.io/public/rss/RSSUSnews", "category": "News", "description": "U.S. news from The Wall Street Journal"},
+  {"name": "WSJ Politics", "url": "https://feeds.content.dowjones.io/public/rss/socialpoliticsfeed", "category": "News", "description": "Politics coverage from The Wall Street Journal"},
+  {"name": "WSJ Economy", "url": "https://feeds.content.dowjones.io/public/rss/socialeconomyfeed", "category": "News", "description": "Economy coverage from The Wall Street Journal"},
+  {"name": "WSJ Arts Culture", "url": "https://feeds.content.dowjones.io/public/rss/RSSArtsCulture", "category": "Arts", "description": "Arts and culture from The Wall Street Journal"},
+  {"name": "WSJ Real Estate", "url": "https://feeds.content.dowjones.io/public/rss/latestnewsrealestate", "category": "Real Estate", "description": "Real estate news from The Wall Street Journal"},
+  {"name": "WSJ Personal Finance", "url": "https://feeds.content.dowjones.io/public/rss/RSSPersonalFinance", "category": "Finance", "description": "Personal finance coverage from The Wall Street Journal"},
+  {"name": "WSJ Health", "url": "https://feeds.content.dowjones.io/public/rss/socialhealth", "category": "Health", "description": "Health coverage from The Wall Street Journal"},
+  {"name": "WSJ Style", "url": "https://feeds.content.dowjones.io/public/rss/RSSStyle", "category": "Style", "description": "Style and fashion from The Wall Street Journal"},
+  {"name": "WSJ Sports", "url": "https://feeds.content.dowjones.io/public/rss/rsssportsfeed", "category": "Sports", "description": "Sports news from The Wall Street Journal"},
+
+  {"name": "Reuters World News", "url": "https://feeds.reuters.com/reuters/worldNews", "category": "News", "description": "Global news coverage from Reuters"},
+  {"name": "Reuters Business News", "url": "https://feeds.reuters.com/reuters/businessNews", "category": "Finance", "description": "International business and markets news from Reuters"},
+  {"name": "Financial Times World", "url": "https://www.ft.com/world/rss", "category": "News", "description": "World news and analysis from the Financial Times"},
+
+  {"name": "Federal Reserve Board — All Press Releases", "url": "https://www.federalreserve.gov/feeds/press_all.xml", "category": "Central Banks", "description": "U.S. Federal Reserve monetary policy, banking, and regulatory announcements"},
+  {"name": "European Central Bank — Press Releases", "url": "https://www.ecb.europa.eu/rss/press.html", "category": "Central Banks", "description": "ECB policy decisions, speeches, and institutional news"},
+
+  {"name": "CNBC Top News and Analysis", "url": "https://www.cnbc.com/id/100003114/device/rss/rss.html", "category": "Finance", "description": "Markets, business, and investing coverage from CNBC"},
+  {"name": "Investing.com Markets", "url": "https://www.investing.com/rss/news.rss", "category": "Finance", "description": "Global markets, stocks, and macro news from Investing.com"},
+
+  {"name": "Calculated Risk", "url": "https://www.calculatedriskblog.com/feeds/posts/default", "category": "Economics", "description": "Economics and housing market analysis by Bill McBride"},
+  {"name": "Greg Mankiw's Blog", "url": "http://gregmankiw.blogspot.com/feeds/posts/default", "category": "Economics", "description": "Macroeconomics commentary from Harvard professor Greg Mankiw"},
+  {"name": "Econbrowser", "url": "https://econbrowser.com/feed", "category": "Economics", "description": "Analysis of current economic conditions and policy by James Hamilton and Menzie Chinn"},
+
+  {"name": "The Changelog (podcast)", "url": "https://changelog.fm/feed", "category": "Podcasts", "description": "Conversations with hackers, founders, and maintainers in software and open source"},
+  {"name": "Accidental Tech Podcast", "url": "https://atp.fm/episodes?format=RSS", "category": "Podcasts", "description": "A tech podcast focused on Apple, software development, and gadgets"},
+  {"name": "This Week in Tech (TWiT)", "url": "https://feeds.twit.tv/twit.xml", "category": "Podcasts", "description": "Weekly roundtable discussion of the latest technology news"},
+  {"name": "Planet Money", "url": "https://feeds.npr.org/510289/podcast.xml", "category": "Podcasts", "description": "NPR's approachable stories about the economy and money"},
+  {"name": "The Indicator from Planet Money", "url": "https://feeds.npr.org/510325/podcast.xml", "category": "Podcasts", "description": "Quick insights into work, business, and the economy"}
 ]

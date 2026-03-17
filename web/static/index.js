@@ -83,13 +83,31 @@
       const textEl = document.getElementById(opts.textId);
       if (textEl) {
         let label = "No runs yet";
+        const mins = typeof state.minutes_since_last_success === "number"
+          ? state.minutes_since_last_success
+          : null;
         if (opts.kind === "refresh" || opts.kind === "scrape") {
-          if (last === "success") label = "Last job completed";
-          else if (last === "error") label = "Last job failed";
+          if (last === "success") {
+            if (mins !== null) {
+              label = mins === 0 ? "Just now" : `${mins} min ago`;
+            } else {
+              label = "Last job completed";
+            }
+          } else if (last === "error") {
+            label = "Last job failed";
+          }
         } else if (opts.kind === "wordrank") {
-          if (last === "success") label = "Last run completed";
-          else if (last === "error") label = "Last run failed";
-          else if (!last || last === "idle" || last === "never") label = "Idle";
+          if (last === "success") {
+            if (mins !== null) {
+              label = mins === 0 ? "Last run just now" : `Last run ${mins} min ago`;
+            } else {
+              label = "Last run completed";
+            }
+          } else if (last === "error") {
+            label = "Last run failed";
+          } else if (!last || last === "idle" || last === "never") {
+            label = "Idle";
+          }
         }
         textEl.textContent = label;
       }
@@ -106,6 +124,9 @@
       _updateHeaderDot(dotId, {
         running: !!data.running,
         last_status: data.last_status || "never",
+        minutes_since_last_success: typeof data.minutes_since_last_success === "number"
+          ? data.minutes_since_last_success
+          : null,
       }, { kind: "refresh", textId: "header-refresh-status-text" });
     } catch (_) {
       // best-effort only
@@ -122,14 +143,15 @@
       _updateHeaderDot(dotId, {
         running: !!data.running,
         last_status: data.last_status || "never",
+        minutes_since_last_success: typeof data.minutes_since_last_success === "number"
+          ? data.minutes_since_last_success
+          : null,
       }, { kind: "scrape", textId: "header-scrape-status-text" });
     } catch (_) {
       // best-effort only
     }
   }
 
-  // The WordRank job does not currently expose a status endpoint; we mirror
-  // the settings page behaviour and track state locally on this page.
   let _headerWordrankState = { running: false, last_status: "idle" };
   function _renderHeaderWordrankState() {
     _updateHeaderDot(
@@ -195,6 +217,26 @@
   }
   window.headerScrapeNow = headerScrapeNow;
 
+  async function _fetchHeaderWordrankStatus() {
+    const dotId = "header-wordrank-status-dot";
+    if (!document.getElementById(dotId)) return;
+    try {
+      const res = await fetch("/api/wordrank/status");
+      if (!res.ok) return;
+      const data = await res.json().catch(() => ({}));
+      _headerWordrankState = {
+        running: false,
+        last_status: data.last_status || "never",
+        minutes_since_last_success: typeof data.minutes_since_last_success === "number"
+          ? data.minutes_since_last_success
+          : null,
+      };
+      _renderHeaderWordrankState();
+    } catch (_) {
+      // best-effort only
+    }
+  }
+
   async function headerWordrankNow() {
     const btn = document.getElementById("header-wordrank-btn");
     if (!btn) return;
@@ -232,7 +274,7 @@
       setInterval(_fetchHeaderScrapeStatus, 8000);
     }
     if (document.getElementById("header-wordrank-status-dot")) {
-      _renderHeaderWordrankState();
+      _fetchHeaderWordrankStatus();
     }
   })();
 

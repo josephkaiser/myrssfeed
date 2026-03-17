@@ -53,6 +53,8 @@ DEFAULTS: dict[str, str] = {
     # Maximum number of articles to show on the main page.
     # Stored in the DB but also exposed here so it can be managed via /api/settings.
     "max_entries": "1000",
+    # WordRank status (for manual/scheduled recomputes)
+    "wordrank_last_status": "never",
 }
 
 
@@ -151,6 +153,11 @@ class FeedOut(BaseModel):
     id: int
     url: str
     title: Optional[str]
+    color: Optional[str] = None
+
+
+class FeedUpdate(BaseModel):
+    title: Optional[str] = None
     color: Optional[str] = None
 
 
@@ -261,7 +268,8 @@ def index(request: Request, q: Optional[str] = None, feed_id: Optional[int] = No
                e.title, e.link, e.published, e.summary,
                e.thumbnail_url,
                COALESCE(e.read, 0) AS read,
-               COALESCE(e.liked, 0) AS liked
+               COALESCE(e.liked, 0) AS liked,
+               COALESCE(e.score, 0.0) AS score
         FROM entries e
         JOIN feeds f ON f.id = e.feed_id
     """
@@ -286,16 +294,85 @@ def index(request: Request, q: Optional[str] = None, feed_id: Optional[int] = No
     query += " ORDER BY e.published DESC LIMIT ?"
     params.append(max_entries)
     entries = conn.execute(query, params).fetchall()
+
+    entries_list = [dict(e) for e in entries]
+
+    # Compute trending from recent global entries (not filtered),
+    # so the sidebar always has something interesting.
+    trending_query = """
+        SELECT e.id, e.feed_id, f.title AS feed_title,
+               e.title, e.link, e.published, e.summary,
+               e.thumbnail_url,
+               COALESCE(e.read, 0) AS read,
+               COALESCE(e.liked, 0) AS liked,
+               COALESCE(e.score, 0.0) AS score
+        FROM entries e
+        JOIN feeds f ON f.id = e.feed_id
+        ORDER BY e.published DESC
+        LIMIT 200
+    """
+    trending_rows = conn.execute(trending_query).fetchall()
     conn.close()
+
+    trending_list = [dict(e) for e in trending_rows]
+    trending = _compute_trending(trending_list)
+
+    # If we have any trending entries, treat WordRank as having run successfully
+    # so the header/settings status lights stay green while recommendations exist.
+    if trending:
+        try:
+            set_setting("wordrank_last_status", "success")
+        except Exception:
+            logger.exception("Could not record WordRank status from trending computation")
 
     return templates.TemplateResponse("index.html", {
         "request": request,
         "feeds": feeds,
         "feed_map": feed_map,
-        "entries": [dict(e) for e in entries],
+        "entries": entries_list,
+        "trending": trending,
         "q": q or "",
         "active_feed_id": feed_id,
     })
+
+
+def _compute_trending(entries: list[dict], limit: int = 10) -> list[dict]:
+    """
+    Build a small "trending" set that:
+    - favours recency (entries are already newest-first)
+    - encourages diversity of source (per-feed cap)
+    - uses the existing score field to prefer more unique content
+    """
+    if not entries:
+        return []
+
+    # Combine recency (position in list) and score into one ranking value.
+    # Newest entries appear first in `entries`.
+    n = len(entries)
+    ranked = []
+    for idx, e in enumerate(entries):
+        recency_weight = (n - idx) / n  # 1.0 for newest, down to ~0
+        score = float(e.get("score") or 0.0)
+        combined = 0.7 * recency_weight + 0.3 * score
+        ranked.append((combined, e))
+
+    ranked.sort(key=lambda t: t[0], reverse=True)
+
+    # Greedy pick with per-feed cap to keep sources diverse.
+    per_feed_cap = 2
+    feed_counts: dict[int, int] = {}
+    trending: list[dict] = []
+    for _, e in ranked:
+        feed_id = int(e.get("feed_id") or 0)
+        if feed_id:
+            if feed_counts.get(feed_id, 0) >= per_feed_cap:
+                continue
+            feed_counts[feed_id] = feed_counts.get(feed_id, 0) + 1
+        trending.append(e)
+        if len(trending) >= limit:
+            break
+
+    return trending
 
 
 @app.get("/article/{entry_id}", response_class=HTMLResponse)
@@ -529,6 +606,27 @@ def add_feed(feed: FeedCreate):
     return dict(row)
 
 
+@app.patch("/api/feeds/{feed_id}", response_model=FeedOut)
+def update_feed(feed_id: int, payload: FeedUpdate):
+    updates = payload.model_dump(exclude_none=True)
+    if not updates:
+        raise HTTPException(status_code=400, detail="No fields to update.")
+    conn = get_db()
+    try:
+        cols = ", ".join(f"{key} = ?" for key in updates.keys())
+        values = list(updates.values()) + [feed_id]
+        row = conn.execute(
+            f"UPDATE feeds SET {cols} WHERE id = ? RETURNING id, url, title, color",
+            values,
+        ).fetchone()
+        conn.commit()
+    finally:
+        conn.close()
+    if not row:
+        raise HTTPException(status_code=404, detail="Feed not found.")
+    return dict(row)
+
+
 @app.delete("/api/feeds/{feed_id}", status_code=204)
 def delete_feed(feed_id: int):
     conn = get_db()
@@ -623,10 +721,26 @@ def trigger_refresh():
 def get_refresh_status():
     running = is_pipeline_running()
     last_status = get_setting("pipeline_last_status") or "never"
-    return {"running": running, "last_status": last_status}
+    minutes_since_last_success: int | None = None
+    ts = get_setting("pipeline_last_success_ts")
+    if ts:
+        try:
+            last_dt = datetime.fromisoformat(ts)
+            now = datetime.now(timezone.utc)
+            if last_dt.tzinfo is None:
+                last_dt = last_dt.replace(tzinfo=timezone.utc)
+            diff = now - last_dt
+            minutes_since_last_success = max(0, int(diff.total_seconds() // 60))
+        except Exception:
+            minutes_since_last_success = None
+    return {
+        "running": running,
+        "last_status": last_status,
+        "minutes_since_last_success": minutes_since_last_success,
+    }
 
 
-# ── WordRank API (manual recompute) ───────────────────────────────────────────
+# ── WordRank API (manual recompute + status) ──────────────────────────────────
 
 
 @app.post("/api/wordrank", status_code=202)
@@ -638,6 +752,35 @@ def trigger_wordrank():
         logger.exception("WordRank job failed: %s", exc)
         return {"status": "error", "message": "WordRank failed (see logs)."}
     return {"status": "success", "message": "WordRank completed."}
+
+
+@app.get("/api/wordrank/status")
+def get_wordrank_status():
+    """
+    Return the last recorded status of the WordRank job.
+
+    Values:
+    - "never"   : no completed runs yet
+    - "success" : last run completed without errors
+    - "error"   : last run encountered at least one error
+    """
+    last_status = get_setting("wordrank_last_status") or "never"
+    minutes_since_last_success: int | None = None
+    ts = get_setting("wordrank_last_success_ts")
+    if ts:
+        try:
+            last_dt = datetime.fromisoformat(ts)
+            now = datetime.now(timezone.utc)
+            if last_dt.tzinfo is None:
+                last_dt = last_dt.replace(tzinfo=timezone.utc)
+            diff = now - last_dt
+            minutes_since_last_success = max(0, int(diff.total_seconds() // 60))
+        except Exception:
+            minutes_since_last_success = None
+    return {
+        "last_status": last_status,
+        "minutes_since_last_success": minutes_since_last_success,
+    }
 
 
 # ── Scrape/enrichment API ─────────────────────────────────────────────────────
@@ -656,7 +799,23 @@ def trigger_scrape():
 def get_scrape_status():
     running = is_scraper_running()
     last_status = get_setting("scrape_last_status") or "never"
-    return {"running": running, "last_status": last_status}
+    minutes_since_last_success: int | None = None
+    ts = get_setting("scrape_last_success_ts")
+    if ts:
+        try:
+            last_dt = datetime.fromisoformat(ts)
+            now = datetime.now(timezone.utc)
+            if last_dt.tzinfo is None:
+                last_dt = last_dt.replace(tzinfo=timezone.utc)
+            diff = now - last_dt
+            minutes_since_last_success = max(0, int(diff.total_seconds() // 60))
+        except Exception:
+            minutes_since_last_success = None
+    return {
+        "running": running,
+        "last_status": last_status,
+        "minutes_since_last_success": minutes_since_last_success,
+    }
 
 
 # ── Search API ────────────────────────────────────────────────────────────────
