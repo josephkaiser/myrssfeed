@@ -1,13 +1,38 @@
   // ── Nav drawer ───────────────────────────────────────────────────
   const navOverlay = document.getElementById("nav-overlay");
+  const NAV_OPEN_KEY = "nav-open";
 
   function openNav() {
+    if (!navOverlay) return;
     navOverlay.classList.add("open");
+    try { localStorage.setItem(NAV_OPEN_KEY, "1"); } catch (_) {}
   }
 
   function closeNav() {
+    if (!navOverlay) return;
     navOverlay.classList.remove("open");
+    try { localStorage.setItem(NAV_OPEN_KEY, "0"); } catch (_) {}
   }
+
+  function toggleNav() {
+    if (!navOverlay) return;
+    if (navOverlay.classList.contains("open")) {
+      closeNav();
+    } else {
+      openNav();
+    }
+  }
+
+  // Restore nav state across page loads so the menu
+  // can stay open while navigating between feeds.
+  (function restoreNavState() {
+    if (!navOverlay) return;
+    try {
+      if (localStorage.getItem(NAV_OPEN_KEY) === "1") {
+        navOverlay.classList.add("open");
+      }
+    } catch (_) {}
+  })();
 
   function toggleNavFeeds() {
     const btn = document.getElementById("nav-feeds-toggle");
@@ -17,7 +42,9 @@
   }
 
   document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" && navOverlay.classList.contains("open")) closeNav();
+    if (e.key === "Escape" && navOverlay && navOverlay.classList.contains("open")) {
+      closeNav();
+    }
   });
 
   // ── Pull to refresh ────────────────────────────────────────────

@@ -69,25 +69,23 @@
 
 <div class="discover-wrap">
 
-  <!-- Detect from URL -->
+  <!-- Unified add/detect input -->
   <div class="discover-section">
     <div class="discover-section-title">Add a feed</div>
-    <p class="discover-section-desc">Paste any website URL and we'll find its RSS feed, or enter a feed URL directly.</p>
+    <p class="discover-section-desc">
+      Paste a website URL to look up its feeds, or paste a direct feed link (like <code>.xml</code>) to subscribe instantly.
+    </p>
     <div class="detect-row">
-      <input type="url" id="detect-input" class="detect-input"
-        placeholder="https://example.com" autocomplete="off" />
-      <button class="btn" id="detect-btn" onclick="detectFeeds()">Detect</button>
+      <input
+        type="url"
+        id="feed-input"
+        class="detect-input"
+        placeholder="https://example.com or https://example.com/feed.xml"
+        autocomplete="off"
+      />
+      <button class="btn" id="feed-btn" onclick="handleFeedInput()">Add</button>
     </div>
     <div id="detect-results"></div>
-
-    <div style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--border);">
-      <div class="discover-section-desc" style="margin:0 0 0.5rem">Or add a feed URL directly:</div>
-      <div class="detect-row">
-        <input type="url" id="direct-url" class="detect-input" placeholder="https://example.com/feed.xml" autocomplete="off" />
-        <input type="text" id="direct-title" class="detect-input" placeholder="Label (optional)" style="max-width:180px" />
-        <button class="btn" onclick="addDirect()">Add</button>
-      </div>
-    </div>
   </div>
 
   <!-- Subscribed feeds grid -->
@@ -168,6 +166,26 @@ function renderFeeds() {
   }).join('');
 }
 
+async function addFeed(url, title) {
+  if (!url) return;
+  const res = await fetch('/api/feeds', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({url, title: title || null})
+  });
+  if (res.ok) {
+    const data = await res.json();
+    FEEDS.push(data);
+    renderFeeds();
+    showToast('Feed added: ' + (data.title || url));
+  } else if (res.status === 409) {
+    showToast('Already subscribed.');
+  } else {
+    const data = await res.json().catch(() => ({}));
+    showToast('Error: ' + (data.detail || res.status));
+  }
+}
+
 async function removeFeed(id, btn) {
   if (!confirm('Remove this feed and all its articles?')) return;
   btn.disabled = true;
@@ -185,37 +203,11 @@ async function removeFeed(id, btn) {
   }
 }
 
-async function addDirect() {
-  const urlInput = document.getElementById('direct-url');
-  const titleInput = document.getElementById('direct-title');
-  const url = urlInput.value.trim();
-  const title = titleInput.value.trim();
-  if (!url) return;
-  const res = await fetch('/api/feeds', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({url, title: title || null})
-  });
-  if (res.ok) {
-    const data = await res.json();
-    FEEDS.push(data);
-    renderFeeds();
-    urlInput.value = '';
-    titleInput.value = '';
-    showToast('Feed added: ' + (data.title || url));
-  } else if (res.status === 409) {
-    showToast('Already subscribed.');
-  } else {
-    const data = await res.json().catch(() => ({}));
-    showToast('Error: ' + (data.detail || res.status));
-  }
-}
-
-async function detectFeeds() {
-  const input = document.getElementById('detect-input');
+async function detectFeeds(url) {
+  const input = document.getElementById('feed-input');
   const resultsEl = document.getElementById('detect-results');
-  const btn = document.getElementById('detect-btn');
-  const url = input.value.trim();
+  const btn = document.getElementById('feed-btn');
+  url = (url || input.value).trim();
   if (!url) return;
 
   btn.disabled = true;
@@ -264,7 +256,7 @@ async function detectFeeds() {
     resultsEl.innerHTML = '<p class="detect-error">Network error.</p>';
   } finally {
     btn.disabled = false;
-    btn.textContent = 'Detect';
+    btn.textContent = 'Add';
   }
 }
 
@@ -302,8 +294,20 @@ async function addDetected(url, name, btn) {
   }
 }
 
-document.getElementById('detect-input').addEventListener('keydown', function(e) {
-  if (e.key === 'Enter') detectFeeds();
+function handleFeedInput() {
+  const input = document.getElementById('feed-input');
+  const value = (input.value || '').trim();
+  if (!value) return;
+  const isProbablyFeedUrl = /^https?:\/\//i.test(value) && /\.xml(\?|#|$)/i.test(value);
+  if (isProbablyFeedUrl) {
+    addFeed(value, null);
+  } else {
+    detectFeeds(value);
+  }
+}
+
+document.getElementById('feed-input').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') handleFeedInput();
 });
 
 renderFeeds();
