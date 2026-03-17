@@ -13,6 +13,7 @@ class SettingsUpdate(BaseModel):
     ollama_url: Optional[str] = None
     ollama_model: Optional[str] = None
     digest_max_articles: Optional[str] = None
+    max_entries: Optional[str] = None
 
 
 class FeedOut(BaseModel):

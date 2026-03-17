@@ -10,6 +10,7 @@ DEFAULTS: dict[str, str] = {
     "ollama_url": "http://localhost:11434",
     "ollama_model": "phi3:mini",
     "digest_max_articles": "50",
+    "max_entries": "1000",
 }
 
 

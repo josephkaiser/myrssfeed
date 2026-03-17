@@ -320,7 +320,16 @@ def index(request: Request, q: Optional[str] = None, feed_id: Optional[int] = No
         params.append(feed_id)
     if filters:
         query += " WHERE " + " AND ".join(filters)
-    query += " ORDER BY e.published DESC LIMIT 200"
+
+    try:
+        max_entries = int(get_setting("max_entries") or "1000")
+    except (ValueError, TypeError):
+        max_entries = 1000
+    if max_entries <= 0:
+        max_entries = 1000
+
+    query += " ORDER BY e.published DESC LIMIT ?"
+    params.append(max_entries)
     entries = conn.execute(query, params).fetchall()
     conn.close()
 

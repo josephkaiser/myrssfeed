@@ -89,6 +89,27 @@
         <span class="num-unit">days</span>
       </div>
     </div>
+
+    <div class="setting-row">
+      <div class="setting-info">
+        <div class="setting-label">Maximum articles shown</div>
+        <div class="setting-desc">
+          Limit how many of the most recent articles appear on the main page.
+          This does not affect how many are stored, only how many are displayed.
+        </div>
+      </div>
+      <div class="setting-control">
+        <input
+          class="num-input"
+          type="number"
+          id="max_entries"
+          min="50"
+          max="5000"
+          value="{{ settings.max_entries or '1000' }}"
+        />
+        <span class="num-unit">articles</span>
+      </div>
+    </div>
   </div>
 
   <div class="settings-section">
