@@ -4,7 +4,6 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>myRSSfeed</title>
-  <!-- Apply theme before first paint to prevent flash -->
   <script>
     (function() {
       var t = localStorage.getItem("theme") || "system";
@@ -14,19 +13,19 @@
       else el.removeAttribute("data-theme");
     })();
   </script>
-  <link rel="stylesheet" href="/static/index.css" />
+  <link rel="stylesheet" href="/static/styles.css" />
 </head>
 <body>
 
 <header>
-  <a href="/" class="header-brand">myRSSfeed</a>
+  <a class="header-brand" onclick="openNav()" role="button" tabindex="0">myRSSfeed</a>
 
   <form class="search-bar" method="get" action="/" id="search-form">
     {% if active_feed_id %}
     <input type="hidden" name="feed_id" value="{{ active_feed_id }}" />
     {% endif %}
     <div class="search-input-wrap">
-      <input type="search" name="q" id="search-input" value="{{ q }}" placeholder="Search articles…" autocomplete="off" />
+      <input type="search" name="q" id="search-input" value="{{ q }}" placeholder="Search articles..." autocomplete="off" />
       <div class="search-dropdown" id="search-dropdown" style="display:none"></div>
     </div>
     <button class="btn pill" type="submit">Go</button>
@@ -34,69 +33,56 @@
     <a href="/" class="btn ghost pill">Clear</a>
     {% endif %}
   </form>
-
-  <div class="hamburger-wrap">
-    <button class="btn icon-btn" id="hamburger-btn" onclick="toggleMenu()" aria-label="Menu" aria-expanded="false">&#9776;</button>
-    <nav class="hamburger-menu" id="hamburger-menu" role="menu">
-      <a href="#" onclick="openMyFeeds(event)" role="menuitem">
-        <span class="menu-icon">📰</span> My Feeds
-      </a>
-      <a href="/viz" role="menuitem">
-        <span class="menu-icon">🗺️</span> Topic Map
-      </a>
-      <a href="/digest" role="menuitem">
-        <span class="menu-icon">✨</span> Digest
-      </a>
-      <a href="/settings" role="menuitem">
-        <span class="menu-icon">⚙️</span> Settings
-      </a>
-      <a href="/devices" role="menuitem">
-        <span class="menu-icon">📱</span> Add a Device
-      </a>
-    </nav>
-  </div>
 </header>
 
-<div class="layout">
-
-  <aside class="sidebar" id="sidebar">
-    <div class="sidebar-title">My Feeds</div>
-
-    <a href="/" class="feed-link {% if not active_feed_id %}active{% endif %}" id="all-articles-link">
-      <span>All articles</span>
-    </a>
-
-    <div style="margin-top:0.75rem; border-top:1px solid var(--border); padding-top:0.75rem;">
-      <div class="sidebar-title">My Feeds</div>
+<!-- Overlay nav drawer -->
+<div class="nav-overlay" id="nav-overlay" onclick="closeNav()">
+  <nav class="nav-drawer" onclick="event.stopPropagation()">
+    <div class="nav-drawer-header">
+      <span class="nav-drawer-brand">myRSSfeed</span>
+      <button class="nav-drawer-close" onclick="closeNav()">&times;</button>
     </div>
+    <div class="nav-drawer-links">
+      <a href="/">
+        <span class="nav-icon">&#128196;</span> Articles
+      </a>
+      <a href="/feeds">
+        <span class="nav-icon">&#128218;</span> My Feeds
+      </a>
+      <a href="/discover">
+        <span class="nav-icon">&#128269;</span> Discover
+      </a>
+      <a href="/settings">
+        <span class="nav-icon">&#9881;</span> Settings
+      </a>
 
-    {% for feed in feeds %}
-    <a href="/?feed_id={{ feed.id }}" class="feed-link {% if active_feed_id == feed.id %}active{% endif %}">
-      <img class="feed-favicon" src="https://www.google.com/s2/favicons?domain={{ feed_map[feed.id].domain }}&sz=32" width="14" height="14" alt="" loading="lazy" />
-      <span title="{{ feed.url }}">{{ feed.title or feed.url }}</span>
-      <button class="del-btn" onclick="deleteFeed(event, {{ feed.id }})" title="Remove feed">✕</button>
-    </a>
-    {% endfor %}
-
-    <form class="add-feed-form" onsubmit="addFeed(event)">
-      <div class="sidebar-title" style="margin-top:1rem">Add Feed</div>
-      <input type="url" id="new-url" placeholder="https://example.com/feed.xml" required />
-      <input type="text" id="new-title" placeholder="Label (optional)" />
-      <div class="row">
-        <button class="btn" type="submit">Add</button>
+      <div class="nav-section">Subscriptions</div>
+      <button class="nav-feeds-toggle" id="nav-feeds-toggle" onclick="toggleNavFeeds()">
+        <span class="nav-icon">&#128240;</span> My Feeds
+        <span class="chevron">&#9654;</span>
+      </button>
+      <div class="nav-feeds-list" id="nav-feeds-list">
+        {% for feed in feeds %}
+        <a href="/?feed_id={{ feed.id }}">
+          <img class="nav-feed-favicon" src="https://www.google.com/s2/favicons?domain={{ feed_map[feed.id].domain }}&sz=32" width="14" height="14" alt="" loading="lazy" />
+          <span>{{ feed.title or feed.url }}</span>
+        </a>
+        {% endfor %}
       </div>
-    </form>
-
-    <div class="refresh-row">
-      <button class="btn ghost" onclick="refreshFeeds()">↻ Refresh now</button>
     </div>
-  </aside>
+  </nav>
+</div>
 
+<div class="layout">
   <main class="entries" id="entries-panel">
+    <div class="ptr-indicator" id="ptr-indicator">
+      <span class="ptr-text">Pull to refresh</span>
+    </div>
+
     <div class="entries-header">
       <h2>{{ entries|length }} article{% if entries|length != 1 %}s{% endif %}
-        {% if active_feed_id %}· filtered{% endif %}
-        {% if q %}· "{{ q }}"{% endif %}
+        {% if active_feed_id %} &middot; filtered{% endif %}
+        {% if q %} &middot; "{{ q }}"{% endif %}
       </h2>
     </div>
 
@@ -107,7 +93,7 @@
           <img class="entry-favicon" src="https://www.google.com/s2/favicons?domain={{ feed_map[entry.feed_id].domain }}&sz=32" width="14" height="14" alt="" loading="lazy" />
           <span class="tag" style="--feed-color: {{ feed_map[entry.feed_id].color or '' }}">{{ entry.feed_title or "Unknown" }}</span>
           <span class="entry-date">{{ entry.published[:10] if entry.published else "" }}</span>
-          <button class="like-btn{% if entry.liked %} liked{% endif %}" onclick="toggleLike(event, {{ entry.id }}, this)" title="Like this article" aria-label="Like">♥</button>
+          <button class="like-btn{% if entry.liked %} liked{% endif %}" onclick="toggleLike(event, {{ entry.id }}, this)" title="Like this article" aria-label="Like">&#9829;</button>
         </div>
         <div class="entry-body">
           <div class="entry-content">
@@ -128,24 +114,21 @@
       {% endfor %}
     {% else %}
       <div class="empty-state">
-        <div style="font-size:2.5rem">📭</div>
-        <p>No articles yet. Add a feed and hit <strong>Refresh now</strong>.</p>
+        <div style="font-size:2.5rem">&#128237;</div>
+        <p>No articles yet. Go to <a href="/feeds">My Feeds</a> to add feeds, then pull down to refresh.</p>
       </div>
     {% endif %}
   </main>
-
-
 </div>
 
 <div id="toast"></div>
 
 <div id="img-lightbox" role="dialog" aria-modal="true" aria-label="Image preview">
-  <button id="img-lightbox-close" onclick="closeLightbox()" aria-label="Close">✕</button>
+  <button id="img-lightbox-close" onclick="closeLightbox()" aria-label="Close">&#10005;</button>
   <img id="img-lightbox-img" src="" alt="" />
 </div>
 
 <script>
-  // Feed map for client-side color computation
   const FEED_MAP = {{ feed_map | tojson }};
 </script>
 <script src="/static/index.js"></script>

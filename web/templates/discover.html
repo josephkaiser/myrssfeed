@@ -19,28 +19,10 @@
 
 <header>
   <a href="/" class="header-brand">myRSSfeed</a>
-
-  <div class="nav-links">
+  <nav class="nav-links">
     <a href="/discover" class="nav-link active">Discover</a>
     <a href="/settings" class="nav-link">Settings</a>
-  </div>
-
-  <div style="flex:1"></div>
-
-  <div class="hamburger-wrap">
-    <button class="btn icon-btn" id="hamburger-btn" onclick="toggleMenu()" aria-label="Menu" aria-expanded="false">&#9776;</button>
-    <nav class="hamburger-menu" id="hamburger-menu" role="menu">
-      <a href="/" role="menuitem">
-        <span class="menu-icon">&#128240;</span> My Feeds
-      </a>
-      <a href="/discover" class="active-page" role="menuitem">
-        <span class="menu-icon">&#128269;</span> Discover
-      </a>
-      <a href="/settings" role="menuitem">
-        <span class="menu-icon">&#9881;</span> Settings
-      </a>
-    </nav>
-  </div>
+  </nav>
 </header>
 
 <div class="discover-wrap">
@@ -81,20 +63,6 @@
 // Data passed from server
 const CATALOG = {{ catalog_json | safe }};
 const SUBSCRIBED = new Set({{ subscribed_json | safe }});
-
-function toggleMenu() {
-  const menu = document.getElementById('hamburger-menu');
-  const btn = document.getElementById('hamburger-btn');
-  const open = menu.classList.toggle('open');
-  btn.setAttribute('aria-expanded', open);
-}
-document.addEventListener('click', function(e) {
-  const wrap = document.querySelector('.hamburger-wrap');
-  if (wrap && !wrap.contains(e.target)) {
-    document.getElementById('hamburger-menu').classList.remove('open');
-    document.getElementById('hamburger-btn').setAttribute('aria-expanded', false);
-  }
-});
 
 // Build category filter buttons
 (function() {

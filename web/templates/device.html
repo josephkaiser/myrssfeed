@@ -13,111 +13,7 @@
       else el.removeAttribute("data-theme");
     })();
   </script>
-  <link rel="stylesheet" href="/static/settings.css" />
-  <style>
-    .steps { counter-reset: step; }
-    .step {
-      display: flex;
-      gap: 1rem;
-      align-items: flex-start;
-      padding: 0.9rem 0;
-      border-bottom: 1px solid var(--border, #e5e7eb);
-    }
-    .step:last-child { border-bottom: none; }
-    .step-num {
-      counter-increment: step;
-      flex-shrink: 0;
-      width: 2rem;
-      height: 2rem;
-      border-radius: 50%;
-      background: var(--accent, #2563eb);
-      color: #fff;
-      font-weight: 700;
-      font-size: 0.9rem;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .step-num::before { content: counter(step); }
-    .step-body { flex: 1; }
-    .step-title { font-weight: 600; margin-bottom: 0.25rem; }
-    .step-desc { font-size: 0.88rem; color: var(--muted, #6b7280); line-height: 1.5; }
-    .download-btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.4rem;
-      margin-top: 0.6rem;
-      padding: 0.55rem 1.1rem;
-      background: var(--accent, #2563eb);
-      color: #fff !important;
-      border-radius: 6px;
-      font-weight: 600;
-      font-size: 0.88rem;
-      text-decoration: none;
-    }
-    .download-btn:hover { opacity: 0.88; }
-    .os-tabs {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.4rem;
-      margin-bottom: 0.75rem;
-    }
-    .os-tab {
-      padding: 0.3rem 0.75rem;
-      border: 1px solid var(--border, #e5e7eb);
-      border-radius: 20px;
-      font-size: 0.82rem;
-      cursor: pointer;
-      background: none;
-      color: inherit;
-    }
-    .os-tab.active {
-      background: var(--accent, #2563eb);
-      border-color: var(--accent, #2563eb);
-      color: #fff;
-    }
-    .os-instructions { font-size: 0.88rem; line-height: 1.7; }
-    .os-instructions ol { margin: 0.25rem 0 0 1.25rem; padding: 0; }
-    .os-instructions li { margin-bottom: 0.2rem; }
-    .os-block { display: none; }
-    .os-block.visible { display: block; }
-    .device-list { list-style: none; margin: 0; padding: 0; }
-    .device-item {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 0.6rem 0;
-      border-bottom: 1px solid var(--border, #e5e7eb);
-      font-size: 0.9rem;
-    }
-    .device-item:last-child { border-bottom: none; }
-    .device-meta { color: var(--muted, #6b7280); font-size: 0.78rem; margin-top: 0.1rem; }
-    .remove-btn {
-      border: none;
-      background: none;
-      color: var(--danger, #dc2626);
-      cursor: pointer;
-      font-size: 0.82rem;
-      padding: 0.2rem 0.5rem;
-    }
-    .remove-btn:hover { text-decoration: underline; }
-    .register-row {
-      display: flex;
-      gap: 0.5rem;
-      margin-top: 0.75rem;
-    }
-    .register-row input {
-      flex: 1;
-      padding: 0.45rem 0.7rem;
-      border: 1px solid var(--border, #e5e7eb);
-      border-radius: 6px;
-      font-size: 0.88rem;
-      background: var(--input-bg, #fff);
-      color: inherit;
-    }
-    .slot-msg { font-size: 0.82rem; color: var(--muted, #6b7280); margin-top: 0.4rem; }
-    .slot-msg.warn { color: var(--danger, #dc2626); }
-  </style>
+  <link rel="stylesheet" href="/static/styles.css" />
 </head>
 <body>
 
@@ -131,6 +27,7 @@
       <a href="/" role="menuitem"><span class="menu-icon">📰</span> My Feeds</a>
       <a href="/viz" role="menuitem"><span class="menu-icon">🗺️</span> Topic Map</a>
       <a href="/digest" role="menuitem"><span class="menu-icon">✨</span> Digest</a>
+      <a href="/discover" role="menuitem"><span class="menu-icon">🔍</span> Discover</a>
       <a href="/settings" role="menuitem"><span class="menu-icon">⚙️</span> Settings</a>
     </nav>
   </div>
@@ -138,125 +35,51 @@
 
 <div class="settings-wrap">
 
-  <!-- Step-by-step onboarding -->
+  <!-- Onboarding -->
   <div class="settings-section">
-    <div class="settings-section-title">Trust this site on your device</div>
+    <div class="settings-section-title">Connect this device</div>
     <p style="font-size:0.88rem;color:var(--muted,#6b7280);margin:0 0 1rem">
-      myRSSfeed uses a private certificate that your browser doesn't recognise yet.
-      Follow the two steps below to stop the security warning.
+      myRSSfeed uses a private certificate. Your browser will show a security warning the first time —
+      that's expected. Just proceed through it once and you're done.
     </p>
 
-    <div class="steps">
+    <div class="os-tabs">
+      <button class="os-tab active" onclick="showOS('ios',this)">iPhone / iPad</button>
+      <button class="os-tab" onclick="showOS('android',this)">Android</button>
+      <button class="os-tab" onclick="showOS('mac',this)">macOS</button>
+      <button class="os-tab" onclick="showOS('win',this)">Windows</button>
+    </div>
 
-      <div class="step">
-        <div class="step-num"></div>
-        <div class="step-body">
-          <div class="step-title">Download the certificate</div>
-          <div class="step-desc">
-            This small file tells your device to trust connections to myRSSfeed.
-            It only applies to this local network — it does not affect any other website.
-          </div>
-          <a class="download-btn" href="/ca.crt" download="myrssfeed-ca.crt">
-            &#8659; Download certificate
-          </a>
-        </div>
+    <div class="os-instructions">
+      <div id="os-ios" class="os-block visible">
+        <ol>
+          <li>Open <strong>Safari</strong> and go to <a href="https://myrssfeed.local">https://myrssfeed.local</a>.</li>
+          <li>Tap <strong>Show Details</strong> on the warning page, then <strong>visit this website</strong>.</li>
+          <li>Confirm when prompted — Safari will remember your choice.</li>
+        </ol>
+        <p style="font-size:0.82rem;color:var(--muted,#6b7280);margin-top:0.4rem">
+          Use Safari — Chrome and Firefox on iOS cannot bypass this prompt the same way.
+        </p>
       </div>
-
-      <div class="step">
-        <div class="step-num"></div>
-        <div class="step-body">
-          <div class="step-title">Install it on your device</div>
-          <div class="step-desc">Instructions vary by operating system — pick yours:</div>
-
-          <div class="os-tabs" style="margin-top:0.6rem">
-            <button class="os-tab active" onclick="showOS('ios',this)">iPhone / iPad</button>
-            <button class="os-tab" onclick="showOS('android',this)">Android</button>
-            <button class="os-tab" onclick="showOS('mac',this)">macOS</button>
-            <button class="os-tab" onclick="showOS('win',this)">Windows</button>
-            <button class="os-tab" onclick="showOS('linux',this)">Linux / Firefox</button>
-          </div>
-
-          <div class="os-instructions">
-            <div id="os-ios" class="os-block visible">
-              <p style="margin:0 0 0.5rem">
-                <strong>Easiest:</strong> tap the button below in Safari — iOS will guide you through the install in one step.
-              </p>
-              <a class="download-btn" href="/ca.mobileconfig" style="margin-bottom:0.75rem">
-                &#8659; Install profile (Safari)
-              </a>
-              <ol style="margin-top:0.5rem">
-                <li>After downloading, go to <strong>Settings</strong> and tap <em>Profile Downloaded</em> near the top.</li>
-                <li>Tap <strong>Install</strong> (top right), enter your passcode, tap <strong>Install</strong> again.</li>
-                <li>Go to <strong>Settings › General › About › Certificate Trust Settings</strong>.</li>
-                <li>Toggle on <strong>myRSSfeed CA</strong> under "Enable Full Trust for Root Certificates".</li>
-                <li>Open Safari and go to <a href="https://myrssfeed.local">https://myrssfeed.local</a>.</li>
-              </ol>
-              <p style="font-size:0.82rem;color:var(--muted,#6b7280);margin-top:0.4rem">
-                Must use Safari to download the profile — Chrome and Firefox on iOS won't trigger the install prompt.
-              </p>
-            </div>
-            <div id="os-android" class="os-block">
-              <ol>
-                <li>Tap <strong>Download certificate</strong> above — the file saves to Downloads.</li>
-                <li>Open <strong>Settings › Security › Encryption &amp; credentials › Install a certificate</strong>.</li>
-                <li>Choose <strong>CA certificate</strong>, then select the downloaded file.</li>
-                <li>Confirm the warning and tap <strong>Install anyway</strong>.</li>
-                <li>Open Chrome and go to <a href="https://myrssfeed.local">https://myrssfeed.local</a>.</li>
-              </ol>
-              <p style="font-size:0.82rem;color:var(--muted,#6b7280)">
-                Exact steps vary by Android version. Search "install CA certificate" + your phone model if needed.
-              </p>
-            </div>
-            <div id="os-mac" class="os-block">
-              <p style="margin:0 0 0.5rem">
-                <strong>Easiest — automatic install:</strong> download <code>bootstrap.command</code> from GitHub and double-click it.
-                It fetches the certificate and installs it in one step.
-              </p>
-              <a class="download-btn" href="/bootstrap.command" style="margin-bottom:0.75rem">
-                &#8659; Download bootstrap.command
-              </a>
-              <p style="font-size:0.82rem;color:var(--muted,#6b7280);margin:0.4rem 0 0.75rem">
-                Or use the Apple profile (same as iOS — installs via System Preferences):
-                <a href="/ca.mobileconfig">Download profile</a>
-              </p>
-              <details style="font-size:0.85rem">
-                <summary style="cursor:pointer;color:var(--muted,#6b7280)">Manual steps instead</summary>
-                <ol style="margin-top:0.5rem">
-                  <li>Click <strong>Download certificate</strong> above.</li>
-                  <li>Double-click the downloaded <code>myrssfeed-ca.crt</code> — Keychain Access opens.</li>
-                  <li>Double-click the <strong>myrssfeed</strong> certificate in the list.</li>
-                  <li>Expand <strong>Trust</strong>, set <em>When using this certificate</em> to <strong>Always Trust</strong>.</li>
-                  <li>Close and enter your password to confirm.</li>
-                </ol>
-              </details>
-            </div>
-            <div id="os-win" class="os-block">
-              <ol>
-                <li>Click <strong>Download certificate</strong> above.</li>
-                <li>Double-click the downloaded file and click <strong>Install Certificate…</strong></li>
-                <li>Choose <strong>Local Machine</strong> and click <strong>Next</strong>.</li>
-                <li>Select <strong>Place all certificates in the following store</strong> → <strong>Browse</strong> → <strong>Trusted Root Certification Authorities</strong>.</li>
-                <li>Click <strong>Next</strong> → <strong>Finish</strong> → confirm the security prompt.</li>
-                <li>Reload <a href="https://myrssfeed.local">https://myrssfeed.local</a>.</li>
-              </ol>
-              <p style="font-size:0.82rem;color:var(--muted,#6b7280)">Firefox has its own certificate store — also import via Firefox <strong>Settings › Privacy &amp; Security › Certificates › View Certificates › Import</strong>.</p>
-            </div>
-            <div id="os-linux" class="os-block">
-              <ol>
-                <li>Click <strong>Download certificate</strong> above.</li>
-                <li>Open Firefox <strong>Settings › Privacy &amp; Security › Certificates › View Certificates</strong>.</li>
-                <li>On the <strong>Authorities</strong> tab click <strong>Import</strong>, select the file.</li>
-                <li>Check <em>Trust this CA to identify websites</em> and click <strong>OK</strong>.</li>
-                <li>Reload <a href="https://myrssfeed.local">https://myrssfeed.local</a>.</li>
-              </ol>
-              <p style="font-size:0.82rem;color:var(--muted,#6b7280)">For Chrome on Linux:<br>
-                <code>sudo cp myrssfeed-ca.crt /usr/local/share/ca-certificates/ &amp;&amp; sudo update-ca-certificates</code>
-              </p>
-            </div>
-          </div>
-        </div>
+      <div id="os-android" class="os-block">
+        <ol>
+          <li>Open <strong>Chrome</strong> and go to <a href="https://myrssfeed.local">https://myrssfeed.local</a>.</li>
+          <li>Tap <strong>Advanced</strong> on the warning page, then <strong>Proceed to myrssfeed.local</strong>.</li>
+        </ol>
       </div>
-
+      <div id="os-mac" class="os-block">
+        <ol>
+          <li>Open <strong>Safari</strong> and go to <a href="https://myrssfeed.local">https://myrssfeed.local</a>.</li>
+          <li>Click <strong>Show Details</strong>, then <strong>visit this website</strong>.</li>
+          <li>Enter your password when prompted — Safari will remember this.</li>
+        </ol>
+      </div>
+      <div id="os-win" class="os-block">
+        <ol>
+          <li>Open <strong>Edge</strong> and go to <a href="https://myrssfeed.local">https://myrssfeed.local</a>.</li>
+          <li>Click <strong>Advanced</strong> on the warning page, then <strong>Continue to myrssfeed.local</strong>.</li>
+        </ol>
+      </div>
     </div>
   </div>
 
