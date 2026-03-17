@@ -25,6 +25,14 @@
   </button>
   <a class="header-brand" href="/">myRSSfeed</a>
 
+  <div class="header-metrics">
+    <span class="header-count">
+      {{ entries|length }} article{% if entries|length != 1 %}s{% endif %}
+      {% if active_feed_id %} · filtered{% endif %}
+      {% if q %} · "{{ q }}"{% endif %}
+    </span>
+  </div>
+
   <form class="search-bar" method="get" action="/" id="search-form">
     {% if active_feed_id %}
     <input type="hidden" name="feed_id" value="{{ active_feed_id }}" />
@@ -68,10 +76,13 @@
       </button>
       <div class="nav-feeds-list" id="nav-feeds-list">
         {% for feed in feeds %}
-        <a href="/?feed_id={{ feed.id }}">
-          <img class="nav-feed-favicon" src="https://www.google.com/s2/favicons?domain={{ feed_map[feed.id].domain }}&sz=32" width="14" height="14" alt="" loading="lazy" />
-          <span>{{ feed.title or feed.url }}</span>
-        </a>
+        <div class="nav-feeds-row" data-feed-id="{{ feed.id }}">
+          <a href="/?feed_id={{ feed.id }}">
+            <img class="nav-feed-favicon" src="https://www.google.com/s2/favicons?domain={{ feed_map[feed.id].domain }}&sz=32" width="14" height="14" alt="" loading="lazy" />
+            <span class="nav-feed-label">{{ feed.title or feed.url }}</span>
+          </a>
+          <button type="button" class="nav-feed-remove" onclick="deleteFeed({{ feed.id }}, this)" title="Remove feed" aria-label="Remove feed">&times;</button>
+        </div>
         {% endfor %}
       </div>
     </div>
@@ -101,10 +112,13 @@
       <div class="sidebar-section-title">Subscriptions</div>
       <div class="sidebar-feeds">
         {% for feed in feeds %}
-        <a href="/?feed_id={{ feed.id }}">
-          <img class="sidebar-feed-favicon" src="https://www.google.com/s2/favicons?domain={{ feed_map[feed.id].domain }}&sz=32" width="14" height="14" alt="" loading="lazy" />
-          <span>{{ feed.title or feed.url }}</span>
-        </a>
+        <div class="sidebar-feeds-row" data-feed-id="{{ feed.id }}">
+          <a href="/?feed_id={{ feed.id }}">
+            <img class="sidebar-feed-favicon" src="https://www.google.com/s2/favicons?domain={{ feed_map[feed.id].domain }}&sz=32" width="14" height="14" alt="" loading="lazy" />
+            <span class="sidebar-feed-label">{{ feed.title or feed.url }}</span>
+          </a>
+          <button type="button" class="sidebar-feed-remove" onclick="deleteFeed({{ feed.id }}, this)" title="Remove feed" aria-label="Remove feed">&times;</button>
+        </div>
         {% endfor %}
       </div>
     </div>
@@ -116,10 +130,7 @@
     </div>
 
     <div class="entries-header">
-      <h2>{{ entries|length }} article{% if entries|length != 1 %}s{% endif %}
-        {% if active_feed_id %} &middot; filtered{% endif %}
-        {% if q %} &middot; "{{ q }}"{% endif %}
-      </h2>
+      <!-- Reserved for future filters; count moved to header -->
     </div>
 
     {% if entries %}
@@ -128,6 +139,12 @@
       {% set display_summary = entry.og_description or entry.summary %}
       {% set display_thumb = entry.og_image_url or entry.thumbnail_url %}
       <article class="entry-card{% if entry.read %} read{% endif %}{% if display_thumb %} has-thumb{% endif %}" data-entry-id="{{ entry.id }}">
+        <div class="entry-header-row">
+          <button type="button" class="entry-toggle-btn" aria-label="Expand article" aria-expanded="false">+</button>
+          <div class="entry-title">
+            {{ display_title or "(no title)" }}
+          </div>
+        </div>
         <div class="entry-meta">
           <img class="entry-favicon" src="https://www.google.com/s2/favicons?domain={{ feed_map[entry.feed_id].domain }}&sz=32" width="14" height="14" alt="" loading="lazy" />
           <span class="tag" style="--feed-color: {{ feed_map[entry.feed_id].color or '' }}">{{ entry.feed_title or "Unknown" }}</span>
@@ -136,12 +153,8 @@
         </div>
         <div class="entry-body">
           <div class="entry-content">
-            <div class="entry-title">
-              {{ display_title or "(no title)" }}
-            </div>
             {% if display_summary %}
-            <div class="entry-summary">{{ display_summary | striptags }}</div>
-            <button type="button" class="entry-summary-toggle">See more</button>
+            <div class="entry-summary">{{ display_summary | safe }}</div>
             {% endif %}
             <div class="entry-link-row">
               <a href="{{ entry.link }}" target="_blank" rel="noopener noreferrer" onclick="markRead({{ entry.id }}, this)">

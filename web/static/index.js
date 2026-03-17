@@ -184,24 +184,55 @@
     }
   }
 
-  // ── Entry summary see more/less ────────────────────────────────────
+  // ── Entry expand/collapse (+ / -) ───────────────────────────────────
   (function() {
     const cards = document.querySelectorAll(".entry-card");
     if (!cards.length) return;
+
     cards.forEach((card) => {
-      const summary = card.querySelector(".entry-summary");
-      const toggle  = card.querySelector(".entry-summary-toggle");
-      if (!summary || !toggle) return;
-      // Only show toggle if there is actual overflow from the line clamp
-      if (summary.scrollHeight > summary.clientHeight + 4) {
-        card.classList.add("has-overflow");
-        toggle.addEventListener("click", () => {
-          const expanded = card.classList.toggle("expanded");
-          toggle.textContent = expanded ? "See less" : "See more";
-        });
-      }
+      const toggleBtn = card.querySelector(".entry-toggle-btn");
+      if (!toggleBtn) return;
+
+      const setExpanded = (expanded) => {
+        card.classList.toggle("expanded", expanded);
+        toggleBtn.textContent = expanded ? "−" : "+";
+        toggleBtn.setAttribute("aria-expanded", expanded ? "true" : "false");
+      };
+
+      toggleBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const isExpanded = card.classList.contains("expanded");
+        setExpanded(!isExpanded);
+      });
     });
   })();
+
+  // ── Delete feed from sidebar/nav ────────────────────────────────────
+  async function deleteFeed(feedId, btn) {
+    if (!confirm("Remove this feed and all its articles?")) return;
+    btn.disabled = true;
+    const row = btn.closest("[data-feed-id]");
+    try {
+      const res = await fetch(`/api/feeds/${feedId}`, { method: "DELETE" });
+      if (res.ok) {
+        if (row) {
+          row.remove();
+        }
+        // If we were viewing this feed, send user back to main list
+        const params = new URLSearchParams(window.location.search);
+        if (params.get("feed_id") === String(feedId)) {
+          window.location.href = "/";
+        }
+        toast("Feed removed.");
+      } else {
+        toast("Could not remove feed.", false);
+      }
+    } catch (_) {
+      toast("Network error removing feed.", false);
+    } finally {
+      btn.disabled = false;
+    }
+  }
 
   // ── Helpers ──────────────────────────────────────────────────────
   function escHtml(s) {
