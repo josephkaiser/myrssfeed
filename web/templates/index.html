@@ -25,14 +25,6 @@
   </button>
   <a class="header-brand" href="/">myRSSfeed</a>
 
-  <div class="header-metrics">
-    <span class="header-count">
-      {{ entries|length }} article{% if entries|length != 1 %}s{% endif %}
-      {% if active_feed_id %} · filtered{% endif %}
-      {% if q %} · "{{ q }}"{% endif %}
-    </span>
-  </div>
-
   <form class="search-bar" method="get" action="/" id="search-form">
     {% if active_feed_id %}
     <input type="hidden" name="feed_id" value="{{ active_feed_id }}" />
@@ -46,6 +38,14 @@
     <a href="/" class="btn ghost pill">Clear</a>
     {% endif %}
   </form>
+
+  <div class="header-metrics">
+    <span class="header-count">
+      {{ entries|length }} article{% if entries|length != 1 %}s{% endif %}
+      {% if active_feed_id %} · filtered{% endif %}
+      {% if q %} · "{{ q }}"{% endif %}
+    </span>
+  </div>
 </header>
 
 <!-- Overlay nav drawer -->

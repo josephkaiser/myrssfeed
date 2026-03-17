@@ -309,10 +309,28 @@ def index(request: Request, q: Optional[str] = None, feed_id: Optional[int] = No
     query += " ORDER BY e.published DESC LIMIT ?"
     params.append(max_entries)
     entries = conn.execute(query, params).fetchall()
-    conn.close()
 
     entries_list = [dict(e) for e in entries]
-    trending = _compute_trending(entries_list)
+
+    # Compute trending from recent global entries (not filtered),
+    # so the sidebar always has something interesting.
+    trending_query = """
+        SELECT e.id, e.feed_id, f.title AS feed_title,
+               e.title, e.link, e.published, e.summary,
+               e.thumbnail_url,
+               COALESCE(e.read, 0) AS read,
+               COALESCE(e.liked, 0) AS liked,
+               COALESCE(e.score, 0.0) AS score
+        FROM entries e
+        JOIN feeds f ON f.id = e.feed_id
+        ORDER BY e.published DESC
+        LIMIT 200
+    """
+    trending_rows = conn.execute(trending_query).fetchall()
+    conn.close()
+
+    trending_list = [dict(e) for e in trending_rows]
+    trending = _compute_trending(trending_list)
 
     return templates.TemplateResponse(
         "index.html",

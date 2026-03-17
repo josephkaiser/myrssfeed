@@ -202,7 +202,15 @@
       toggleBtn.addEventListener("click", (e) => {
         e.stopPropagation();
         const isExpanded = card.classList.contains("expanded");
-        setExpanded(!isExpanded);
+        const next = !isExpanded;
+        setExpanded(next);
+        if (next) {
+          try {
+            card.scrollIntoView({ behavior: "smooth", block: "start" });
+          } catch (_) {
+            card.scrollIntoView(true);
+          }
+        }
       });
     });
   })();
