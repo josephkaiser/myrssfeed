@@ -6,6 +6,13 @@
   <title>myRSSfeed</title>
   <script>
     (function() {
+      var host = window.location && window.location.hostname;
+      var suffix = host && host !== "localhost" && host !== "127.0.0.1" ? host : "local";
+      document.title = "myRSSfeed | " + suffix;
+    })();
+  </script>
+  <script>
+    (function() {
       var t = localStorage.getItem("theme") || "system";
       var el = document.documentElement;
       if (t === "light") el.setAttribute("data-theme", "light");
@@ -33,8 +40,23 @@
       <input type="search" name="q" id="search-input" value="{{ q }}" placeholder="Search articles..." autocomplete="off" />
       <div class="search-dropdown" id="search-dropdown" style="display:none"></div>
     </div>
+    <div class="search-advanced">
+      <button type="button" class="btn pill search-advanced-btn" id="advanced-toggle" aria-expanded="false" aria-haspopup="true" aria-controls="advanced-dropdown">Advanced</button>
+      <div class="search-advanced-dropdown" id="advanced-dropdown" role="menu" aria-labelledby="advanced-toggle" hidden>
+        <div class="search-advanced-row">
+          <label for="date-range">Date range</label>
+          <select name="days" id="date-range" aria-label="Limit results to last N days">
+            <option value="">All-Time</option>
+            <option value="1" {% if date_range == 1 %}selected{% endif %}>Last 1 day</option>
+            <option value="5" {% if date_range == 5 %}selected{% endif %}>Last 5 days</option>
+            <option value="30" {% if date_range == 30 %}selected{% endif %}>Last 30 days</option>
+            <option value="90" {% if date_range == 90 %}selected{% endif %}>Last 90 days</option>
+          </select>
+        </div>
+      </div>
+    </div>
     <button class="btn pill" type="submit">Go</button>
-    {% if q %}
+    {% if q or date_range %}
     <a href="/" class="btn ghost pill">Clear</a>
     {% endif %}
   </form>
@@ -42,9 +64,10 @@
   <div class="header-right">
     <div class="header-metrics">
       <span class="header-count">
-        {{ entries|length }} article{% if entries|length != 1 %}s{% endif %}
+        {{ total_entries_display }} article{% if total_entries != 1 %}s{% endif %}
         {% if active_feed_id %} · filtered{% endif %}
         {% if q %} · "{{ q }}"{% endif %}
+        {% if date_range %} · last {{ date_range }} days{% endif %}
       </span>
     </div>
     <div class="header-actions" aria-label="Quick actions">
@@ -92,6 +115,18 @@
           <span class="refresh-status-dot" id="header-wordrank-status-dot" aria-hidden="true"></span>
           <span class="refresh-status-text" id="header-wordrank-status-text">Idle</span>
         </div>
+      </div>
+      <div class="header-action">
+        <button
+          class="btn icon-btn"
+          id="header-filter-btn"
+          type="button"
+          title="Filter out low-quality items"
+          aria-pressed="false"
+          onclick="headerToggleFilter()"
+        >
+          &#128269;
+        </button>
       </div>
       <div class="header-action">
         <a

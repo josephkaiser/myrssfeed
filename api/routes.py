@@ -1,12 +1,15 @@
 import json
 import logging
 import os
+import shutil
+import tempfile
+import time
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse, Response
 from fastapi.templating import Jinja2Templates
 from typing import Optional
 
-from utils.helpers import get_db, get_setting, set_setting, DEFAULTS
+from utils.helpers import get_db, get_setting, set_setting, DEFAULTS, DB_FILE
 from api.schemas import FeedCreate, FeedOut, EntryOut, SettingsUpdate, DigestOut, VizEntryOut, VizThemeOut, DeviceCreate, DeviceOut, DetectRequest
 from scripts.compile_feed import run_compile_feed
 from scripts.scraper import run_scraper_async, is_scraper_running
@@ -395,7 +398,11 @@ def index(request: Request, q: Optional[str] = None, feed_id: Optional[int] = No
     if max_entries <= 0:
         max_entries = 1000
 
-    query += " ORDER BY e.published DESC LIMIT ?"
+    # By day (newest first), then by WordRank score within day, then by time
+    query += (
+        " ORDER BY (e.published IS NULL), DATE(e.published) DESC,"
+        " COALESCE(e.score, 0) DESC, e.published DESC LIMIT ?"
+    )
     params.append(max_entries)
     entries = conn.execute(query, params).fetchall()
 
@@ -482,7 +489,14 @@ def list_entries(
     q: Optional[str] = None,
     feed_id: Optional[int] = None,
     limit: int = 100,
+    offset: int = 0,
 ):
+    """
+    List entries ordered by recency, with basic pagination.
+
+    The `limit` and `offset` arguments are used by the UI to lazily load
+    additional pages of articles instead of rendering everything at once.
+    """
     conn = get_db()
     query = """
         SELECT e.id, e.feed_id, f.title AS feed_title,
@@ -509,8 +523,17 @@ def list_entries(
     if filters:
         query += " WHERE " + " AND ".join(filters)
 
-    query += " ORDER BY e.published DESC LIMIT ?"
-    params.append(limit)
+    if limit <= 0:
+        limit = 100
+    if offset < 0:
+        offset = 0
+
+    # By day (newest first), then by WordRank score within day, then by time
+    query += (
+        " ORDER BY (e.published IS NULL), DATE(e.published) DESC,"
+        " COALESCE(e.score, 0) DESC, e.published DESC LIMIT ? OFFSET ?"
+    )
+    params.extend([limit, offset])
 
     rows = conn.execute(query, params).fetchall()
     conn.close()
@@ -526,9 +549,128 @@ def get_settings():
     return {key: get_setting(key) for key in DEFAULTS}
 
 
+def _validate_max_entries(desired: int) -> None:
+    """
+    Validate that a requested max_entries value is sane for the current device.
+
+    - Always require a modest lower bound so the UI remains usable.
+    - Allow up to 5000 without extra checks (safe on Raspberry Pi-class hardware).
+    - For larger values, sanity-check against:
+      * available disk space on the DB volume
+      * rough write performance to that volume
+    """
+    if desired < 50 or desired > 20000:
+        raise HTTPException(
+            status_code=422,
+            detail="Maximum articles must be between 50 and 20000.",
+        )
+
+    if desired <= 5000:
+        return
+
+    # Heuristic checks for larger values. These are intentionally conservative:
+    # if we cannot confidently say the device is fast enough, we reject very
+    # large limits rather than risk making the app unusable.
+    try:
+        usage = shutil.disk_usage(DB_FILE)
+        conn = get_db()
+        try:
+            total_articles = conn.execute("SELECT COUNT(*) FROM entries").fetchone()[0]
+        finally:
+            conn.close()
+    except Exception:
+        # If we cannot inspect disk or DB stats, only allow moderately higher
+        # limits instead of very large ones.
+        if desired > 8000:
+            raise HTTPException(
+                status_code=422,
+                detail=(
+                    "Could not verify storage capacity for very large article lists. "
+                    "Try a value of 8000 or lower on this device."
+                ),
+            )
+        return
+
+    # Estimate storage per article from the current DB size. Even though
+    # max_entries only controls how many rows we display, this gives us a sense
+    # of how heavy each article is on this device.
+    try:
+        db_size = os.path.getsize(DB_FILE)
+    except OSError:
+        db_size = 0
+
+    if total_articles > 0 and db_size > 0:
+        avg_bytes_per_article = max(db_size // max(total_articles, 1), 1024)
+    else:
+        # Fall back to a conservative 2 KiB/article estimate if we have no data.
+        avg_bytes_per_article = 2048
+
+    estimated_bytes_for_view = avg_bytes_per_article * desired
+
+    # Require that free space is comfortably above what a single very large
+    # query/render might touch (simple 4× safety margin).
+    if usage.free < estimated_bytes_for_view * 4:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                "The requested maximum articles value is too large for the remaining "
+                "disk space on this device. Try a smaller number."
+            ),
+        )
+
+    # Rough write-speed probe on the same filesystem as the DB. We keep this
+    # small (a few MiB) so it does not meaningfully wear SD cards, and only run
+    # it when the user asks for a very large value.
+    if desired >= 10000:
+        test_dir = os.path.dirname(DB_FILE) or "."
+        test_size_bytes = 4 * 1024 * 1024  # 4 MiB
+        data = b"\0" * 1024 * 1024
+        written = 0
+        start = time.monotonic()
+        tmp_path = None
+        try:
+            with tempfile.NamedTemporaryFile(dir=test_dir, delete=False) as tmp:
+                tmp_path = tmp.name
+                while written < test_size_bytes:
+                    tmp.write(data)
+                    written += len(data)
+                tmp.flush()
+                os.fsync(tmp.fileno())
+            elapsed = max(time.monotonic() - start, 0.001)
+            mb_per_sec = (written / (1024 * 1024)) / elapsed
+        except Exception:
+            mb_per_sec = None
+        finally:
+            if tmp_path and os.path.exists(tmp_path):
+                try:
+                    os.remove(tmp_path)
+                except Exception:
+                    pass
+
+        # If the drive is very slow (e.g. tired SD card) and the user is asking
+        # for a huge visible list, steer them towards a smaller value.
+        if mb_per_sec is not None and mb_per_sec < 5.0:
+            raise HTTPException(
+                status_code=422,
+                detail=(
+                    "This device's storage appears too slow for very large article lists. "
+                    "Try a value below 10000, or run myRSSfeed on a faster drive."
+                ),
+            )
+
+
 @router.post("/api/settings")
 def update_settings(payload: SettingsUpdate):
     updates = payload.model_dump(exclude_none=True)
+    if "max_entries" in updates:
+        try:
+            _validate_max_entries(int(str(updates["max_entries"])))
+        except ValueError:
+            raise HTTPException(
+                status_code=422,
+                detail="Maximum articles must be a number.",
+            )
+
     for key, value in updates.items():
         set_setting(key, str(value))
     # If scheduler settings changed, ask the running scheduler to reconfigure

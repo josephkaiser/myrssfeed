@@ -24,6 +24,41 @@
     refreshToggleUI(t);
   })();
 
+  // ── Quality filter aggressiveness slider ─────────────────────────
+  function getFilterAggressiveness() {
+    const raw = localStorage.getItem("filter_aggressiveness");
+    const level = parseInt(raw ?? "1", 10);
+    if (Number.isNaN(level)) return 1;
+    return Math.min(3, Math.max(0, level));
+  }
+
+  function describeAggressiveness(level) {
+    switch (level) {
+      case 0: return "Very gentle";
+      case 1: return "Balanced";
+      case 2: return "Firm";
+      case 3: return "Aggressive";
+      default: return "Balanced";
+    }
+  }
+
+  (function initFilterAggressiveness() {
+    const slider = document.getElementById("filter_aggressiveness");
+    const label = document.getElementById("filter_aggressiveness_label");
+    if (!slider || !label) return;
+
+    const level = getFilterAggressiveness();
+    slider.value = String(level);
+    label.textContent = describeAggressiveness(level);
+
+    slider.addEventListener("input", () => {
+      const val = parseInt(slider.value, 10);
+      const level = Number.isNaN(val) ? 1 : Math.min(3, Math.max(0, val));
+      localStorage.setItem("filter_aggressiveness", String(level));
+      label.textContent = describeAggressiveness(level);
+    });
+  })();
+
   // ── Toast ───────────────────────────────────────────────────────
   function toast(msg, ok = true) {
     const el = document.getElementById("toast");
@@ -118,10 +153,14 @@
 
     const maxEntriesInput = document.getElementById("max_entries");
     const maxEntriesVal = parseInt(maxEntriesInput.value, 10);
-    if (isNaN(maxEntriesVal) || maxEntriesVal < 50 || maxEntriesVal > 5000) {
-      toast("Maximum articles must be between 50 and 5000.", false);
+    if (isNaN(maxEntriesVal) || maxEntriesVal < 50 || maxEntriesVal > 20000) {
+      toast("Maximum articles must be between 50 and 20000.", false);
       maxEntriesInput.focus();
       return;
+    }
+
+    if (maxEntriesVal > 5000) {
+      toast("Large article lists may be slow on lower-end devices. Make sure this machine has enough disk space and a fast drive.", true);
     }
 
     const theme = localStorage.getItem("theme") || "system";

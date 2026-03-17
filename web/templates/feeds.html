@@ -6,6 +6,13 @@
   <title>My Feeds — myRSSfeed</title>
   <script>
     (function() {
+      var host = window.location && window.location.hostname;
+      var suffix = host && host !== "localhost" && host !== "127.0.0.1" ? host : "local";
+      document.title = "myRSSfeed | " + suffix;
+    })();
+  </script>
+  <script>
+    (function() {
       var t = localStorage.getItem("theme") || "system";
       var el = document.documentElement;
       if (t === "light") el.setAttribute("data-theme", "light");
@@ -35,6 +42,83 @@
     <a href="/" class="btn ghost pill">Clear</a>
     {% endif %}
   </form>
+
+  <div class="header-right">
+    <div class="header-metrics">
+      <span class="header-count">
+        <!-- Count omitted on feeds page -->
+      </span>
+    </div>
+    <div class="header-actions" aria-label="Quick actions">
+      <div class="header-action">
+        <button
+          class="btn icon-btn"
+          id="header-refresh-btn"
+          type="button"
+          title="Fetch latest from all feeds"
+          onclick="headerRefreshNow()"
+        >
+          &#10227;
+        </button>
+        <div class="refresh-status header-refresh-status" aria-live="polite">
+          <span class="refresh-status-dot" id="header-refresh-status-dot" aria-hidden="true"></span>
+          <span class="refresh-status-text" id="header-refresh-status-text">No runs yet</span>
+        </div>
+      </div>
+      <div class="header-action">
+        <button
+          class="btn icon-btn"
+          id="header-scrape-btn"
+          type="button"
+          title="Enrich articles with metadata"
+          onclick="headerScrapeNow()"
+        >
+          &#8681;
+        </button>
+        <div class="refresh-status header-scrape-status" aria-live="polite">
+          <span class="refresh-status-dot" id="header-scrape-status-dot" aria-hidden="true"></span>
+          <span class="refresh-status-text" id="header-scrape-status-text">No runs yet</span>
+        </div>
+      </div>
+      <div class="header-action">
+        <button
+          class="btn icon-btn"
+          id="header-wordrank-btn"
+          type="button"
+          title="Recompute personalized scores (WordRank)"
+          onclick="headerWordrankNow()"
+        >
+          WR
+        </button>
+        <div class="refresh-status header-wordrank-status" aria-live="polite">
+          <span class="refresh-status-dot" id="header-wordrank-status-dot" aria-hidden="true"></span>
+          <span class="refresh-status-text" id="header-wordrank-status-text">Idle</span>
+        </div>
+      </div>
+      <div class="header-action">
+        <button
+          class="btn icon-btn"
+          id="header-filter-btn"
+          type="button"
+          title="Filter out low-quality items"
+          aria-pressed="false"
+          onclick="headerToggleFilter()"
+        >
+          &#128269;
+        </button>
+      </div>
+      <div class="header-action">
+        <a
+          href="/settings"
+          class="btn icon-btn header-gear-link"
+          title="Settings"
+          aria-label="Settings"
+        >
+          &#9881;
+        </a>
+      </div>
+    </div>
+  </div>
 </header>
 
 <!-- Overlay nav drawer (mobile only) -->
@@ -136,6 +220,19 @@
       />
       <button class="btn" id="feed-btn" onclick="handleFeedInput()">Find feeds</button>
     </div>
+    <div id="feed-name-box" class="feed-name-box" style="display:none">
+      <label for="feed-name-input" id="feed-name-label">Name this feed</label>
+      <div class="feed-name-row">
+        <input
+          type="text"
+          id="feed-name-input"
+          class="detect-input"
+          autocomplete="off"
+        />
+        <button class="btn" id="feed-name-confirm" onclick="confirmFeedName()">Add</button>
+        <button class="btn ghost" type="button" id="feed-name-cancel" onclick="cancelFeedName()">Cancel</button>
+      </div>
+    </div>
     <div id="detect-results"></div>
   </div>
 
@@ -168,6 +265,34 @@ function getDomain(url) {
   try { return new URL(url).hostname; } catch(e) { return ''; }
 }
 
+function suggestFeedName(url, fallback) {
+  try {
+    const u = new URL(url);
+    if (u.hostname === 'rss.nytimes.com' && /\/services\/xml\/rss\/nyt\//i.test(u.pathname)) {
+      const parts = u.pathname.split('/').filter(Boolean);
+      const last = parts[parts.length - 1] || '';
+      const m = last.match(/^(.+)\.xml$/i);
+      if (m) {
+        let section = decodeURIComponent(m[1]).replace(/-/g, ' ');
+        section = section.replace(/\w\S*/g, (w) => w.charAt(0).toUpperCase() + w.slice(1));
+        return `NYT | ${section}`;
+      }
+    } else if (u.hostname === 'feeds.content.dowjones.io' && /\/public\/rss\/RSS/i.test(u.pathname)) {
+      const parts = u.pathname.split('/').filter(Boolean);
+      const last = parts[parts.length - 1] || '';
+      const m = last.match(/^RSS(.+)$/i);
+      if (m) {
+        let section = decodeURIComponent(m[1]).replace(/_/g, ' ').replace(/-/g, ' ');
+        section = section.replace(/\w\S*/g, (w) => w.charAt(0).toUpperCase() + w.slice(1));
+        return `WSJ | ${section}`;
+      }
+    }
+  } catch (e) {
+    // fall through to fallback
+  }
+  return fallback || getDomain(url) || url;
+}
+
 function toggleDesc(el) {
   el.closest('.catalog-card').classList.toggle('desc-open');
 }
@@ -177,6 +302,86 @@ function showToast(msg) {
   t.textContent = msg;
   t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+let PENDING_FEED_ADD = null;
+
+function openFeedNameBox(url, name, sourceBtn) {
+  const box = document.getElementById('feed-name-box');
+  const input = document.getElementById('feed-name-input');
+  const confirmBtn = document.getElementById('feed-name-confirm');
+  const cancelBtn = document.getElementById('feed-name-cancel');
+  if (!box || !input || !confirmBtn || !cancelBtn) return;
+
+  const suggested = suggestFeedName(url, name);
+  input.value = suggested;
+
+  PENDING_FEED_ADD = { url, sourceBtn };
+
+  confirmBtn.disabled = false;
+  confirmBtn.textContent = 'Add';
+  box.style.display = '';
+  input.focus();
+  input.select();
+}
+
+function cancelFeedName() {
+  const box = document.getElementById('feed-name-box');
+  const input = document.getElementById('feed-name-input');
+  const confirmBtn = document.getElementById('feed-name-confirm');
+  if (box) box.style.display = 'none';
+  if (input) input.value = '';
+  if (confirmBtn) {
+    confirmBtn.disabled = false;
+    confirmBtn.textContent = 'Add';
+  }
+  PENDING_FEED_ADD = null;
+}
+
+async function confirmFeedName() {
+  if (!PENDING_FEED_ADD) return;
+  const { url, sourceBtn } = PENDING_FEED_ADD;
+  const input = document.getElementById('feed-name-input');
+  const box = document.getElementById('feed-name-box');
+  const confirmBtn = document.getElementById('feed-name-confirm');
+  if (!input || !confirmBtn) return;
+
+  const title = (input.value || '').trim() || null;
+  confirmBtn.disabled = true;
+  confirmBtn.textContent = 'Adding...';
+
+  try {
+    const res = await fetch('/api/feeds', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ url, title })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok || res.status === 409) {
+      if (res.ok && data && typeof data === 'object' && 'id' in data) {
+        FEEDS.push(data);
+        renderFeeds();
+      }
+      if (sourceBtn) {
+        const badge = document.createElement('span');
+        badge.className = 'catalog-added-badge';
+        badge.innerHTML = '&#10003; Added';
+        sourceBtn.replaceWith(badge);
+      }
+      showToast(res.status === 409 ? 'Already subscribed.' : 'Feed added.');
+      if (box) box.style.display = 'none';
+      input.value = '';
+      PENDING_FEED_ADD = null;
+    } else {
+      showToast('Error: ' + (data.detail || res.status));
+      confirmBtn.disabled = false;
+      confirmBtn.textContent = 'Add';
+    }
+  } catch (e) {
+    showToast('Network error');
+    confirmBtn.disabled = false;
+    confirmBtn.textContent = 'Add';
+  }
 }
 
 function renderFeeds() {
@@ -305,45 +510,8 @@ async function detectFeeds(url) {
 }
 
 async function addDetected(url, name, btn) {
-  btn.disabled = true;
-  btn.textContent = '...';
-  const currentName = name || url;
-  const newName = prompt('Name this feed:', currentName);
-  if (newName === null) {
-    btn.disabled = false;
-    btn.textContent = '+ Add';
-    return;
-  }
-  const title = newName.trim() || null;
-  try {
-    const res = await fetch('/api/feeds', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({url, title})
-    });
-    if (res.ok || res.status === 409) {
-      if (res.ok) {
-        const data = await res.json();
-        FEEDS.push(data);
-        renderFeeds();
-      }
-      const row = btn.closest('.detect-result-row');
-      btn.replaceWith(Object.assign(document.createElement('span'), {
-        className: 'catalog-added-badge',
-        innerHTML: '&#10003; Added'
-      }));
-      showToast(res.status === 409 ? 'Already subscribed' : `Added: ${name}`);
-    } else {
-      const data = await res.json().catch(() => ({}));
-      showToast('Error: ' + (data.detail || res.status));
-      btn.disabled = false;
-      btn.textContent = '+ Add';
-    }
-  } catch (e) {
-    showToast('Network error');
-    btn.disabled = false;
-    btn.textContent = '+ Add';
-  }
+  if (!btn) return;
+  openFeedNameBox(url, name || url, btn);
 }
 
 function handleFeedInput() {
@@ -352,11 +520,8 @@ function handleFeedInput() {
   if (!value) return;
   const isProbablyFeedUrl = /^https?:\/\//i.test(value) && /\.xml(\?|#|$)/i.test(value);
   if (isProbablyFeedUrl) {
-    const suggested = getDomain(value) || value;
-    const name = prompt('Name this feed (optional):', suggested);
-    if (name === null) return;
-    const title = (name || '').trim() || null;
-    addFeed(value, title);
+    const suggested = suggestFeedName(value, getDomain(value) || value);
+    openFeedNameBox(value, suggested, null);
   } else {
     detectFeeds(value);
   }

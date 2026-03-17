@@ -57,7 +57,8 @@ body {
   transition: background .2s, color .2s;
   display: flex;
   flex-direction: column;
-  overflow: hidden; /* prevent page scroll, let columns scroll instead */
+  /* Allow the whole page to scroll using the browser default behavior */
+  overflow-y: auto;
 }
 
 /* ── Header ── */
@@ -392,6 +393,62 @@ header {
   text-align: center;
 }
 
+/* ── Advanced search dropdown ── */
+.search-advanced {
+  position: relative;
+  flex-shrink: 0;
+}
+.search-advanced-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-weight: 500;
+}
+.search-advanced-btn:hover {
+  background: var(--tag-bg);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.search-advanced-btn[aria-expanded="true"] {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--tag-bg);
+}
+.search-advanced-dropdown {
+  position: absolute;
+  top: calc(100% + 5px);
+  right: 0;
+  min-width: 180px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 28px var(--shadow);
+  z-index: 251;
+}
+.search-advanced-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem;
+}
+.search-advanced-row label {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.search-advanced-dropdown select {
+  flex: 1;
+  min-width: 0;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  padding: 0.35rem 0.6rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
 .btn {
   background: var(--accent);
   color: #fff;
@@ -426,6 +483,12 @@ header {
 }
 .btn.icon-btn:hover { color: var(--text); background: var(--tag-bg); }
 
+/* Active state for toggle-style icon buttons (e.g. filter) */
+.btn.icon-btn.active {
+  background: var(--tag-bg);
+  color: var(--accent);
+}
+
 /* ── Layout ── */
 .layout {
   width: 100%;
@@ -444,9 +507,12 @@ header {
 
 .sidebar-left,
 .sidebar-right {
-  height: 100%;
+  /* Keep sidebars visible while the main content scrolls */
+  position: sticky;
+  top: 0;
+  align-self: flex-start;
+  max-height: calc(100dvh - 2rem);
   overflow-y: auto;
-  overscroll-behavior-y: contain;
 }
 
 .sidebar-section {
@@ -622,9 +688,6 @@ header {
   padding: 0.5rem 1.25rem 1rem;
   min-width: 0;
   max-width: 100%;
-  height: 100%;
-  overflow-y: auto;
-  overscroll-behavior-y: contain;
 }
 .entries-header {
   display: flex;
@@ -653,6 +716,11 @@ header {
 .entry-card.read {
   border-color: var(--accent-dim);
   box-shadow: inset 0 0 0 1px rgba(91, 140, 255, 0.18);
+}
+
+/* When filtered out by the quality filter, hide the card entirely */
+.entry-card.filtered-out {
+  display: none !important;
 }
 
 .entry-card-link {

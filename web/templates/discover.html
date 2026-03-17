@@ -13,6 +13,13 @@
       else el.removeAttribute("data-theme");
     })();
   </script>
+  <script>
+    (function() {
+      var host = window.location && window.location.hostname;
+      var suffix = host && host !== "localhost" && host !== "127.0.0.1" ? host : "local";
+      document.title = "myRSSfeed | " + suffix;
+    })();
+  </script>
   <link rel="stylesheet" href="/static/styles.css" />
 </head>
 <body>
@@ -35,6 +42,83 @@
     <a href="/" class="btn ghost pill">Clear</a>
     {% endif %}
   </form>
+
+  <div class="header-right">
+    <div class="header-metrics">
+      <span class="header-count">
+        <!-- Count omitted on discover page -->
+      </span>
+    </div>
+    <div class="header-actions" aria-label="Quick actions">
+      <div class="header-action">
+        <button
+          class="btn icon-btn"
+          id="header-refresh-btn"
+          type="button"
+          title="Fetch latest from all feeds"
+          onclick="headerRefreshNow()"
+        >
+          &#10227;
+        </button>
+        <div class="refresh-status header-refresh-status" aria-live="polite">
+          <span class="refresh-status-dot" id="header-refresh-status-dot" aria-hidden="true"></span>
+          <span class="refresh-status-text" id="header-refresh-status-text">No runs yet</span>
+        </div>
+      </div>
+      <div class="header-action">
+        <button
+          class="btn icon-btn"
+          id="header-scrape-btn"
+          type="button"
+          title="Enrich articles with metadata"
+          onclick="headerScrapeNow()"
+        >
+          &#8681;
+        </button>
+        <div class="refresh-status header-scrape-status" aria-live="polite">
+          <span class="refresh-status-dot" id="header-scrape-status-dot" aria-hidden="true"></span>
+          <span class="refresh-status-text" id="header-scrape-status-text">No runs yet</span>
+        </div>
+      </div>
+      <div class="header-action">
+        <button
+          class="btn icon-btn"
+          id="header-wordrank-btn"
+          type="button"
+          title="Recompute personalized scores (WordRank)"
+          onclick="headerWordrankNow()"
+        >
+          WR
+        </button>
+        <div class="refresh-status header-wordrank-status" aria-live="polite">
+          <span class="refresh-status-dot" id="header-wordrank-status-dot" aria-hidden="true"></span>
+          <span class="refresh-status-text" id="header-wordrank-status-text">Idle</span>
+        </div>
+      </div>
+      <div class="header-action">
+        <button
+          class="btn icon-btn"
+          id="header-filter-btn"
+          type="button"
+          title="Filter out low-quality items"
+          aria-pressed="false"
+          onclick="headerToggleFilter()"
+        >
+          &#128269;
+        </button>
+      </div>
+      <div class="header-action">
+        <a
+          href="/settings"
+          class="btn icon-btn header-gear-link"
+          title="Settings"
+          aria-label="Settings"
+        >
+          &#9881;
+        </a>
+      </div>
+    </div>
+  </div>
 </header>
 
 <!-- Overlay nav drawer (mobile only) -->

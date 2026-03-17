@@ -1,4 +1,5 @@
 import logging
+import time
 from datetime import datetime, timezone
 import socket
 import threading
@@ -7,6 +8,10 @@ import urllib.parse
 import urllib.request
 from html.parser import HTMLParser
 from typing import Optional, Tuple
+
+# One retry for transient failures (timeout, connection reset) — keeps Pi friendly
+SCRAPE_RETRY_DELAY_SEC = 2
+SCRAPE_MAX_ATTEMPTS = 2
 
 from utils.helpers import get_db, get_setting, set_setting
 
@@ -121,17 +126,26 @@ def scrape_url(link: str) -> Tuple[Optional[str], Optional[str], Optional[str], 
 
     headers = {"User-Agent": "myRSSfeed/1.0 (content enrichment)"}
     req = urllib.request.Request(link, headers=headers)
-    try:
-        with urllib.request.urlopen(req, timeout=timeout_s) as resp:
-            content_type = resp.headers.get("Content-Type", "")
-            if "text/html" not in content_type:
+    raw = None
+    for attempt in range(SCRAPE_MAX_ATTEMPTS):
+        try:
+            with urllib.request.urlopen(req, timeout=timeout_s) as resp:
+                content_type = resp.headers.get("Content-Type", "")
+                if "text/html" not in content_type:
+                    return None, None, None, None
+                raw = resp.read(max_bytes)
+            break
+        except (urllib.error.URLError, OSError, TimeoutError) as exc:
+            if attempt < SCRAPE_MAX_ATTEMPTS - 1:
+                logger.debug("Scraper: attempt %s failed for %s: %s; retrying.", attempt + 1, link, exc)
+                time.sleep(SCRAPE_RETRY_DELAY_SEC)
+            else:
+                logger.info("Scraper: URL error for %s: %s", link, exc)
                 return None, None, None, None
-            raw = resp.read(max_bytes)
-    except urllib.error.URLError as exc:
-        logger.info("Scraper: URL error for %s: %s", link, exc)
-        return None, None, None, None
-    except Exception as exc:
-        logger.info("Scraper: failed for %s: %s", link, exc)
+        except Exception as exc:
+            logger.info("Scraper: failed for %s: %s", link, exc)
+            return None, None, None, None
+    if raw is None:
         return None, None, None, None
 
     try:

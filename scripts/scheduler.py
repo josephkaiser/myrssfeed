@@ -65,7 +65,12 @@ def run_pipeline_async() -> bool:
 
 
 def _do_pipeline():
-    """Actual pipeline logic (called with lock held)."""
+    """Actual pipeline logic (called with lock held).
+
+    Each stage is isolated: compile_feed failure (e.g. network) does not block
+    downstream stages (wordrank, visualization, digest) so existing entries
+    still get re-scored and daily digest can run.
+    """
     logger.info("Pipeline starting.")
     had_error = False
     try:
@@ -74,9 +79,7 @@ def _do_pipeline():
         run_compile_feed()
     except Exception:
         had_error = True
-        logger.exception("Pipeline stage compile_feed failed — aborting.")
-        _record_pipeline_status("error")
-        return
+        logger.exception("Pipeline stage compile_feed failed — continuing with remaining stages.")
 
     try:
         # Scrape/enrich newly fetched entries before scoring.

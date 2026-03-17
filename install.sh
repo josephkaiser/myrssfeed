@@ -17,6 +17,7 @@ SERVICE_NAME="myrssfeed"
 PYTHON="$(which python3)"
 VENV_DIR="$APP_DIR/.venv"
 HOSTNAME_MDNS="myrssfeed"
+OS_TYPE="$(uname -s)"
 
 log_step() { printf '\n==> %s\n' "$1"; }
 log_ok()   { printf '    ✓ %s\n' "$1"; }
@@ -38,19 +39,20 @@ log_step "Ensuring Python dependencies are installed…"
 "$VENV_DIR/bin/pip" install -r "$APP_DIR/requirements.txt" -q && \
     log_ok "Dependencies installed from requirements.txt"
 
-# ── 2. systemd service ───────────────────────────────────────────────────────
-log_step "Checking systemd service ${SERVICE_NAME}.service…"
-SERVICE_ACTIVE=0
-if systemctl is-active --quiet "${SERVICE_NAME}.service" 2>/dev/null && \
-   systemctl is-enabled --quiet "${SERVICE_NAME}.service" 2>/dev/null; then
-    SERVICE_ACTIVE=1
-fi
+# ── 2. systemd service + mDNS (Linux only) ───────────────────────────────────
+if [[ "$OS_TYPE" == "Linux" ]] && command -v systemctl >/dev/null 2>&1; then
+    log_step "Checking systemd service ${SERVICE_NAME}.service…"
+    SERVICE_ACTIVE=0
+    if systemctl is-active --quiet "${SERVICE_NAME}.service" 2>/dev/null && \
+       systemctl is-enabled --quiet "${SERVICE_NAME}.service" 2>/dev/null; then
+        SERVICE_ACTIVE=1
+    fi
 
-if [[ "$SERVICE_ACTIVE" -eq 1 ]]; then
-    log_skip "systemd unit is active and enabled"
-else
-    log_step "Writing systemd unit for myRSSfeed…"
-    sudo tee /etc/systemd/system/${SERVICE_NAME}.service > /dev/null <<EOF
+    if [[ "$SERVICE_ACTIVE" -eq 1 ]]; then
+        log_skip "systemd unit is active and enabled"
+    else
+        log_step "Writing systemd unit for myRSSfeed…"
+        sudo tee /etc/systemd/system/${SERVICE_NAME}.service > /dev/null <<EOF
 [Unit]
 Description=myRSSfeed — personal RSS aggregator
 After=network.target
@@ -70,54 +72,90 @@ MemorySwapMax=0
 WantedBy=multi-user.target
 EOF
 
-    sudo systemctl daemon-reload
-    sudo systemctl enable --now ${SERVICE_NAME}.service
-fi
-
-if systemctl is-active --quiet "${SERVICE_NAME}.service"; then
-    log_ok "myRSSfeed service is active on port 8080"
-else
-    log_fail "myRSSfeed service is not active after (re)install — check `systemctl status ${SERVICE_NAME}.service`"
-fi
-
-# ── 3. mDNS hostname ─────────────────────────────────────────────────────────
-log_step "Checking mDNS hostname and avahi-daemon…"
-CURRENT_HOSTNAME="$(hostnamectl --static)"
-AVAHI_OK=0
-if systemctl is-active --quiet avahi-daemon 2>/dev/null && \
-   systemctl is-enabled --quiet avahi-daemon 2>/dev/null; then
-    AVAHI_OK=1
-fi
-
-if [[ "$CURRENT_HOSTNAME" == "$HOSTNAME_MDNS" && "$AVAHI_OK" -eq 1 ]]; then
-    log_skip "Hostname (${HOSTNAME_MDNS}) and avahi-daemon are already set up"
-else
-    log_step "Configuring mDNS hostname to ${HOSTNAME_MDNS}…"
-    if [[ "$CURRENT_HOSTNAME" != "$HOSTNAME_MDNS" ]]; then
-        sudo hostnamectl set-hostname "$HOSTNAME_MDNS"
+        sudo systemctl daemon-reload
+        sudo systemctl enable --now ${SERVICE_NAME}.service
     fi
-    if ! command -v avahi-daemon &>/dev/null; then
-        sudo apt-get install -y -q avahi-daemon
-    fi
-    sudo systemctl enable --now avahi-daemon
-fi
 
-if [[ "$(hostnamectl --static)" == "$HOSTNAME_MDNS" ]] && \
-   systemctl is-active --quiet avahi-daemon 2>/dev/null; then
-    log_ok "Hostname and mDNS are configured. Pi responds to ${HOSTNAME_MDNS}.local on the network."
+    if systemctl is-active --quiet "${SERVICE_NAME}.service"; then
+        log_ok "myRSSfeed service is active on port 8080"
+    else
+        log_fail "myRSSfeed service is not active after (re)install — check \`systemctl status ${SERVICE_NAME}.service\`"
+    fi
+
+    # ── 3. mDNS hostname ─────────────────────────────────────────────────────
+    log_step "Checking mDNS hostname and avahi-daemon…"
+    CURRENT_HOSTNAME="$(hostnamectl --static)"
+    AVAHI_OK=0
+    if systemctl is-active --quiet avahi-daemon 2>/dev/null && \
+       systemctl is-enabled --quiet avahi-daemon 2>/dev/null; then
+        AVAHI_OK=1
+    fi
+
+    if [[ "$CURRENT_HOSTNAME" == "$HOSTNAME_MDNS" && "$AVAHI_OK" -eq 1 ]]; then
+        log_skip "Hostname (${HOSTNAME_MDNS}) and avahi-daemon are already set up"
+    else
+        log_step "Configuring mDNS hostname to ${HOSTNAME_MDNS}…"
+        if [[ "$CURRENT_HOSTNAME" != "$HOSTNAME_MDNS" ]]; then
+            sudo hostnamectl set-hostname "$HOSTNAME_MDNS"
+        fi
+        if ! command -v avahi-daemon &>/dev/null; then
+            sudo apt-get install -y -q avahi-daemon
+        fi
+        sudo systemctl enable --now avahi-daemon
+    fi
+
+    if [[ "$(hostnamectl --static)" == "$HOSTNAME_MDNS" ]] && \
+       systemctl is-active --quiet avahi-daemon 2>/dev/null; then
+        log_ok "Hostname and mDNS are configured. Pi responds to ${HOSTNAME_MDNS}.local on the network."
+    else
+        log_fail "mDNS configuration did not fully succeed — check \`hostnamectl status\` and \`systemctl status avahi-daemon\`."
+    fi
 else
-    log_fail "mDNS configuration did not fully succeed — check `hostnamectl status` and `systemctl status avahi-daemon`."
+    log_step "Non-Linux or non-systemd host detected."
+    log_skip "Skipping systemd service and mDNS (intended for Raspberry Pi / Debian)"
+    echo "You can run myRSSfeed manually with:"
+    echo "  $VENV_DIR/bin/python main.py"
 fi
 
 # ── Done ─────────────────────────────────────────────────────────────────────
-SERVER_IP="$(hostname -I | awk '{print $1}')"
+# Try to determine a sensible IP/host so we can print a helpful URL.
+SERVER_IP=""
+if [[ "$OS_TYPE" == "Linux" ]]; then
+    if command -v hostname >/dev/null 2>&1; then
+        # hostname -I is a GNU extension; safe on Linux
+        SERVER_IP="$(hostname -I 2>/dev/null | awk '{print $1}')"
+    fi
+
+    if [[ -z "${SERVER_IP:-}" ]] && command -v hostnamectl >/devnull 2>&1; then
+        SERVER_IP="$(hostnamectl status --no-page 2>/dev/null | awk '/Static hostname/ {print $3}')"
+    fi
+
+    if [[ -z "${SERVER_IP:-}" ]] && command -v ip >/dev/null 2>&1; then
+        SERVER_IP="$(ip -4 addr show scope global 2>/dev/null | awk '/inet / {print $2}' | cut -d/ -f1 | head -n1)"
+    fi
+elif [[ "$OS_TYPE" == "Darwin" ]]; then
+    # On macOS, try common Wi-Fi interfaces
+    if command -v ipconfig >/dev/null 2>&1; then
+        SERVER_IP="$(ipconfig getifaddr en0 2>/dev/null || true)"
+        if [[ -z "${SERVER_IP:-}" ]]; then
+            SERVER_IP="$(ipconfig getifaddr en1 2>/dev/null || true)"
+        fi
+    fi
+fi
+
 echo ""
 echo "=========================================="
 echo " myRSSfeed is ready!"
 echo ""
-echo " Open on any device on this network:"
-echo "   http://${SERVER_IP}:8080"
+if [[ -n "${SERVER_IP:-}" ]]; then
+    echo " Open on any device on this network:"
+    echo "   http://${SERVER_IP}:8080"
+else
+    echo " Open in a browser on this machine at:"
+    echo "   http://localhost:8080"
+    echo " (Could not automatically determine LAN IP — no \`hostname\` or \`ip\` helpers found.)"
+fi
 echo ""
 echo " View live logs:"
-echo "   http://${SERVER_IP}:8080/api/logs"
+echo "   http://${SERVER_IP:-localhost}:8080/api/logs"
 echo "=========================================="

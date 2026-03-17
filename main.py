@@ -102,12 +102,15 @@ def init_db():
         );
     """)
     conn.commit()
-    # Migrate existing databases
+    # Migrate existing databases so older installs pick up new columns.
     entry_cols = {r[1] for r in conn.execute("PRAGMA table_info(entries)").fetchall()}
     for col, definition in [
         ("thumbnail_url", "TEXT"),
         ("read", "INTEGER DEFAULT 0"),
         ("liked", "INTEGER DEFAULT 0"),
+        ("score", "REAL DEFAULT 0.0"),
+        ("viz_x", "REAL"),
+        ("viz_y", "REAL"),
         ("og_title", "TEXT"),
         ("og_description", "TEXT"),
         ("og_image_url", "TEXT"),
@@ -165,6 +168,7 @@ class EntryOut(BaseModel):
     id: int
     feed_id: int
     feed_title: Optional[str]
+    feed_domain: Optional[str] = None  # for favicon in lazy-loaded cards
     title: Optional[str]
     link: Optional[str]
     published: Optional[str]
@@ -247,8 +251,18 @@ templates = Jinja2Templates(directory=_templates_dir)
 
 # ── UI routes ─────────────────────────────────────────────────────────────────
 
+# Allowed date-range values for "last X days" filter (None = all-time).
+DATE_RANGE_DAYS = (1, 5, 30, 90)
+
+
 @app.get("/", response_class=HTMLResponse)
-def index(request: Request, q: Optional[str] = None, feed_id: Optional[int] = None):
+def index(
+    request: Request,
+    q: Optional[str] = None,
+    feed_id: Optional[int] = None,
+    quality_level: Optional[int] = None,
+    days: Optional[int] = None,
+):
     conn = get_db()
     feeds_rows = conn.execute("SELECT id, url, title, color FROM feeds ORDER BY title").fetchall()
     feeds = [dict(f) for f in feeds_rows]
@@ -281,8 +295,41 @@ def index(request: Request, q: Optional[str] = None, feed_id: Optional[int] = No
     if feed_id:
         filters.append("e.feed_id = ?")
         params.append(feed_id)
+
+    # Optional quality filter (server-side) to hide low-quality items.
+    if quality_level is not None:
+        try:
+            lvl = int(quality_level)
+        except (TypeError, ValueError):
+            lvl = 1
+        lvl = max(0, min(3, lvl))
+        if lvl == 0:
+            min_title, min_summary = 5, 20
+        elif lvl == 1:
+            min_title, min_summary = 10, 40
+        elif lvl == 2:
+            min_title, min_summary = 20, 80
+        else:
+            min_title, min_summary = 30, 120
+        filters.append(
+            "("
+            "e.link IS NOT NULL AND TRIM(e.link) != '' AND ("
+            "LENGTH(COALESCE(e.title, '')) >= ? OR "
+            "LENGTH(COALESCE(e.summary, '')) >= ?"
+            ")"
+            ")"
+        )
+        params.extend([min_title, min_summary])
+
     if filters:
         query += " WHERE " + " AND ".join(filters)
+
+    # Total matching articles (for navbar count); same filters, no limit.
+    count_query = "SELECT COUNT(*) FROM entries e JOIN feeds f ON f.id = e.feed_id"
+    if filters:
+        count_query += " WHERE " + " AND ".join(filters)
+    count_params = [p for p in params]  # same params as main query, without LIMIT
+    total_entries = conn.execute(count_query, count_params).fetchone()[0]
 
     try:
         max_entries = int(get_setting("max_entries") or "1000")
@@ -291,8 +338,16 @@ def index(request: Request, q: Optional[str] = None, feed_id: Optional[int] = No
     if max_entries <= 0:
         max_entries = 1000
 
-    query += " ORDER BY e.published DESC LIMIT ?"
-    params.append(max_entries)
+    # Only render the first "page" of articles server-side; the rest are
+    # fetched lazily via the `/api/entries` endpoint.
+    initial_limit = min(max_entries, 40)
+
+    # By day (newest first), then by WordRank score within day, then by time
+    query += (
+        " ORDER BY (e.published IS NULL), DATE(e.published) DESC,"
+        " COALESCE(e.score, 0) DESC, e.published DESC LIMIT ?"
+    )
+    params.append(initial_limit)
     entries = conn.execute(query, params).fetchall()
 
     entries_list = [dict(e) for e in entries]
@@ -330,9 +385,12 @@ def index(request: Request, q: Optional[str] = None, feed_id: Optional[int] = No
         "feeds": feeds,
         "feed_map": feed_map,
         "entries": entries_list,
+        "total_entries": total_entries,
+        "total_entries_display": f"{total_entries:,}",
         "trending": trending,
         "q": q or "",
         "active_feed_id": feed_id,
+        "date_range": days if (days is not None and days in DATE_RANGE_DAYS) else None,
     })
 
 
@@ -639,10 +697,24 @@ def delete_feed(feed_id: int):
 # ── Entries API ───────────────────────────────────────────────────────────────
 
 @app.get("/api/entries", response_model=list[EntryOut])
-def list_entries(q: Optional[str] = None, feed_id: Optional[int] = None, limit: int = 100):
+def list_entries(
+    q: Optional[str] = None,
+    feed_id: Optional[int] = None,
+    limit: int = 100,
+    offset: int = 0,
+    quality_level: Optional[int] = None,
+    days: Optional[int] = None,
+):
+    """
+    List entries ordered by recency, with simple pagination.
+
+    The `limit` and `offset` parameters are used by the UI to implement
+    lazy-loading on the main articles page so we do not have to render
+    every article at once.
+    """
     conn = get_db()
     query = """
-        SELECT e.id, e.feed_id, f.title AS feed_title,
+        SELECT e.id, e.feed_id, f.title AS feed_title, f.url AS feed_url,
                e.title, e.link, e.published, e.summary,
                e.thumbnail_url,
                COALESCE(e.read, 0) AS read,
@@ -658,13 +730,59 @@ def list_entries(q: Optional[str] = None, feed_id: Optional[int] = None, limit: 
     if feed_id:
         filters.append("e.feed_id = ?")
         params.append(feed_id)
+
+    # Optional date range (same as index page).
+    if days is not None and days in DATE_RANGE_DAYS:
+        filters.append("(e.published IS NOT NULL AND date(e.published) >= date('now', ?))")
+        params.append(f"-{days} days")
+
+    # Optional quality filter (server-side) to hide low-quality items.
+    if quality_level is not None:
+        try:
+            lvl = int(quality_level)
+        except (TypeError, ValueError):
+            lvl = 1
+        lvl = max(0, min(3, lvl))
+        if lvl == 0:
+            min_title, min_summary = 5, 20
+        elif lvl == 1:
+            min_title, min_summary = 10, 40
+        elif lvl == 2:
+            min_title, min_summary = 20, 80
+        else:
+            min_title, min_summary = 30, 120
+        filters.append(
+            "("
+            "e.link IS NOT NULL AND TRIM(e.link) != '' AND ("
+            "LENGTH(COALESCE(e.title, '')) >= ? OR "
+            "LENGTH(COALESCE(e.summary, '')) >= ?"
+            ")"
+            ")"
+        )
+        params.extend([min_title, min_summary])
+
     if filters:
         query += " WHERE " + " AND ".join(filters)
-    query += " ORDER BY e.published DESC LIMIT ?"
-    params.append(limit)
+    if limit <= 0:
+        limit = 100
+    if offset < 0:
+        offset = 0
+    # By day (newest first), then by WordRank score within day, then by time
+    query += (
+        " ORDER BY (e.published IS NULL), DATE(e.published) DESC,"
+        " COALESCE(e.score, 0) DESC, e.published DESC LIMIT ? OFFSET ?"
+    )
+    params.extend([limit, offset])
     rows = conn.execute(query, params).fetchall()
     conn.close()
-    return [dict(r) for r in rows]
+    out = []
+    for r in rows:
+        row_dict = dict(r)
+        feed_url = row_dict.pop("feed_url", None)
+        domain = urllib.parse.urlparse(feed_url or "").netloc or None
+        row_dict["feed_domain"] = domain
+        out.append(row_dict)
+    return out
 
 
 @app.post("/api/entries/{entry_id}/read", status_code=200)

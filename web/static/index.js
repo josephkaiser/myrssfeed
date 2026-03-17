@@ -278,56 +278,42 @@
     }
   })();
 
-  // ── Pull to refresh ────────────────────────────────────────────
-  (function() {
-    const panel = document.getElementById("entries-panel");
-    const indicator = document.getElementById("ptr-indicator");
-    if (!panel || !indicator) return;
-    const textEl = indicator.querySelector(".ptr-text");
-    let startY = 0;
-    let pulling = false;
-    const threshold = 80;
+  // ── Quality filter for feed items ─────────────────────────────────
+  let _entryFilterEnabled = false;
 
-    panel.addEventListener("touchstart", (e) => {
-      if (panel.scrollTop <= 0) {
-        startY = e.touches[0].clientY;
-        pulling = true;
-      }
-    }, { passive: true });
+  function _getFilterAggressiveness() {
+    try {
+      const raw = localStorage.getItem("filter_aggressiveness");
+      const level = parseInt(raw ?? "1", 10);
+      if (Number.isNaN(level)) return 1;
+      return Math.min(3, Math.max(0, level));
+    } catch {
+      return 1;
+    }
+  }
 
-    panel.addEventListener("touchmove", (e) => {
-      if (!pulling) return;
-      const dy = e.touches[0].clientY - startY;
-      if (dy > 10) {
-        indicator.classList.add("pulling");
-        textEl.textContent = dy > threshold ? "Release to refresh" : "Pull to refresh";
-      }
-    }, { passive: true });
+  function headerToggleFilter() {
+    const params = new URLSearchParams(window.location.search || "");
+    const currentlyOn = params.has("quality_level");
+    const nextOn = !currentlyOn;
+    if (nextOn) {
+      const level = _getFilterAggressiveness();
+      params.set("quality_level", String(level));
+    } else {
+      params.delete("quality_level");
+    }
+    window.location.search = params.toString();
+  }
+  window.headerToggleFilter = headerToggleFilter;
 
-    panel.addEventListener("touchend", async (e) => {
-      if (!pulling) return;
-      const dy = (e.changedTouches[0] || {}).clientY - startY;
-      pulling = false;
-      if (dy > threshold) {
-        indicator.classList.remove("pulling");
-        indicator.classList.add("refreshing");
-        textEl.innerHTML = '<span class="ptr-spinner"></span> Refreshing...';
-        try {
-          const res = await fetch("/api/refresh", { method: "POST" });
-          if (res.ok) {
-            textEl.innerHTML = '<span class="ptr-spinner"></span> Loading...';
-            setTimeout(() => location.reload(), 1500);
-            return;
-          }
-        } catch (_) {}
-        textEl.textContent = "Refresh failed";
-        setTimeout(() => {
-          indicator.classList.remove("refreshing");
-        }, 2000);
-      } else {
-        indicator.classList.remove("pulling");
-      }
-    });
+  (function initHeaderFilterFromUrl() {
+    const params = new URLSearchParams(window.location.search || "");
+    _entryFilterEnabled = params.has("quality_level");
+    const btn = document.getElementById("header-filter-btn");
+    if (btn) {
+      btn.classList.toggle("active", _entryFilterEnabled);
+      btn.setAttribute("aria-pressed", _entryFilterEnabled ? "true" : "false");
+    }
   })();
 
  // ── Image lightbox ──────────────────────────────────────────────
@@ -451,6 +437,200 @@
     return tmp.textContent || tmp.innerText || "";
   }
 
+  // ── Lazy loading for main article list ────────────────────────────
+  (function initLazyLoading() {
+    const entriesPanel = document.getElementById("entries-panel");
+    if (!entriesPanel) return; // Only on the main index page
+
+    let isLoadingMore = false;
+    let allLoaded = false;
+
+    // Use the number of server-rendered cards as our page size heuristic.
+    const INITIAL_CARDS = entriesPanel.querySelectorAll(".entry-card").length;
+    const PAGE_SIZE = INITIAL_CARDS || 40;
+
+    function getCurrentFilters() {
+      const params = new URLSearchParams(window.location.search || "");
+      const q = params.get("q") || "";
+      const feedId = params.get("feed_id") || "";
+      const qualityLevel = params.get("quality_level") || "";
+      const days = params.get("days") || "";
+      return { q, feedId, qualityLevel, days };
+    }
+
+    async function loadMoreEntries() {
+      if (isLoadingMore || allLoaded) return;
+      const existing = entriesPanel.querySelectorAll(".entry-card").length;
+      if (!existing && INITIAL_CARDS === 0) {
+        // No entries at all; nothing to page through.
+        allLoaded = true;
+        return;
+      }
+
+      isLoadingMore = true;
+      const { q, feedId, qualityLevel, days } = getCurrentFilters();
+      const params = new URLSearchParams();
+      params.set("limit", String(PAGE_SIZE));
+      params.set("offset", String(existing));
+      if (q) params.set("q", q);
+      if (feedId) params.set("feed_id", feedId);
+      if (qualityLevel) params.set("quality_level", qualityLevel);
+      if (days) params.set("days", days);
+
+      try {
+        const res = await fetch("/api/entries?" + params.toString());
+        if (!res.ok) throw new Error("Bad response");
+        const data = await res.json();
+        if (!Array.isArray(data) || data.length === 0) {
+          allLoaded = true;
+          return;
+        }
+        appendEntries(data);
+        if (data.length < PAGE_SIZE) {
+          allLoaded = true;
+        }
+      } catch (_) {
+        // Silent failure – lazy loading is best-effort only.
+      } finally {
+        isLoadingMore = false;
+      }
+    }
+
+    function appendEntries(entries) {
+      const frag = document.createDocumentFragment();
+      for (const e of entries) {
+        const card = buildEntryCard(e);
+        frag.appendChild(card);
+      }
+      entriesPanel.appendChild(frag);
+    }
+
+    function buildEntryCard(e) {
+      const card = document.createElement("article");
+      const hasThumb = !!e.thumbnail_url;
+      card.className = "entry-card" +
+        (e.read ? " read" : "") +
+        (hasThumb ? " has-thumb" : "");
+      card.dataset.entryId = String(e.id);
+
+      const link = document.createElement("a");
+      link.href = "/article/" + encodeURIComponent(e.id);
+      link.className = "entry-card-link";
+
+      const headerRow = document.createElement("div");
+      headerRow.className = "entry-header-row";
+      const titleEl = document.createElement("div");
+      titleEl.className = "entry-title";
+      titleEl.textContent = e.title || "(no title)";
+      headerRow.appendChild(titleEl);
+
+      const meta = document.createElement("div");
+      meta.className = "entry-meta";
+      const feedInfo = (window.FEED_MAP && window.FEED_MAP[e.feed_id]) || {};
+      const domain = e.feed_domain || feedInfo.domain;
+
+      const favicon = document.createElement("img");
+      favicon.className = "entry-favicon";
+      if (domain) {
+        favicon.src = "https://www.google.com/s2/favicons?domain=" +
+          encodeURIComponent(domain) + "&sz=32";
+      }
+      favicon.width = 14;
+      favicon.height = 14;
+      favicon.loading = "lazy";
+      favicon.alt = "";
+
+      const tag = document.createElement("span");
+      tag.className = "tag";
+      if (feedInfo.color) {
+        tag.style.setProperty("--feed-color", feedInfo.color);
+      }
+      tag.textContent = e.feed_title || "Unknown";
+
+      const date = document.createElement("span");
+      date.className = "entry-date";
+      date.textContent = e.published ? String(e.published).slice(0, 10) : "";
+
+      meta.appendChild(favicon);
+      meta.appendChild(tag);
+      meta.appendChild(date);
+
+      const body = document.createElement("div");
+      body.className = "entry-body";
+
+      const content = document.createElement("div");
+      content.className = "entry-content";
+      if (e.summary) {
+        const summary = document.createElement("div");
+        summary.className = "entry-summary";
+        summary.textContent = stripTags(e.summary);
+        content.appendChild(summary);
+      }
+
+      body.appendChild(content);
+
+      if (hasThumb) {
+        const img = document.createElement("img");
+        img.className = "entry-thumb";
+        img.src = e.thumbnail_url;
+        img.alt = "";
+        img.loading = "lazy";
+        body.appendChild(img);
+      }
+
+      link.appendChild(headerRow);
+      link.appendChild(meta);
+      link.appendChild(body);
+
+      const linkRow = document.createElement("div");
+      linkRow.className = "entry-link-row";
+      const original = document.createElement("a");
+      original.href = e.link || "#";
+      original.target = "_blank";
+      original.rel = "noopener noreferrer";
+      original.textContent = "Open original";
+      original.addEventListener("click", (evt) => {
+        try { markRead(e.id, evt.currentTarget); } catch (_) {}
+      });
+      linkRow.appendChild(original);
+
+      card.appendChild(link);
+      card.appendChild(linkRow);
+
+      return card;
+    }
+
+    function maybeLoadMore() {
+      if (isLoadingMore || allLoaded) return;
+      const scrollY = window.scrollY || window.pageYOffset || 0;
+      const viewport = window.innerHeight || document.documentElement.clientHeight || 0;
+      const docHeight = document.documentElement.scrollHeight || document.body.scrollHeight || 0;
+      // Start loading a bit before the user hits the end.
+      if (scrollY + viewport + 400 >= docHeight) {
+        loadMoreEntries();
+      }
+    }
+
+    window.addEventListener("scroll", maybeLoadMore, { passive: true });
+    window.addEventListener("resize", maybeLoadMore);
+
+    // In case the initial page is short, attempt an eager load.
+    setTimeout(maybeLoadMore, 300);
+  })();
+
+  // ── Advanced search dropdown ────────────────────────────────────
+  (function initAdvancedDropdown() {
+    const advToggle = document.getElementById("advanced-toggle");
+    const advDropdown = document.getElementById("advanced-dropdown");
+    if (!advToggle || !advDropdown) return;
+    advToggle.addEventListener("click", (e) => {
+      e.preventDefault();
+      const isOpen = !advDropdown.hidden;
+      advDropdown.hidden = isOpen;
+      advToggle.setAttribute("aria-expanded", isOpen ? "false" : "true");
+    });
+  })();
+
   // ── Live search ──────────────────────────────────────────────────
   const searchInput    = document.getElementById("search-input");
   const searchDropdown = document.getElementById("search-dropdown");
@@ -477,6 +657,12 @@
   document.addEventListener("click", (e) => {
     if (!searchInput.contains(e.target) && !searchDropdown.contains(e.target)) {
       _closeDropdown();
+    }
+    const advToggle = document.getElementById("advanced-toggle");
+    const advDropdown = document.getElementById("advanced-dropdown");
+    if (advToggle && advDropdown && !advToggle.contains(e.target) && !advDropdown.contains(e.target)) {
+      advDropdown.hidden = true;
+      advToggle.setAttribute("aria-expanded", "false");
     }
   });
 

@@ -6,6 +6,13 @@
   <title>{{ (entry.og_title or entry.title) or "Article" }} — myRSSfeed</title>
   <script>
     (function() {
+      var host = window.location && window.location.hostname;
+      var suffix = host && host !== "localhost" && host !== "127.0.0.1" ? host : "local";
+      document.title = "myRSSfeed | " + suffix;
+    })();
+  </script>
+  <script>
+    (function() {
       var t = localStorage.getItem("theme") || "system";
       var el = document.documentElement;
       if (t === "light") el.setAttribute("data-theme", "light");
@@ -20,6 +27,66 @@
 <header class="article-header">
   <a class="back-link" href="/">&larr; Back to feed</a>
   <a class="header-brand" href="/">myRSSfeed</a>
+
+  <div class="header-right">
+    <div class="header-actions" aria-label="Quick actions">
+      <div class="header-action">
+        <button
+          class="btn icon-btn"
+          id="header-refresh-btn"
+          type="button"
+          title="Fetch latest from all feeds"
+          onclick="headerRefreshNow()"
+        >
+          &#10227;
+        </button>
+      </div>
+      <div class="header-action">
+        <button
+          class="btn icon-btn"
+          id="header-scrape-btn"
+          type="button"
+          title="Enrich articles with metadata"
+          onclick="headerScrapeNow()"
+        >
+          &#8681;
+        </button>
+      </div>
+      <div class="header-action">
+        <button
+          class="btn icon-btn"
+          id="header-wordrank-btn"
+          type="button"
+          title="Recompute personalized scores (WordRank)"
+          onclick="headerWordrankNow()"
+        >
+          WR
+        </button>
+      </div>
+      <div class="header-action">
+        <button
+          class="btn icon-btn"
+          id="header-filter-btn"
+          type="button"
+          title="Filter out low-quality items"
+          aria-pressed="false"
+          onclick="headerToggleFilter()"
+        >
+          &#128269;
+        </button>
+      </div>
+      <div class="header-action">
+        <a
+          href="/settings"
+          class="btn icon-btn header-gear-link"
+          title="Settings"
+          aria-label="Settings"
+        >
+          &#9881;
+        </a>
+      </div>
+    </div>
+  </div>
 </header>
 
 <article class="article-view">
