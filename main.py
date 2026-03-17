@@ -529,6 +529,13 @@ def trigger_refresh():
     return {"status": "started", "message": "Pipeline started in background."}
 
 
+@app.get("/api/refresh/status")
+def get_refresh_status():
+    running = is_pipeline_running()
+    last_status = get_setting("pipeline_last_status") or "never"
+    return {"running": running, "last_status": last_status}
+
+
 # ── Scrape/enrichment API ─────────────────────────────────────────────────────
 
 @app.post("/api/scrape", status_code=202)
@@ -539,6 +546,13 @@ def trigger_scrape():
     if not started:
         return {"status": "running", "message": "Scraper already in progress."}
     return {"status": "started", "message": "Scrape job started in background."}
+
+
+@app.get("/api/scrape/status")
+def get_scrape_status():
+    running = is_scraper_running()
+    last_status = get_setting("scrape_last_status") or "never"
+    return {"running": running, "last_status": last_status}
 
 
 # ── Search API ────────────────────────────────────────────────────────────────

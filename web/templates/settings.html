@@ -207,18 +207,30 @@
           Control how often the full pipeline (fetch → rank → visualize → digest) runs automatically.
         </div>
       </div>
-      <div class="setting-control">
+      <div class="setting-control setting-control-schedule">
         <select id="pipeline_schedule_frequency" class="select-input">
           <option value="off"   {% if settings.pipeline_schedule_frequency == 'off' %}selected{% endif %}>Off</option>
           <option value="10m"   {% if settings.pipeline_schedule_frequency == '10m' %}selected{% endif %}>Every 10 minutes</option>
           <option value="hourly" {% if settings.pipeline_schedule_frequency == 'hourly' %}selected{% endif %}>Hourly</option>
           <option value="daily" {% if settings.pipeline_schedule_frequency == 'daily' or not settings.pipeline_schedule_frequency %}selected{% endif %}>Daily</option>
         </select>
+        {% set sched_time = settings.pipeline_schedule_time or '06:00' %}
         <input
           class="time-input"
-          type="time"
-          id="pipeline_schedule_time"
-          value="{{ settings.pipeline_schedule_time or '06:00' }}"
+          type="number"
+          id="pipeline_schedule_hour"
+          min="0"
+          max="23"
+          value="{{ sched_time[:2] }}"
+        />
+        <span class="time-sep" id="pipeline_time_sep">:</span>
+        <input
+          class="time-input"
+          type="number"
+          id="pipeline_schedule_minute"
+          min="0"
+          max="59"
+          value="{{ sched_time[3:5] }}"
         />
         <div class="refresh-status" id="pipeline-status" aria-live="polite">
           <span class="refresh-status-dot" id="pipeline-status-dot" aria-hidden="true"></span>

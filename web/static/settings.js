@@ -34,70 +34,75 @@
   }
 
   // ── Save settings ───────────────────────────────────────────────
-  function normalizeScheduleTime(freqVal, rawValue) {
-    // Always return a string in HH:MM (24h) for the backend.
+  function getScheduleParts(freqVal) {
+    const hourInput = document.getElementById("pipeline_schedule_hour");
+    const minuteInput = document.getElementById("pipeline_schedule_minute");
+    let hour = parseInt(hourInput ? hourInput.value : "6", 10);
+    let minute = parseInt(minuteInput ? minuteInput.value : "0", 10);
+
+    if (isNaN(hour)) hour = 6;
+    if (isNaN(minute)) minute = 0;
+
     if (freqVal === "daily") {
-      return rawValue && rawValue.includes(":") ? rawValue : (rawValue || "06:00");
+      hour = Math.min(23, Math.max(0, hour));
+      minute = Math.min(59, Math.max(0, minute));
+    } else if (freqVal === "hourly") {
+      hour = Math.min(23, Math.max(0, hour));
+      minute = 0;
+    } else if (freqVal === "10m") {
+      const slot = Math.min(9, Math.max(0, minute));
+      hour = 0;
+      minute = slot * 10;
+    } else {
+      hour = 6;
+      minute = 0;
     }
-    if (freqVal === "hourly") {
-      const h = Math.min(23, Math.max(0, parseInt(rawValue || "0", 10) || 0));
-      return String(h).padStart(2, "0") + ":00";
-    }
-    if (freqVal === "10m") {
-      const slot = Math.min(9, Math.max(0, parseInt(rawValue || "0", 10) || 0));
-      const m = slot * 10;
-      return "00:" + String(m).padStart(2, "0");
-    }
-    // "off" or anything else – keep a safe default
-    return "06:00";
+    return { hour, minute };
   }
 
-  function updateScheduleTimeField() {
+  function updateScheduleTimeFields() {
     const freqSelect = document.getElementById("pipeline_schedule_frequency");
-    const timeInput = document.getElementById("pipeline_schedule_time");
-    if (!freqSelect || !timeInput) return;
+    const hourInput = document.getElementById("pipeline_schedule_hour");
+    const minuteInput = document.getElementById("pipeline_schedule_minute");
+    const sep = document.getElementById("pipeline_time_sep");
+    if (!freqSelect || !hourInput || !minuteInput || !sep) return;
 
     const freqVal = freqSelect.value;
 
     if (freqVal === "off") {
-      timeInput.style.display = "none";
+      hourInput.style.display = "none";
+      minuteInput.style.display = "none";
+      sep.style.display = "none";
       return;
     }
 
-    timeInput.style.display = "";
+    hourInput.style.display = "";
+    minuteInput.style.display = "";
+    sep.style.display = "";
 
     if (freqVal === "daily") {
-      // Standard HH:MM time input.
-      timeInput.type = "time";
-      timeInput.min = "00:00";
-      timeInput.max = "23:59";
-      timeInput.step = "60";
-      if (!timeInput.value || !timeInput.value.includes(":")) {
-        timeInput.value = "06:00";
-      }
+      // Hour 0–23, minute 0–59.
+      hourInput.min = "0";
+      hourInput.max = "23";
+      minuteInput.min = "0";
+      minuteInput.max = "59";
+      minuteInput.disabled = false;
     } else if (freqVal === "hourly") {
-      // Hour of day 0–23.
-      timeInput.type = "number";
-      timeInput.min = "0";
-      timeInput.max = "23";
-      timeInput.step = "1";
-      if (timeInput.value && timeInput.value.includes(":")) {
-        const parts = timeInput.value.split(":");
-        const h = parseInt(parts[0], 10);
-        timeInput.value = String(isNaN(h) ? 0 : h);
-      }
+      // Hour of day 0–23; minute fixed to :00 and disabled.
+      hourInput.min = "0";
+      hourInput.max = "23";
+      minuteInput.min = "0";
+      minuteInput.max = "59";
+      minuteInput.value = "0";
+      minuteInput.disabled = true;
     } else if (freqVal === "10m") {
-      // 10-minute slot within the hour, 0–9 (i.e. slot * 10 minutes).
-      timeInput.type = "number";
-      timeInput.min = "0";
-      timeInput.max = "9";
-      timeInput.step = "1";
-      if (timeInput.value && timeInput.value.includes(":")) {
-        const parts = timeInput.value.split(":");
-        const m = parseInt(parts[1], 10);
-        const slot = Math.floor((isNaN(m) ? 0 : m) / 10);
-        timeInput.value = String(slot);
-      }
+      // Minute slot 0–9 (slot * 10 minutes); hide hour field.
+      hourInput.style.display = "none";
+      sep.style.display = "none";
+      minuteInput.style.display = "";
+      minuteInput.disabled = false;
+      minuteInput.min = "0";
+      minuteInput.max = "9";
     }
   }
 
@@ -121,10 +126,12 @@
 
     const theme = localStorage.getItem("theme") || "system";
     const freqSelect = document.getElementById("pipeline_schedule_frequency");
-    const timeInput = document.getElementById("pipeline_schedule_time");
     const freqVal = freqSelect ? freqSelect.value : "daily";
-    const rawTime = timeInput ? timeInput.value : "06:00";
-    const timeVal = normalizeScheduleTime(freqVal, rawTime);
+    const parts = getScheduleParts(freqVal);
+    const timeVal =
+      String(parts.hour).padStart(2, "0") +
+      ":" +
+      String(parts.minute).padStart(2, "0");
 
     const payload = {
       retention_days: String(days),
@@ -395,7 +402,7 @@
   (function () {
     const freqSelect = document.getElementById("pipeline_schedule_frequency");
     if (freqSelect) {
-      freqSelect.addEventListener("change", updateScheduleTimeField);
-      updateScheduleTimeField();
+      freqSelect.addEventListener("change", updateScheduleTimeFields);
+      updateScheduleTimeFields();
     }
   })();
