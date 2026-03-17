@@ -6,8 +6,9 @@ A self-hosted RSS aggregator for your local network. Runs on a Raspberry Pi 5, f
 
 ## Features
 
-- **Daily pipeline at 6:00 AM** — fetch feeds → rank articles → update topic map → generate digest
+- **Daily pipeline at 6:00 AM** — fetch feeds and newsletters → rank articles → update topic map → generate digest
 - **Manual refresh** button runs the same pipeline on demand
+- **Newsletter inbox polling** — point the app at an IMAP mailbox, then ingest unread newsletter emails into the feed
 - **Personalized ranking** — like articles to train WordRank; similar articles are upranked automatically
 - **Read state** — clicked articles dim so you can see what's new at a glance
 - **Feed management** — add/remove RSS feeds from the browser
@@ -70,6 +71,7 @@ Press **Ctrl+C** to stop.
 
 ```bash
 python -m scripts.compile_feed    # fetch feeds + prune old entries
+python -m scripts.newsletter_ingest  # fetch unread newsletter emails from IMAP
 python -m scripts.wordrank        # recompute article scores from likes
 python -m scripts.visualization   # recompute topic map (t-SNE layout)
 python -m scripts.digest          # generate AI digest via ollama
@@ -140,12 +142,13 @@ Configure model and ollama URL in **Settings → AI Digest**.
 ```
 myrssfeed/
 ├── main.py                      # FastAPI app + logging setup + startup lifecycle
-├── scheduler.py                 # APScheduler: daily pipeline at 6:00 AM
+├── scheduler.py                 # APScheduler: daily pipeline + newsletter polling
 ├── api/
 │   ├── routes.py                # All API endpoints + HTML page routes
 │   └── schemas.py               # Pydantic request/response models
 ├── scripts/
 │   ├── compile_feed.py          # Fetch RSS feeds, extract thumbnails, prune entries
+│   ├── newsletter_ingest.py     # IMAP newsletter polling + email-to-entry normalization
 │   ├── wordrank.py              # TF-IDF personalization scoring
 │   ├── visualization.py         # TF-IDF + SVD + t-SNE topic map
 │   └── digest.py                # Extractive filter + ollama AI digest
@@ -197,3 +200,5 @@ myrssfeed/
 | `GET` | `/api/logs` | Recent log lines (`?lines=100`) |
 | `GET` | `/api/settings` | Get all settings |
 | `POST` | `/api/settings` | Update settings |
+| `POST` | `/api/newsletters/sync` | Poll the mailbox immediately |
+| `GET` | `/api/newsletters/status` | Newsletter sync status |

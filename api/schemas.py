@@ -35,6 +35,8 @@ class EntryOut(BaseModel):
     liked: int = 0
     score: float = 0.0
     thumbnail_url: Optional[str] = None
+    assessment_label: Optional[str] = None
+    assessment_label_color: Optional[str] = None
 
 
 class DigestOut(BaseModel):

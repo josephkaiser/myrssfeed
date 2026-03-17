@@ -22,7 +22,7 @@ SUMMARY_MAX_LEN = 50_000
 LINK_MAX_LEN = 2048
 
 
-def _extract_thumbnail(entry) -> str | None:
+def _extract_thumbnail(entry) -> Optional[str]:
     for media in getattr(entry, "media_content", []):
         url = media.get("url", "")
         mime = media.get("type", "")
@@ -86,15 +86,17 @@ def _process_entry(
     cursor,
     feed_id: int,
     entry,
+    source_uid: Optional[str],
     scrape_enabled: bool,
     scrape_budget_ref: list,
     new_count_ref: list,
     scraped_count_ref: list,
-) -> None:
+) -> bool:
     """Parse, normalize, optionally enrich one entry and insert. Mutates *_ref counters."""
     link = _normalize_link(getattr(entry, "link", None))
-    if not link:
-        return
+    source_uid = _normalize_text(source_uid or link or "", LINK_MAX_LEN)
+    if not source_uid:
+        return False
     title = _normalize_text(getattr(entry, "title", "") or "(no title)", TITLE_MAX_LEN)
     summary = _normalize_text(getattr(entry, "summary", ""), SUMMARY_MAX_LEN)
     published = _parse_date(
@@ -105,14 +107,18 @@ def _process_entry(
     if thumbnail_url and len(thumbnail_url) > LINK_MAX_LEN:
         thumbnail_url = thumbnail_url[:LINK_MAX_LEN]
 
-    og_title = None
-    og_description = None
-    og_image_url = None
-    full_content = None
-    if scrape_enabled and scrape_budget_ref[0] > 0:
+    og_title = getattr(entry, "og_title", None)
+    og_description = getattr(entry, "og_description", None)
+    og_image_url = getattr(entry, "og_image_url", None)
+    full_content = getattr(entry, "full_content", None)
+    if scrape_enabled and scrape_budget_ref[0] > 0 and link:
         try:
-            og_title, og_description, og_image_url, full_content = scrape_url(link)
-            if any([og_title, og_description, og_image_url, full_content]):
+            scraped_og_title, scraped_og_description, scraped_og_image_url, scraped_full_content = scrape_url(link)
+            if any([scraped_og_title, scraped_og_description, scraped_og_image_url, scraped_full_content]):
+                og_title = og_title or scraped_og_title
+                og_description = og_description or scraped_og_description
+                og_image_url = og_image_url or scraped_og_image_url
+                full_content = full_content or scraped_full_content
                 scraped_count_ref[0] += 1
                 scrape_budget_ref[0] -= 1
         except Exception as exc:
@@ -122,13 +128,14 @@ def _process_entry(
         cursor.execute(
             """
             INSERT INTO entries (
-                feed_id, title, link, published, summary, thumbnail_url,
+                feed_id, source_uid, title, link, published, summary, thumbnail_url,
                 og_title, og_description, og_image_url, full_content
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 feed_id,
+                source_uid,
                 title,
                 link,
                 published,
@@ -141,16 +148,17 @@ def _process_entry(
             ),
         )
         new_count_ref[0] += 1
+        return True
     except Exception:
-        # UNIQUE(feed_id, link) — entry already stored
-        pass
+        # UNIQUE(feed_id, source_uid) — entry already stored
+        return False
 
 
 def run_compile_feed():
     conn = get_db()
     cursor = conn.cursor()
 
-    cursor.execute("SELECT id, url, title FROM feeds")
+    cursor.execute("SELECT id, url, title FROM feeds WHERE COALESCE(kind, 'rss') = 'rss'")
     feeds = cursor.fetchall()
 
     if not feeds:
@@ -204,6 +212,7 @@ def run_compile_feed():
                     cursor=cursor,
                     feed_id=feed_id,
                     entry=entry,
+                    source_uid=getattr(entry, "link", None),
                     scrape_enabled=scrape_enabled,
                     scrape_budget_ref=scrape_budget_ref,
                     new_count_ref=new_count_ref,

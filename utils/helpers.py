@@ -21,6 +21,14 @@ DEFAULTS: dict[str, str] = {
     "pipeline_schedule_frequency": "daily",
     # Time of day (local) for "daily" / "hourly" anchors, format HH:MM (24h)
     "pipeline_schedule_time": "06:00",
+    # Newsletter mailbox polling
+    "newsletter_enabled": "false",
+    "newsletter_imap_host": "",
+    "newsletter_imap_port": "993",
+    "newsletter_imap_username": "",
+    "newsletter_imap_password": "",
+    "newsletter_imap_folder": "INBOX",
+    "newsletter_poll_minutes": "30",
     # Status:
     # Values for pipeline_last_status:
     # - "never"   : no completed runs yet
@@ -32,6 +40,10 @@ DEFAULTS: dict[str, str] = {
     "scrape_last_status": "never",
     # WordRank status (for manual/scheduled recomputes)
     "wordrank_last_status": "never",
+    # Newsletter status
+    "newsletter_last_status": "never",
+    "newsletter_last_success_ts": "",
+    "newsletter_last_error": "",
 }
 
 
@@ -50,12 +62,14 @@ def init_db():
             id    INTEGER PRIMARY KEY AUTOINCREMENT,
             url   TEXT UNIQUE NOT NULL,
             title TEXT,
-            color TEXT
+            color TEXT,
+            kind  TEXT NOT NULL DEFAULT 'rss'
         );
 
         CREATE TABLE IF NOT EXISTS entries (
             id            INTEGER PRIMARY KEY AUTOINCREMENT,
             feed_id       INTEGER NOT NULL,
+            source_uid    TEXT,
             title         TEXT,
             link          TEXT,
             published     TEXT,
@@ -113,6 +127,9 @@ def _migrate_db(conn: sqlite3.Connection) -> None:
         ("read", "INTEGER DEFAULT 0"),
         ("liked", "INTEGER DEFAULT 0"),
         ("score", "REAL DEFAULT 0.0"),
+        ("quality_score", "REAL DEFAULT 0.0"),
+        ("assessment_label", "TEXT"),
+        ("assessment_label_color", "TEXT"),
         ("viz_x", "REAL"),
         ("viz_y", "REAL"),
         ("og_title", "TEXT"),
@@ -126,6 +143,14 @@ def _migrate_db(conn: sqlite3.Connection) -> None:
     feed_cols = {r[1] for r in conn.execute("PRAGMA table_info(feeds)").fetchall()}
     if "color" not in feed_cols:
         conn.execute("ALTER TABLE feeds ADD COLUMN color TEXT")
+    if "kind" not in feed_cols:
+        conn.execute("ALTER TABLE feeds ADD COLUMN kind TEXT NOT NULL DEFAULT 'rss'")
+    entry_cols = {r[1] for r in conn.execute("PRAGMA table_info(entries)").fetchall()}
+    if "source_uid" not in entry_cols:
+        conn.execute("ALTER TABLE entries ADD COLUMN source_uid TEXT")
+    conn.execute(
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_entries_feed_source_uid ON entries(feed_id, source_uid)"
+    )
 
     conn.commit()
 

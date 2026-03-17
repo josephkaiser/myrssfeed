@@ -109,6 +109,18 @@
         </button>
       </div>
       <div class="header-action">
+        <button
+          class="btn icon-btn{% if random_enabled %} active{% endif %}"
+          id="header-random-btn"
+          type="button"
+          title="Toggle random article order"
+          aria-pressed="{{ 'true' if random_enabled else 'false' }}"
+          onclick="headerToggleRandom()"
+        >
+          &#127922;
+        </button>
+      </div>
+      <div class="header-action">
         <a
           href="/settings"
           class="btn icon-btn header-gear-link"
@@ -287,6 +299,81 @@
           value="{{ settings.max_entries or '1000' }}"
         />
         <span class="num-unit">articles</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="settings-section">
+    <div class="settings-section-title">Newsletters</div>
+
+    <div class="setting-row">
+      <div class="setting-info">
+        <div class="setting-label">Enable newsletter polling</div>
+        <div class="setting-desc">
+          Point myRSSfeed at a mailbox, then poll it for new newsletter emails and turn each message into an article entry.
+        </div>
+      </div>
+      <div class="setting-control">
+        <select class="select-input" id="newsletter_enabled">
+          <option value="false" {% if settings.newsletter_enabled != 'true' %}selected{% endif %}>Disabled</option>
+          <option value="true" {% if settings.newsletter_enabled == 'true' %}selected{% endif %}>Enabled</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="setting-row">
+      <div class="setting-info">
+        <div class="setting-label">IMAP server</div>
+        <div class="setting-desc">
+          The IMAP host and port for the mailbox that receives your newsletters.
+        </div>
+      </div>
+      <div class="setting-control">
+        <input class="detect-input" type="text" id="newsletter_imap_host" value="{{ settings.newsletter_imap_host or '' }}" placeholder="imap.example.com" autocomplete="off" />
+        <input class="num-input" type="number" id="newsletter_imap_port" min="1" max="65535" value="{{ settings.newsletter_imap_port or '993' }}" />
+      </div>
+    </div>
+
+    <div class="setting-row">
+      <div class="setting-info">
+        <div class="setting-label">Mailbox login</div>
+        <div class="setting-desc">
+          Use the mailbox address as the username and an app password or normal password for IMAP access.
+        </div>
+      </div>
+      <div class="setting-control">
+        <input class="detect-input" type="text" id="newsletter_imap_username" value="{{ settings.newsletter_imap_username or '' }}" placeholder="newsletter@example.com" autocomplete="off" />
+        <input class="detect-input" type="password" id="newsletter_imap_password" value="{{ settings.newsletter_imap_password or '' }}" placeholder="App password" autocomplete="new-password" />
+      </div>
+    </div>
+
+    <div class="setting-row">
+      <div class="setting-info">
+        <div class="setting-label">Mailbox folder and poll interval</div>
+        <div class="setting-desc">
+          Choose the folder to read and how often myRSSfeed should check for new mail while polling is enabled.
+        </div>
+      </div>
+      <div class="setting-control">
+        <input class="detect-input" type="text" id="newsletter_imap_folder" value="{{ settings.newsletter_imap_folder or 'INBOX' }}" placeholder="INBOX" autocomplete="off" />
+        <input class="num-input" type="number" id="newsletter_poll_minutes" min="5" max="1440" value="{{ settings.newsletter_poll_minutes or '30' }}" />
+        <span class="num-unit">minutes</span>
+      </div>
+    </div>
+
+    <div class="setting-row">
+      <div class="setting-info">
+        <div class="setting-label">Sync newsletters now</div>
+        <div class="setting-desc">
+          Pull unread newsletter emails immediately instead of waiting for the next scheduled poll.
+        </div>
+      </div>
+      <div class="setting-control setting-control-stacked">
+        <button class="btn" id="newsletter-sync-btn" onclick="newsletterSyncNow()">Sync now</button>
+        <div class="refresh-status" id="newsletter-status" aria-live="polite">
+          <span class="refresh-status-dot" id="newsletter-status-dot" aria-hidden="true"></span>
+          <span class="refresh-status-text" id="newsletter-status-text">Checking status…</span>
+        </div>
       </div>
     </div>
   </div>

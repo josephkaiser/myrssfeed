@@ -109,6 +109,18 @@
         </button>
       </div>
       <div class="header-action">
+        <button
+          class="btn icon-btn{% if random_enabled %} active{% endif %}"
+          id="header-random-btn"
+          type="button"
+          title="Toggle random article order"
+          aria-pressed="{{ 'true' if random_enabled else 'false' }}"
+          onclick="headerToggleRandom()"
+        >
+          &#127922;
+        </button>
+      </div>
+      <div class="header-action">
         <a
           href="/settings"
           class="btn icon-btn header-gear-link"

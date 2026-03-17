@@ -76,6 +76,18 @@
         </button>
       </div>
       <div class="header-action">
+        <button
+          class="btn icon-btn{% if random_enabled %} active{% endif %}"
+          id="header-random-btn"
+          type="button"
+          title="Toggle random article order"
+          aria-pressed="{{ 'true' if random_enabled else 'false' }}"
+          onclick="headerToggleRandom()"
+        >
+          &#127922;
+        </button>
+      </div>
+      <div class="header-action">
         <a
           href="/settings"
           class="btn icon-btn header-gear-link"
@@ -91,8 +103,14 @@
 
 <article class="article-view">
   <div class="article-meta">
-    <img class="article-favicon" src="https://www.google.com/s2/favicons?domain={{ feed_map[entry.feed_id].domain }}&sz=32" width="14" height="14" alt="" />
-    <span class="article-source">{{ entry.feed_title or "Unknown" }}</span>
+    {% set feed_info = feed_map.get(entry.feed_id) %}
+    {% if feed_info and feed_info.domain %}
+    <img class="article-favicon" src="https://www.google.com/s2/favicons?domain={{ feed_info.domain }}&sz=32" width="14" height="14" alt="" />
+    {% endif %}
+    <span class="article-source tag entry-source-tag" style="--feed-color: {{ feed_info.color if feed_info else '' }}">{{ entry.feed_title or "Unknown" }}</span>
+    {% if entry.assessment_label %}
+    <span class="tag entry-assessment-tag" style="--assessment-color: {{ entry.assessment_label_color or '' }}">{{ entry.assessment_label | replace('_', ' ') | title }}</span>
+    {% endif %}
     <span class="article-date">{{ entry.published[:10] if entry.published else "" }}</span>
   </div>
   <h1 class="article-title">{{ (entry.og_title or entry.title) or "(no title)" }}</h1>
@@ -105,7 +123,7 @@
     </figure>
     {% endif %}
     <div class="article-body">
-      {% set body = entry.og_description or entry.summary %}
+      {% set body = entry.og_description or entry.full_content or entry.summary %}
       {% if body %}
       {{ body | safe }}
       {% else %}

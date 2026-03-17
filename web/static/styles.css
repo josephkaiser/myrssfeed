@@ -691,9 +691,49 @@ header {
 }
 .entries-header {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
-  margin-bottom: 0.75rem;
+  margin-bottom: 0.85rem;
+}
+
+.feed-scope-toggle {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.feed-scope-btn {
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  display: inline-flex;
+  align-items: center;
+  padding: 0;
+  font-size: 0.98rem;
+  font-weight: 600;
+  text-decoration-line: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.16em;
+  line-height: 1.2;
+}
+
+.feed-scope-btn:hover {
+  background: transparent;
+  color: var(--text);
+  text-decoration-color: var(--text);
+}
+
+.feed-scope-btn.active {
+  background: transparent;
+  color: var(--text);
+  text-decoration-color: var(--text);
+}
+
+.feed-scope-sep {
+  color: var(--muted);
+  font-size: 0.95rem;
+  font-weight: 500;
 }
 .entries-header h2 {
   font-size: 0.95rem;
@@ -766,6 +806,16 @@ header {
   padding: 2px 7px;
   border-radius: 20px;
   white-space: nowrap;
+}
+.tag.entry-source-tag {
+  color: var(--feed-color, var(--accent));
+  background: color-mix(in srgb, var(--feed-color, var(--accent)) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--feed-color, var(--accent)) 34%, transparent);
+}
+.tag.entry-assessment-tag {
+  color: var(--assessment-color, var(--accent));
+  background: color-mix(in srgb, var(--assessment-color, var(--accent)) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--assessment-color, var(--accent)) 34%, transparent);
 }
 .entry-date {
   color: var(--muted);

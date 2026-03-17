@@ -1,20 +1,35 @@
 import logging
 import threading
 from datetime import datetime, timezone
+from typing import Callable, Optional
 from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.interval import IntervalTrigger
 from apscheduler.triggers.cron import CronTrigger
 
 from utils.helpers import set_setting, get_setting
+from scripts.newsletter_ingest import run_newsletter_ingest
 
 logger = logging.getLogger(__name__)
 
 _pipeline_lock = threading.Lock()
 _pipeline_running = False
-_scheduler: BackgroundScheduler | None = None
+_scheduler: Optional[BackgroundScheduler] = None
 
 
 def is_pipeline_running() -> bool:
     return _pipeline_running
+
+
+def _run_pipeline_stages(stages: list[tuple[str, Callable[[], None]]]) -> bool:
+    """Run pipeline stages in order and keep going after individual failures."""
+    had_error = False
+    for stage_name, stage_fn in stages:
+        try:
+            stage_fn()
+        except Exception:
+            had_error = True
+            logger.exception("Pipeline stage %s failed — continuing with remaining stages.", stage_name)
+    return had_error
 
 
 def _record_pipeline_status(status: str) -> None:
@@ -75,42 +90,58 @@ def _do_pipeline():
     had_error = False
     try:
         from scripts.compile_feed import run_compile_feed
-
-        run_compile_feed()
     except Exception:
         had_error = True
-        logger.exception("Pipeline stage compile_feed failed — continuing with remaining stages.")
+        logger.exception("Pipeline stage compile_feed failed to load — continuing with remaining stages.")
+    else:
+        had_error = _run_pipeline_stages([("compile_feed", run_compile_feed)]) or had_error
+
+    try:
+        # Poll newsletters into the same entries table before enrichment and scoring.
+        from scripts.newsletter_ingest import run_newsletter_ingest
+    except Exception:
+        had_error = True
+        logger.exception("Pipeline stage newsletter_ingest failed to load — continuing.")
+    else:
+        had_error = _run_pipeline_stages([("newsletter_ingest", run_newsletter_ingest)]) or had_error
 
     try:
         # Scrape/enrich newly fetched entries before scoring.
         from scripts.scraper import run_scraper
-
-        run_scraper()
     except Exception:
         had_error = True
-        logger.exception("Pipeline stage scraper failed — continuing.")
+        logger.exception("Pipeline stage scraper failed to load — continuing.")
+    else:
+        had_error = _run_pipeline_stages([("scraper", run_scraper)]) or had_error
 
     try:
         from scripts.wordrank import run_wordrank
-
-        run_wordrank()
     except Exception:
         had_error = True
-        logger.exception("Pipeline stage wordrank failed — continuing.")
+        logger.exception("Pipeline stage wordrank failed to load — continuing.")
+    else:
+        had_error = _run_pipeline_stages([("wordrank", run_wordrank)]) or had_error
+    try:
+        from scripts.quality_score import run_quality_score
+    except Exception:
+        had_error = True
+        logger.exception("Pipeline stage quality_score failed to load — continuing.")
+    else:
+        had_error = _run_pipeline_stages([("quality_score", run_quality_score)]) or had_error
     try:
         from scripts.visualization import run_visualization
-
-        run_visualization()
     except Exception:
         had_error = True
-        logger.exception("Pipeline stage visualization failed — continuing.")
+        logger.exception("Pipeline stage visualization failed to load — continuing.")
+    else:
+        had_error = _run_pipeline_stages([("visualization", run_visualization)]) or had_error
     try:
         from scripts.digest import run_digest
-
-        run_digest()
     except Exception:
         had_error = True
-        logger.exception("Pipeline stage digest failed — continuing.")
+        logger.exception("Pipeline stage digest failed to load — continuing.")
+    else:
+        had_error = _run_pipeline_stages([("digest", run_digest)]) or had_error
 
     final_status = "error" if had_error else "success"
     _record_pipeline_status(final_status)
@@ -131,6 +162,18 @@ def _parse_schedule_settings() -> tuple[str, int, int]:
     if freq not in {"off", "10m", "hourly", "daily"}:
         freq = "daily"
     return freq, hour, minute
+
+
+def _parse_newsletter_settings() -> tuple[bool, int]:
+    enabled = (get_setting("newsletter_enabled") or "false").lower() == "true"
+    try:
+        minutes = int(get_setting("newsletter_poll_minutes") or "30")
+    except (TypeError, ValueError):
+        minutes = 30
+    minutes = max(5, min(1440, minutes))
+    if not enabled:
+        return False, minutes
+    return True, minutes
 
 
 def _add_pipeline_job(scheduler: BackgroundScheduler) -> None:
@@ -162,10 +205,28 @@ def _add_pipeline_job(scheduler: BackgroundScheduler) -> None:
     logger.info("Scheduler configured: %s.", name)
 
 
+def _add_newsletter_job(scheduler: BackgroundScheduler) -> None:
+    enabled, minutes = _parse_newsletter_settings()
+    if not enabled:
+        logger.info("Scheduler: newsletter polling disabled via settings.")
+        return
+
+    scheduler.add_job(
+        run_newsletter_ingest,
+        trigger=IntervalTrigger(minutes=minutes),
+        id="newsletter_poll",
+        name=f"Newsletter poll every {minutes} minutes",
+        replace_existing=True,
+        misfire_grace_time=600,
+    )
+    logger.info("Scheduler configured: newsletter poll every %d minutes.", minutes)
+
+
 def create_scheduler() -> BackgroundScheduler:
     global _scheduler
     scheduler = BackgroundScheduler()
     _add_pipeline_job(scheduler)
+    _add_newsletter_job(scheduler)
     _scheduler = scheduler
     return scheduler
 
@@ -185,6 +246,11 @@ def reconfigure_scheduler() -> None:
         except Exception:
             # Missing job is fine; we'll just add a new one.
             pass
+        try:
+            _scheduler.remove_job("newsletter_poll")
+        except Exception:
+            pass
         _add_pipeline_job(_scheduler)
+        _add_newsletter_job(_scheduler)
     except Exception:
         logger.exception("Failed to reconfigure scheduler from settings.")

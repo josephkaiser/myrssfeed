@@ -159,6 +159,29 @@
       return;
     }
 
+    const newsletterEnabledSelect = document.getElementById("newsletter_enabled");
+    const newsletterHostInput = document.getElementById("newsletter_imap_host");
+    const newsletterPortInput = document.getElementById("newsletter_imap_port");
+    const newsletterUserInput = document.getElementById("newsletter_imap_username");
+    const newsletterPassInput = document.getElementById("newsletter_imap_password");
+    const newsletterFolderInput = document.getElementById("newsletter_imap_folder");
+    const newsletterPollInput = document.getElementById("newsletter_poll_minutes");
+
+    const newsletterEnabled = newsletterEnabledSelect ? newsletterEnabledSelect.value : "false";
+    const newsletterPortVal = parseInt(newsletterPortInput.value, 10);
+    if (isNaN(newsletterPortVal) || newsletterPortVal < 1 || newsletterPortVal > 65535) {
+      toast("Newsletter IMAP port must be between 1 and 65535.", false);
+      newsletterPortInput.focus();
+      return;
+    }
+
+    const newsletterPollVal = parseInt(newsletterPollInput.value, 10);
+    if (isNaN(newsletterPollVal) || newsletterPollVal < 5 || newsletterPollVal > 1440) {
+      toast("Newsletter poll interval must be between 5 and 1440 minutes.", false);
+      newsletterPollInput.focus();
+      return;
+    }
+
     if (maxEntriesVal > 5000) {
       toast("Large article lists may be slow on lower-end devices. Make sure this machine has enough disk space and a fast drive.", true);
     }
@@ -178,6 +201,13 @@
       max_entries: String(maxEntriesVal),
       pipeline_schedule_frequency: freqVal,
       pipeline_schedule_time: timeVal,
+      newsletter_enabled: newsletterEnabled,
+      newsletter_imap_host: newsletterHostInput.value.trim(),
+      newsletter_imap_port: String(newsletterPortVal),
+      newsletter_imap_username: newsletterUserInput.value.trim(),
+      newsletter_imap_password: newsletterPassInput.value,
+      newsletter_imap_folder: newsletterFolderInput.value.trim() || "INBOX",
+      newsletter_poll_minutes: String(newsletterPollVal),
     };
 
     const res = await fetch("/api/settings", {
@@ -190,6 +220,7 @@
       const statusEl = document.getElementById("save-status");
       statusEl.classList.add("show");
       setTimeout(() => statusEl.classList.remove("show"), 2500);
+      setTimeout(fetchNewsletterStatus, 1000);
     } else {
       const data = await res.json().catch(() => ({}));
       toast(data.detail || "Could not save settings.", false);
@@ -305,6 +336,63 @@
     }
   }
 
+  function updateNewsletterStatusUI(state) {
+    const dot = document.getElementById("newsletter-status-dot");
+    const text = document.getElementById("newsletter-status-text");
+    if (!dot || !text) return;
+
+    dot.className = "refresh-status-dot";
+    text.title = "";
+
+    if (state.running) {
+      dot.classList.add("running");
+      text.textContent = "Sync in progress";
+      return;
+    }
+
+    switch (state.last_status) {
+      case "success":
+        dot.classList.add("success");
+        if (typeof state.minutes_since_last_success === "number") {
+          const mins = state.minutes_since_last_success;
+          text.textContent = mins === 0 ? "Just now" : `${mins} min ago`;
+        } else {
+          text.textContent = "Last sync completed";
+        }
+        break;
+      case "error":
+        dot.classList.add("error");
+        text.textContent = "Last sync failed";
+        if (state.last_error) text.title = state.last_error;
+        break;
+      case "disabled":
+        text.textContent = "Disabled";
+        break;
+      case "never":
+      default:
+        text.textContent = "No runs yet";
+        break;
+    }
+  }
+
+  async function fetchNewsletterStatus() {
+    try {
+      const res = await fetch("/api/newsletters/status");
+      if (!res.ok) return;
+      const data = await res.json().catch(() => ({}));
+      updateNewsletterStatusUI({
+        running: !!data.running,
+        last_status: data.last_status || "never",
+        minutes_since_last_success: typeof data.minutes_since_last_success === "number"
+          ? data.minutes_since_last_success
+          : null,
+        last_error: data.last_error || "",
+      });
+    } catch {
+      // Best-effort only.
+    }
+  }
+
   async function refreshNow() {
     const btn = document.getElementById("refresh-now-btn");
     if (!btn) return;
@@ -336,6 +424,7 @@
   (function () {
     const hasRefresh = document.getElementById("refresh-status-dot");
     const hasScrape = document.getElementById("scrape-status-dot");
+    const hasNewsletter = document.getElementById("newsletter-status-dot");
 
     if (hasRefresh) {
       fetchRefreshStatus();
@@ -344,6 +433,10 @@
     if (hasScrape) {
       fetchScrapeStatus();
       setInterval(fetchScrapeStatus, 8000);
+    }
+    if (hasNewsletter) {
+      fetchNewsletterStatus();
+      setInterval(fetchNewsletterStatus, 8000);
     }
   })();
 
@@ -370,6 +463,31 @@
       btn.disabled = false;
       btn.textContent = originalText;
       setTimeout(fetchScrapeStatus, 2000);
+    }
+  }
+
+  async function newsletterSyncNow() {
+    const btn = document.getElementById("newsletter-sync-btn");
+    if (!btn) return;
+    btn.disabled = true;
+    const originalText = btn.textContent;
+    btn.textContent = "Syncing...";
+    try {
+      const res = await fetch("/api/newsletters/sync", { method: "POST" });
+      if (res.ok) {
+        const data = await res.json().catch(() => ({}));
+        toast(data.message || "Newsletter sync started.");
+        updateNewsletterStatusUI({ running: true, last_status: "running" });
+      } else {
+        const data = await res.json().catch(() => ({}));
+        toast(data.detail || "Could not start newsletter sync.", false);
+      }
+    } catch (e) {
+      toast("Network error starting newsletter sync.", false);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = originalText;
+      setTimeout(fetchNewsletterStatus, 2000);
     }
   }
 
