@@ -219,6 +219,45 @@ def digest_page(request: Request):
     return templates.TemplateResponse("digest.html", {"request": request})
 
 
+def _compute_trending(entries: list[dict], limit: int = 8) -> list[dict]:
+    """
+    Build a small "trending" set that:
+    - favours recency (entries are already newest-first)
+    - encourages diversity of source (per-feed cap)
+    - uses the existing score field to prefer more unique content
+    """
+    if not entries:
+        return []
+
+    # Combine recency (position in list) and score into one ranking value.
+    # Newest entries appear first in `entries`.
+    n = len(entries)
+    ranked = []
+    for idx, e in enumerate(entries):
+        recency_weight = (n - idx) / n  # 1.0 for newest, down to ~0
+        score = float(e.get("score") or 0.0)
+        combined = 0.7 * recency_weight + 0.3 * score
+        ranked.append((combined, e))
+
+    ranked.sort(key=lambda t: t[0], reverse=True)
+
+    # Greedy pick with per-feed cap to keep sources diverse.
+    per_feed_cap = 2
+    feed_counts: dict[int, int] = {}
+    trending: list[dict] = []
+    for _, e in ranked:
+        feed_id = int(e.get("feed_id") or 0)
+        if feed_id:
+            if feed_counts.get(feed_id, 0) >= per_feed_cap:
+                continue
+            feed_counts[feed_id] = feed_counts.get(feed_id, 0) + 1
+        trending.append(e)
+        if len(trending) >= limit:
+            break
+
+    return trending
+
+
 @router.get("/", response_class=HTMLResponse)
 def index(request: Request, q: Optional[str] = None, feed_id: Optional[int] = None):
     conn = get_db()
@@ -272,13 +311,17 @@ def index(request: Request, q: Optional[str] = None, feed_id: Optional[int] = No
     entries = conn.execute(query, params).fetchall()
     conn.close()
 
+    entries_list = [dict(e) for e in entries]
+    trending = _compute_trending(entries_list)
+
     return templates.TemplateResponse(
         "index.html",
         {
             "request": request,
             "feeds": feeds,
             "feed_map": feed_map,
-            "entries": [dict(e) for e in entries],
+            "entries": entries_list,
+            "trending": trending,
             "q": q or "",
             "active_feed_id": feed_id,
         },

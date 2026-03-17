@@ -18,7 +18,12 @@
 <body>
 
 <header>
-  <a class="header-brand" onclick="toggleNav()" role="button" tabindex="0">myRSSfeed</a>
+  <button class="hamburger-btn" type="button" onclick="toggleNav()" aria-label="Open navigation">
+    <span></span>
+    <span></span>
+    <span></span>
+  </button>
+  <a class="header-brand" href="/">myRSSfeed</a>
 
   <form class="search-bar" method="get" action="/" id="search-form">
     {% if active_feed_id %}
@@ -74,6 +79,37 @@
 </div>
 
 <div class="layout">
+  <aside class="sidebar-left">
+    <div class="sidebar-section">
+      <div class="sidebar-section-title">Navigation</div>
+      <nav class="sidebar-nav">
+        <a href="/">
+          <span class="nav-icon">&#128196;</span> Articles
+        </a>
+        <a href="/feeds">
+          <span class="nav-icon">&#128218;</span> My Feeds
+        </a>
+        <a href="/discover">
+          <span class="nav-icon">&#128269;</span> Discover
+        </a>
+        <a href="/settings">
+          <span class="nav-icon">&#9881;</span> Settings
+        </a>
+      </nav>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-section-title">Subscriptions</div>
+      <div class="sidebar-feeds">
+        {% for feed in feeds %}
+        <a href="/?feed_id={{ feed.id }}">
+          <img class="sidebar-feed-favicon" src="https://www.google.com/s2/favicons?domain={{ feed_map[feed.id].domain }}&sz=32" width="14" height="14" alt="" loading="lazy" />
+          <span>{{ feed.title or feed.url }}</span>
+        </a>
+        {% endfor %}
+      </div>
+    </div>
+  </aside>
+
   <main class="entries" id="entries-panel">
     <div class="ptr-indicator" id="ptr-indicator">
       <span class="ptr-text">Pull to refresh</span>
@@ -101,13 +137,17 @@
         <div class="entry-body">
           <div class="entry-content">
             <div class="entry-title">
-              <a href="{{ entry.link }}" target="_blank" rel="noopener noreferrer" onclick="markRead({{ entry.id }}, this)">
-                {{ display_title or "(no title)" }}
-              </a>
+              {{ display_title or "(no title)" }}
             </div>
             {% if display_summary %}
             <div class="entry-summary">{{ display_summary | striptags }}</div>
+            <button type="button" class="entry-summary-toggle">See more</button>
             {% endif %}
+            <div class="entry-link-row">
+              <a href="{{ entry.link }}" target="_blank" rel="noopener noreferrer" onclick="markRead({{ entry.id }}, this)">
+                {{ entry.link }}
+              </a>
+            </div>
           </div>
           {% if display_thumb %}
           <img class="entry-thumb" src="{{ display_thumb }}" alt="" loading="lazy" />
@@ -122,6 +162,33 @@
       </div>
     {% endif %}
   </main>
+
+  <aside class="sidebar-right">
+    <div class="sidebar-section">
+      <div class="sidebar-section-title">Trending today</div>
+      {% if trending %}
+      <div class="trending-list">
+        {% for entry in trending %}
+        {% set display_title = entry.og_title or entry.title %}
+        <article class="trending-item">
+          <div class="trending-meta">
+            <img class="sidebar-feed-favicon" src="https://www.google.com/s2/favicons?domain={{ feed_map[entry.feed_id].domain }}&sz=32" width="14" height="14" alt="" loading="lazy" />
+            <span class="trending-source">{{ entry.feed_title or "Unknown" }}</span>
+            <span class="trending-date">{{ entry.published[:10] if entry.published else "" }}</span>
+          </div>
+          <a class="trending-title" href="{{ entry.link }}" target="_blank" rel="noopener noreferrer" onclick="markRead({{ entry.id }}, this)">
+            {{ display_title or "(no title)" }}
+          </a>
+        </article>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="trending-empty">
+        <p>No trending articles yet.</p>
+      </div>
+      {% endif %}
+    </div>
+  </aside>
 </div>
 
 <div id="toast"></div>

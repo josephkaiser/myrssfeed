@@ -184,6 +184,25 @@
     }
   }
 
+  // ── Entry summary see more/less ────────────────────────────────────
+  (function() {
+    const cards = document.querySelectorAll(".entry-card");
+    if (!cards.length) return;
+    cards.forEach((card) => {
+      const summary = card.querySelector(".entry-summary");
+      const toggle  = card.querySelector(".entry-summary-toggle");
+      if (!summary || !toggle) return;
+      // Only show toggle if there is actual overflow from the line clamp
+      if (summary.scrollHeight > summary.clientHeight + 4) {
+        card.classList.add("has-overflow");
+        toggle.addEventListener("click", () => {
+          const expanded = card.classList.toggle("expanded");
+          toggle.textContent = expanded ? "See less" : "See more";
+        });
+      }
+    });
+  })();
+
   // ── Helpers ──────────────────────────────────────────────────────
   function escHtml(s) {
     return String(s)
