@@ -82,3 +82,27 @@
       toast(data.detail || "Could not save settings.", false);
     }
   }
+
+  // ── Manual refresh ──────────────────────────────────────────────
+  async function refreshNow() {
+    const btn = document.getElementById("refresh-now-btn");
+    if (!btn) return;
+    btn.disabled = true;
+    const originalText = btn.textContent;
+    btn.textContent = "Refreshing...";
+    try {
+      const res = await fetch("/api/refresh", { method: "POST" });
+      if (res.ok) {
+        const data = await res.json().catch(() => ({}));
+        toast(data.message || "Refresh started.");
+      } else {
+        const data = await res.json().catch(() => ({}));
+        toast(data.detail || "Could not start refresh.", false);
+      }
+    } catch (e) {
+      toast("Network error starting refresh.", false);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = originalText;
+    }
+  }

@@ -334,6 +334,21 @@ def index(request: Request, q: Optional[str] = None, feed_id: Optional[int] = No
     })
 
 
+@app.get("/feeds", response_class=HTMLResponse)
+def feeds_page(request: Request):
+    conn = get_db()
+    rows = conn.execute("SELECT id, url, title, color FROM feeds ORDER BY title").fetchall()
+    conn.close()
+    feeds = [dict(r) for r in rows]
+    return templates.TemplateResponse(
+        "feeds.html",
+        {
+            "request": request,
+            "feeds_json": json.dumps(feeds),
+        },
+    )
+
+
 @app.get("/discover", response_class=HTMLResponse)
 def discover_page(request: Request):
     conn = get_db()
