@@ -54,6 +54,188 @@
     }
   });
 
+  // ── Header quick-action status lights ─────────────────────────────
+  function _updateHeaderDot(id, state, opts = {}) {
+    const dot = document.getElementById(id);
+    if (!dot) return;
+    dot.className = "refresh-status-dot";
+    if (state.running) {
+      dot.classList.add("running");
+      if (opts.textId) {
+        const textEl = document.getElementById(opts.textId);
+        if (textEl) textEl.textContent = "Job in progress";
+      }
+      return;
+    }
+    const last = state.last_status;
+    switch (last) {
+      case "success":
+        dot.classList.add("success");
+        break;
+      case "error":
+        dot.classList.add("error");
+        break;
+      default:
+        // leave as neutral
+        break;
+    }
+    if (opts.textId) {
+      const textEl = document.getElementById(opts.textId);
+      if (textEl) {
+        let label = "No runs yet";
+        if (opts.kind === "refresh" || opts.kind === "scrape") {
+          if (last === "success") label = "Last job completed";
+          else if (last === "error") label = "Last job failed";
+        } else if (opts.kind === "wordrank") {
+          if (last === "success") label = "Last run completed";
+          else if (last === "error") label = "Last run failed";
+          else if (!last || last === "idle" || last === "never") label = "Idle";
+        }
+        textEl.textContent = label;
+      }
+    }
+  }
+
+  async function _fetchHeaderRefreshStatus() {
+    const dotId = "header-refresh-status-dot";
+    if (!document.getElementById(dotId)) return;
+    try {
+      const res = await fetch("/api/refresh/status");
+      if (!res.ok) return;
+      const data = await res.json().catch(() => ({}));
+      _updateHeaderDot(dotId, {
+        running: !!data.running,
+        last_status: data.last_status || "never",
+      }, { kind: "refresh", textId: "header-refresh-status-text" });
+    } catch (_) {
+      // best-effort only
+    }
+  }
+
+  async function _fetchHeaderScrapeStatus() {
+    const dotId = "header-scrape-status-dot";
+    if (!document.getElementById(dotId)) return;
+    try {
+      const res = await fetch("/api/scrape/status");
+      if (!res.ok) return;
+      const data = await res.json().catch(() => ({}));
+      _updateHeaderDot(dotId, {
+        running: !!data.running,
+        last_status: data.last_status || "never",
+      }, { kind: "scrape", textId: "header-scrape-status-text" });
+    } catch (_) {
+      // best-effort only
+    }
+  }
+
+  // The WordRank job does not currently expose a status endpoint; we mirror
+  // the settings page behaviour and track state locally on this page.
+  let _headerWordrankState = { running: false, last_status: "idle" };
+  function _renderHeaderWordrankState() {
+    _updateHeaderDot(
+      "header-wordrank-status-dot",
+      _headerWordrankState,
+      { kind: "wordrank", textId: "header-wordrank-status-text" },
+    );
+  }
+
+  async function headerRefreshNow() {
+    const btn = document.getElementById("header-refresh-btn");
+    if (!btn) return;
+    if (btn.disabled) return;
+    btn.disabled = true;
+    try {
+      const res = await fetch("/api/refresh", { method: "POST" });
+      if (res.ok) {
+        const data = await res.json().catch(() => ({}));
+        toast(data.message || "Refresh started.");
+        _updateHeaderDot(
+          "header-refresh-status-dot",
+          { running: true, last_status: "running" },
+          { kind: "refresh", textId: "header-refresh-status-text" },
+        );
+        setTimeout(_fetchHeaderRefreshStatus, 2000);
+      } else {
+        const data = await res.json().catch(() => ({}));
+        toast(data.detail || "Could not start refresh.", false);
+      }
+    } catch (_) {
+      toast("Network error starting refresh.", false);
+    } finally {
+      btn.disabled = false;
+    }
+  }
+  window.headerRefreshNow = headerRefreshNow;
+
+  async function headerScrapeNow() {
+    const btn = document.getElementById("header-scrape-btn");
+    if (!btn) return;
+    if (btn.disabled) return;
+    btn.disabled = true;
+    try {
+      const res = await fetch("/api/scrape", { method: "POST" });
+      if (res.ok) {
+        const data = await res.json().catch(() => ({}));
+        toast(data.message || "Scrape started.");
+        _updateHeaderDot(
+          "header-scrape-status-dot",
+          { running: true, last_status: "running" },
+          { kind: "scrape", textId: "header-scrape-status-text" },
+        );
+        setTimeout(_fetchHeaderScrapeStatus, 2000);
+      } else {
+        const data = await res.json().catch(() => ({}));
+        toast(data.detail || "Could not start scrape.", false);
+      }
+    } catch (_) {
+      toast("Network error starting scrape.", false);
+    } finally {
+      btn.disabled = false;
+    }
+  }
+  window.headerScrapeNow = headerScrapeNow;
+
+  async function headerWordrankNow() {
+    const btn = document.getElementById("header-wordrank-btn");
+    if (!btn) return;
+    if (btn.disabled) return;
+    btn.disabled = true;
+    _headerWordrankState = { running: true, last_status: "running" };
+    _renderHeaderWordrankState();
+    try {
+      const res = await fetch("/api/wordrank", { method: "POST" });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.status === "success") {
+        toast(data.message || "WordRank completed.");
+        _headerWordrankState = { running: false, last_status: "success" };
+      } else {
+        toast(data.message || data.detail || "WordRank failed.", false);
+        _headerWordrankState = { running: false, last_status: "error" };
+      }
+    } catch (_) {
+      toast("Network error running WordRank.", false);
+      _headerWordrankState = { running: false, last_status: "error" };
+    } finally {
+      btn.disabled = false;
+      _renderHeaderWordrankState();
+    }
+  }
+  window.headerWordrankNow = headerWordrankNow;
+
+  (function initHeaderStatus() {
+    if (document.getElementById("header-refresh-status-dot")) {
+      _fetchHeaderRefreshStatus();
+      setInterval(_fetchHeaderRefreshStatus, 8000);
+    }
+    if (document.getElementById("header-scrape-status-dot")) {
+      _fetchHeaderScrapeStatus();
+      setInterval(_fetchHeaderScrapeStatus, 8000);
+    }
+    if (document.getElementById("header-wordrank-status-dot")) {
+      _renderHeaderWordrankState();
+    }
+  })();
+
   // ── Pull to refresh ────────────────────────────────────────────
   (function() {
     const panel = document.getElementById("entries-panel");

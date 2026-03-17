@@ -220,6 +220,94 @@ def digest_page(request: Request):
     return templates.TemplateResponse("digest.html", {"request": request})
 
 
+@router.get("/stats", response_class=HTMLResponse)
+def stats_page(request: Request):
+    """
+    Overview dashboard with cheap-to-compute library statistics.
+    """
+    conn = get_db()
+
+    # Basic article and feed counts
+    total_articles = conn.execute("SELECT COUNT(*) FROM entries").fetchone()[0]
+    total_feeds = conn.execute("SELECT COUNT(*) FROM feeds").fetchone()[0]
+
+    # Read/liked breakdown
+    unread_articles = conn.execute(
+        "SELECT COUNT(*) FROM entries WHERE COALESCE(read, 0) = 0"
+    ).fetchone()[0]
+    liked_articles = conn.execute(
+        "SELECT COUNT(*) FROM entries WHERE COALESCE(liked, 0) = 1"
+    ).fetchone()[0]
+
+    # Simple recency stats
+    newest_row = conn.execute(
+        "SELECT published FROM entries WHERE published IS NOT NULL "
+        "ORDER BY published DESC LIMIT 1"
+    ).fetchone()
+    oldest_row = conn.execute(
+        "SELECT published FROM entries WHERE published IS NOT NULL "
+        "ORDER BY published ASC LIMIT 1"
+    ).fetchone()
+    newest_published = newest_row[0] if newest_row else None
+    oldest_published = oldest_row[0] if oldest_row else None
+
+    # Top sources by article count
+    top_sources_rows = conn.execute(
+        """
+        SELECT f.id,
+               f.title AS feed_title,
+               f.url   AS feed_url,
+               COUNT(e.id) AS article_count
+        FROM entries e
+        JOIN feeds f ON f.id = e.feed_id
+        GROUP BY f.id, f.title, f.url
+        ORDER BY article_count DESC
+        LIMIT 10
+        """
+    ).fetchall()
+    top_sources = [dict(r) for r in top_sources_rows]
+
+    # Top themes (if topic clustering has been run)
+    top_themes = []
+    try:
+        theme_rows = conn.execute(
+            "SELECT label, size FROM viz_themes ORDER BY size DESC LIMIT 10"
+        ).fetchall()
+        top_themes = [dict(r) for r in theme_rows]
+    except Exception:
+        top_themes = []
+
+    # Daily counts for the last 7 days (cheap aggregate)
+    recent_counts_rows = conn.execute(
+        """
+        SELECT DATE(published) AS day, COUNT(*) AS count
+        FROM entries
+        WHERE published IS NOT NULL
+          AND DATE(published) >= DATE('now', '-6 day')
+        GROUP BY DATE(published)
+        ORDER BY day ASC
+        """
+    ).fetchall()
+    recent_counts = [dict(r) for r in recent_counts_rows]
+
+    conn.close()
+
+    return templates.TemplateResponse(
+        "stats.html",
+        {
+            "request": request,
+            "total_articles": total_articles,
+            "total_feeds": total_feeds,
+            "unread_articles": unread_articles,
+            "liked_articles": liked_articles,
+            "newest_published": newest_published,
+            "oldest_published": oldest_published,
+            "top_sources": top_sources,
+            "top_themes": top_themes,
+            "recent_counts": recent_counts,
+        },
+    )
+
 def _compute_trending(entries: list[dict], limit: int = 8) -> list[dict]:
     """
     Build a small "trending" set that:

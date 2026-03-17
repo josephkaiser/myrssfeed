@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Statistics — myRSSfeed</title>
+  <!-- Apply theme before first paint to prevent flash -->
+  <script>
+    (function() {
+      var t = localStorage.getItem("theme") || "system";
+      var el = document.documentElement;
+      if (t === "light") el.setAttribute("data-theme", "light");
+      else if (t === "dark") el.setAttribute("data-theme", "dark");
+      else el.removeAttribute("data-theme");
+    })();
+  </script>
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+
+<header>
+  <button class="hamburger-btn" type="button" onclick="toggleNav()" aria-label="Open navigation">
+    <span></span>
+    <span></span>
+    <span></span>
+  </button>
+  <a class="header-brand" href="/">myRSSfeed</a>
+
+  <form class="search-bar" method="get" action="/" id="search-form">
+    <div class="search-input-wrap">
+      <input type="search" name="q" id="search-input" value="{{ q }}" placeholder="Search articles..." autocomplete="off" />
+      <div class="search-dropdown" id="search-dropdown" style="display:none"></div>
+    </div>
+    <button class="btn pill" type="submit">Go</button>
+    {% if q %}
+    <a href="/" class="btn ghost pill">Clear</a>
+    {% endif %}
+  </form>
+</header>
+
+<!-- Overlay nav drawer (mobile only) -->
+<div class="nav-overlay" id="nav-overlay" onclick="closeNav()">
+  <nav class="nav-drawer" onclick="event.stopPropagation()">
+    <div class="nav-drawer-header">
+      <span class="nav-drawer-brand">myRSSfeed</span>
+      <button class="nav-drawer-close" onclick="closeNav()">&times;</button>
+    </div>
+    <div class="nav-drawer-links">
+      <a href="/">
+        <span class="nav-icon">&#128196;</span> Articles
+      </a>
+      <a href="/feeds">
+        <span class="nav-icon">&#128218;</span> My Feeds
+      </a>
+      <a href="/discover">
+        <span class="nav-icon">&#128269;</span> Discover
+      </a>
+      <a href="/stats" class="active">
+        <span class="nav-icon">&#128201;</span> Statistics
+      </a>
+      <a href="/settings">
+        <span class="nav-icon">&#9881;</span> Settings
+      </a>
+    </div>
+  </nav>
+</div>
+
+<div class="layout layout-two-col">
+  <aside class="sidebar-left">
+    <div class="sidebar-section">
+      <div class="sidebar-section-title">Navigation</div>
+      <nav class="sidebar-nav">
+        <a href="/">
+          <span class="nav-icon">&#128196;</span> Articles
+        </a>
+        <a href="/feeds">
+          <span class="nav-icon">&#128218;</span> My Feeds
+        </a>
+        <a href="/discover">
+          <span class="nav-icon">&#128269;</span> Discover
+        </a>
+        <a href="/stats" class="active">
+          <span class="nav-icon">&#128201;</span> Statistics
+        </a>
+        <a href="/settings">
+          <span class="nav-icon">&#9881;</span> Settings
+        </a>
+      </nav>
+    </div>
+  </aside>
+
+  <div class="stats-wrap">
+    <div class="stats-header">
+      <h1>Library statistics</h1>
+      <p class="stats-subtitle">
+        A quick overview of your articles and feeds. All numbers are computed on-demand with
+        lightweight queries suitable for a Raspberry&nbsp;Pi.
+      </p>
+    </div>
+
+    <div class="stats-grid">
+      <section class="stats-card">
+        <h2>Overview</h2>
+        <dl class="stats-metrics">
+          <div class="stats-metric">
+            <dt>Total articles</dt>
+            <dd>{{ "{:,}".format(total_articles) }}</dd>
+          </div>
+          <div class="stats-metric">
+            <dt>Unread articles</dt>
+            <dd>{{ "{:,}".format(unread_articles) }}</dd>
+          </div>
+          <div class="stats-metric">
+            <dt>Liked articles</dt>
+            <dd>{{ "{:,}".format(liked_articles) }}</dd>
+          </div>
+          <div class="stats-metric">
+            <dt>Subscribed feeds</dt>
+            <dd>{{ "{:,}".format(total_feeds) }}</dd>
+          </div>
+        </dl>
+      </section>
+
+      <section class="stats-card">
+        <h2>Timeline</h2>
+        <dl class="stats-metrics">
+          <div class="stats-metric">
+            <dt>Oldest article</dt>
+            <dd>
+              {% if oldest_published %}
+                {{ oldest_published[:10] }}
+              {% else %}
+                &mdash;
+              {% endif %}
+            </dd>
+          </div>
+          <div class="stats-metric">
+            <dt>Newest article</dt>
+            <dd>
+              {% if newest_published %}
+                {{ newest_published[:10] }}
+              {% else %}
+                &mdash;
+              {% endif %}
+            </dd>
+          </div>
+        </dl>
+
+        {% if recent_counts %}
+        <div class="stats-mini-chart">
+          <div class="stats-mini-chart-header">Articles per day (last 7 days)</div>
+          <div class="stats-mini-chart-bars">
+            {% set max_count = recent_counts | map(attribute='count') | max %}
+            {% for row in recent_counts %}
+            {% set height = (row.count / max_count * 100) if max_count else 0 %}
+            <div class="stats-mini-bar" title="{{ row.day }} · {{ row.count }} articles">
+              <div class="stats-mini-bar-fill" style="height: {{ '%.0f' % height }}%"></div>
+              <span class="stats-mini-bar-label">{{ row.day[5:10] }}</span>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+        {% else %}
+        <p class="stats-empty">Not enough recent data yet. Come back after new articles arrive.</p>
+        {% endif %}
+      </section>
+
+      <section class="stats-card">
+        <h2>Top sources</h2>
+        {% if top_sources %}
+        <ol class="stats-list">
+          {% for src in top_sources %}
+          <li>
+            <div class="stats-list-main">
+              <span class="stats-list-label">{{ src.feed_title or src.feed_url }}</span>
+              <span class="stats-list-value">{{ "{:,}".format(src.article_count) }}</span>
+            </div>
+            <div class="stats-list-sub">
+              {{ src.feed_url }}
+            </div>
+          </li>
+          {% endfor %}
+        </ol>
+        {% else %}
+        <p class="stats-empty">No sources yet. Add feeds and refresh to see data.</p>
+        {% endif %}
+      </section>
+
+      <section class="stats-card">
+        <h2>Top themes</h2>
+        {% if top_themes %}
+        <ol class="stats-list">
+          {% for t in top_themes %}
+          <li>
+            <div class="stats-list-main">
+              <span class="stats-list-label">{{ t.label or "Untitled theme" }}</span>
+              <span class="stats-list-value">{{ "{:,}".format(t.size) }}</span>
+            </div>
+          </li>
+          {% endfor %}
+        </ol>
+        {% else %}
+        <p class="stats-empty">
+          No themes yet. Run your visualization/WordRank pipeline to generate clustered topics.
+        </p>
+        {% endif %}
+      </section>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script src="/static/index.js"></script>
+
+</body>
+</html>
+

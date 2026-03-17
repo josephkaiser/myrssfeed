@@ -29,10 +29,23 @@ def _ensure_columns():
 
 
 def run_wordrank() -> None:
-    """Recompute WordRank scores for all entries based on liked articles."""
-    from sklearn.feature_extraction.text import TfidfVectorizer
-    from sklearn.metrics.pairwise import cosine_similarity
-    import numpy as np
+    """Recompute WordRank scores for all entries based on liked articles.
+
+    If the optional dependencies (scikit-learn, numpy) are not installed, this
+    function logs a warning and returns without raising so the rest of the
+    pipeline can still be considered successful.
+    """
+    try:
+        from sklearn.feature_extraction.text import TfidfVectorizer
+        from sklearn.metrics.pairwise import cosine_similarity
+        import numpy as np  # type: ignore[import-not-found]
+    except Exception as exc:
+        logger.warning(
+            "WordRank: optional dependencies missing, skipping recompute "
+            "(install scikit-learn and numpy to enable). Error: %s",
+            exc,
+        )
+        return
 
     _ensure_columns()
 
