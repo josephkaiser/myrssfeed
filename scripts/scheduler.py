@@ -9,6 +9,7 @@ logger = logging.getLogger(__name__)
 
 _pipeline_lock = threading.Lock()
 _pipeline_running = False
+_scheduler: BackgroundScheduler | None = None
 
 
 def is_pipeline_running() -> bool:
@@ -155,6 +156,28 @@ def _add_pipeline_job(scheduler: BackgroundScheduler) -> None:
 
 
 def create_scheduler() -> BackgroundScheduler:
+    global _scheduler
     scheduler = BackgroundScheduler()
     _add_pipeline_job(scheduler)
+    _scheduler = scheduler
     return scheduler
+
+
+def reconfigure_scheduler() -> None:
+    """Re-read schedule settings and update the existing scheduler job.
+
+    Safe to call after settings are saved; no-op if scheduler hasn't started yet.
+    """
+    global _scheduler
+    if not _scheduler:
+        return
+    try:
+        # Remove existing job if present, then add a new one from settings.
+        try:
+            _scheduler.remove_job("daily_pipeline")
+        except Exception:
+            # Missing job is fine; we'll just add a new one.
+            pass
+        _add_pipeline_job(_scheduler)
+    except Exception:
+        logger.exception("Failed to reconfigure scheduler from settings.")

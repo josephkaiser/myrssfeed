@@ -443,6 +443,14 @@ def update_settings(payload: SettingsUpdate):
     updates = payload.model_dump(exclude_none=True)
     for key, value in updates.items():
         set_setting(key, str(value))
+    # If scheduler settings changed, ask the running scheduler to reconfigure
+    # itself based on the new values. Safe to call even if scheduler is not yet started.
+    try:
+        from scripts.scheduler import reconfigure_scheduler
+
+        reconfigure_scheduler()
+    except Exception:
+        logger.exception("Failed to reconfigure scheduler after settings update.")
     return {key: get_setting(key) for key in DEFAULTS}
 
 

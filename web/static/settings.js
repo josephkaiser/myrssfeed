@@ -34,6 +34,73 @@
   }
 
   // ── Save settings ───────────────────────────────────────────────
+  function normalizeScheduleTime(freqVal, rawValue) {
+    // Always return a string in HH:MM (24h) for the backend.
+    if (freqVal === "daily") {
+      return rawValue && rawValue.includes(":") ? rawValue : (rawValue || "06:00");
+    }
+    if (freqVal === "hourly") {
+      const h = Math.min(23, Math.max(0, parseInt(rawValue || "0", 10) || 0));
+      return String(h).padStart(2, "0") + ":00";
+    }
+    if (freqVal === "10m") {
+      const slot = Math.min(9, Math.max(0, parseInt(rawValue || "0", 10) || 0));
+      const m = slot * 10;
+      return "00:" + String(m).padStart(2, "0");
+    }
+    // "off" or anything else – keep a safe default
+    return "06:00";
+  }
+
+  function updateScheduleTimeField() {
+    const freqSelect = document.getElementById("pipeline_schedule_frequency");
+    const timeInput = document.getElementById("pipeline_schedule_time");
+    if (!freqSelect || !timeInput) return;
+
+    const freqVal = freqSelect.value;
+
+    if (freqVal === "off") {
+      timeInput.style.display = "none";
+      return;
+    }
+
+    timeInput.style.display = "";
+
+    if (freqVal === "daily") {
+      // Standard HH:MM time input.
+      timeInput.type = "time";
+      timeInput.min = "00:00";
+      timeInput.max = "23:59";
+      timeInput.step = "60";
+      if (!timeInput.value || !timeInput.value.includes(":")) {
+        timeInput.value = "06:00";
+      }
+    } else if (freqVal === "hourly") {
+      // Hour of day 0–23.
+      timeInput.type = "number";
+      timeInput.min = "0";
+      timeInput.max = "23";
+      timeInput.step = "1";
+      if (timeInput.value && timeInput.value.includes(":")) {
+        const parts = timeInput.value.split(":");
+        const h = parseInt(parts[0], 10);
+        timeInput.value = String(isNaN(h) ? 0 : h);
+      }
+    } else if (freqVal === "10m") {
+      // 10-minute slot within the hour, 0–9 (i.e. slot * 10 minutes).
+      timeInput.type = "number";
+      timeInput.min = "0";
+      timeInput.max = "9";
+      timeInput.step = "1";
+      if (timeInput.value && timeInput.value.includes(":")) {
+        const parts = timeInput.value.split(":");
+        const m = parseInt(parts[1], 10);
+        const slot = Math.floor((isNaN(m) ? 0 : m) / 10);
+        timeInput.value = String(slot);
+      }
+    }
+  }
+
   async function saveSettings() {
     const retentionInput = document.getElementById("retention_days");
     const days = parseInt(retentionInput.value, 10);
@@ -56,7 +123,8 @@
     const freqSelect = document.getElementById("pipeline_schedule_frequency");
     const timeInput = document.getElementById("pipeline_schedule_time");
     const freqVal = freqSelect ? freqSelect.value : "daily";
-    const timeVal = timeInput ? timeInput.value || "06:00" : "06:00";
+    const rawTime = timeInput ? timeInput.value : "06:00";
+    const timeVal = normalizeScheduleTime(freqVal, rawTime);
 
     const payload = {
       retention_days: String(days),
@@ -322,3 +390,12 @@
       btn.textContent = originalText;
     }
   }
+
+  // Initialise dynamic schedule time field on settings page load
+  (function () {
+    const freqSelect = document.getElementById("pipeline_schedule_frequency");
+    if (freqSelect) {
+      freqSelect.addEventListener("change", updateScheduleTimeField);
+      updateScheduleTimeField();
+    }
+  })();
