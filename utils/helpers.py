@@ -16,6 +16,20 @@ DEFAULTS: dict[str, str] = {
     "scrape_timeout_seconds": "6",
     "scrape_max_bytes": str(512 * 1024),
     "scrape_max_per_run": "40",
+    # Pipeline scheduler & status (for manual/automatic refresh jobs)
+    # Frequency: "off" | "10m" | "hourly" | "daily"
+    "pipeline_schedule_frequency": "daily",
+    # Time of day (local) for "daily" / "hourly" anchors, format HH:MM (24h)
+    "pipeline_schedule_time": "06:00",
+    # Status:
+    # Values for pipeline_last_status:
+    # - "never"   : no completed runs yet
+    # - "success" : last run completed without errors
+    # - "error"   : last run encountered at least one error
+    # - "running" : currently in progress (transient; also exposed via is_pipeline_running)
+    "pipeline_last_status": "never",
+    # Scraper status (for manual enrich jobs)
+    "scrape_last_status": "never",
 }
 
 

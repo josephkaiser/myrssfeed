@@ -7,7 +7,7 @@ import urllib.request
 from html.parser import HTMLParser
 from typing import Optional, Tuple
 
-from utils.helpers import get_db, get_setting
+from utils.helpers import get_db, get_setting, set_setting
 
 
 logger = logging.getLogger(__name__)
@@ -18,6 +18,18 @@ _scraper_running = False
 
 def is_scraper_running() -> bool:
     return _scraper_running
+
+
+def _record_scrape_status(status: str) -> None:
+    """
+    Best-effort helper to persist the last manual scrape/enrich status.
+
+    Status values are simple strings ("running" | "success" | "error").
+    """
+    try:
+        set_setting("scrape_last_status", status)
+    except Exception:
+        logger.exception("Could not record scrape status %r", status)
 
 
 def _is_private_ip(hostname: str) -> bool:
@@ -175,6 +187,8 @@ def run_scraper_for_all_entries() -> None:
         """
     ).fetchall()
 
+    had_error = False
+
     for row in rows:
         if scrape_budget <= 0:
             break
@@ -182,9 +196,16 @@ def run_scraper_for_all_entries() -> None:
         link = row["link"]
         if not link:
             continue
-        og_title, og_description, og_image_url, full_content = scrape_url(link)
+        try:
+            og_title, og_description, og_image_url, full_content = scrape_url(link)
+        except Exception:
+            had_error = True
+            logger.exception("Scraper: unexpected failure for %s", link)
+            continue
+
         if not any([og_title, og_description, og_image_url, full_content]):
             continue
+
         cursor.execute(
             """
             UPDATE entries
@@ -201,7 +222,9 @@ def run_scraper_for_all_entries() -> None:
 
     conn.commit()
     conn.close()
-    logger.info("Manual scraper complete. %d entries enriched.", scraped_count)
+    final_status = "error" if had_error else "success"
+    _record_scrape_status(final_status)
+    logger.info("Manual scraper complete with status %s. %d entries enriched.", final_status, scraped_count)
 
 
 def run_scraper():
@@ -211,6 +234,7 @@ def run_scraper():
         logger.info("Scraper already running — skipping concurrent start.")
         return
     _scraper_running = True
+    _record_scrape_status("running")
     try:
         run_scraper_for_all_entries()
     finally:

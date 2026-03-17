@@ -114,6 +114,30 @@ header {
   white-space: nowrap;
 }
 
+@media (min-width: 641px) {
+  header {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+  }
+
+  .header-brand {
+    justify-self: flex-start;
+  }
+
+  .search-bar {
+    justify-self: center;
+    width: 100%;
+    max-width: 640px;
+  }
+
+  .header-metrics {
+    margin-left: 0;
+    margin-right: 0;
+    justify-self: flex-end;
+  }
+}
+
 /* ── Overlay nav sidebar ── */
 .nav-overlay {
   display: none;
@@ -230,7 +254,7 @@ header {
 }
 
 .search-bar {
-  flex: 0 1 420px;
+  flex: 0 1 520px;
   display: flex;
   gap: 0.4rem;
   min-width: 0;
@@ -555,7 +579,7 @@ header {
 /* ── Feed entries ── */
 .entries {
   flex: 1;
-  padding: 1rem 1.25rem;
+  padding: 0.5rem 1.25rem 1rem;
   min-width: 0;
   max-width: 100%;
 }
@@ -1204,6 +1228,51 @@ header {
   align-items: center;
   gap: 0.5rem;
   flex-shrink: 0;
+}
+
+.select-input {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  padding: 0.38rem 0.65rem;
+  font-size: 0.9rem;
+}
+
+.time-input {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  padding: 0.38rem 0.65rem;
+  font-size: 0.9rem;
+}
+
+.refresh-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.refresh-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--border);
+}
+
+.refresh-status-dot.running {
+  background: #f5a623; /* warm amber for in-progress */
+}
+
+.refresh-status-dot.success {
+  background: var(--success);
+}
+
+.refresh-status-dot.error {
+  background: var(--danger);
 }
 
 /* Number input */

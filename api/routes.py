@@ -10,6 +10,7 @@ from utils.helpers import get_db, get_setting, set_setting, DEFAULTS
 from api.schemas import FeedCreate, FeedOut, EntryOut, SettingsUpdate, DigestOut, VizEntryOut, VizThemeOut, DeviceCreate, DeviceOut, DetectRequest
 from scripts.compile_feed import run_compile_feed
 from scripts.scraper import run_scraper_async, is_scraper_running
+from scripts.wordrank import run_wordrank
 
 _CATALOG_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "feed_catalog.json")
 try:
@@ -470,6 +471,53 @@ def trigger_scrape():
     if not started:
         return {"status": "running", "message": "Scraper already in progress."}
     return {"status": "started", "message": "Scrape job started in background."}
+
+
+@router.get("/api/scrape/status")
+def get_scrape_status():
+    """
+    Return the current status of the manual enrich/scrape job.
+
+    Used by the settings page to show a simple status light:
+    - running: job currently in progress
+    - success: last completed run had no errors
+    - error:   last completed run encountered errors
+    - never:   no runs have been recorded yet
+    """
+    from scripts.scraper import is_scraper_running
+
+    running = is_scraper_running()
+    last_status = get_setting("scrape_last_status") or "never"
+    return {"running": running, "last_status": last_status}
+
+
+@router.get("/api/refresh/status")
+def get_refresh_status():
+    """
+    Return the current pipeline/job status for the manual/automatic refresh.
+
+    Used by the settings page to show a simple status light:
+    - running: job currently in progress
+    - success: last completed run had no errors
+    - error:   last completed run encountered errors
+    - never:   no runs have been recorded yet
+    """
+    from scheduler import is_pipeline_running
+
+    running = is_pipeline_running()
+    last_status = get_setting("pipeline_last_status") or "never"
+    return {"running": running, "last_status": last_status}
+
+
+@router.post("/api/wordrank", status_code=202)
+def trigger_wordrank():
+    """Run WordRank scoring synchronously and report basic status."""
+    try:
+        run_wordrank()
+    except Exception as exc:
+        logger.exception("WordRank job failed: %s", exc)
+        return {"status": "error", "message": "WordRank failed (see logs)."}
+    return {"status": "success", "message": "WordRank completed."}
 
 
 # ---------------------------------------------------------------------------
