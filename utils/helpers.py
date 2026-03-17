@@ -11,6 +11,11 @@ DEFAULTS: dict[str, str] = {
     "ollama_model": "phi3:mini",
     "digest_max_articles": "50",
     "max_entries": "1000",
+    # Scraper limits
+    "scrape_enabled": "true",
+    "scrape_timeout_seconds": "6",
+    "scrape_max_bytes": str(512 * 1024),
+    "scrape_max_per_run": "40",
 }
 
 
@@ -94,6 +99,10 @@ def _migrate_db(conn: sqlite3.Connection) -> None:
         ("score", "REAL DEFAULT 0.0"),
         ("viz_x", "REAL"),
         ("viz_y", "REAL"),
+        ("og_title", "TEXT"),
+        ("og_description", "TEXT"),
+        ("og_image_url", "TEXT"),
+        ("full_content", "TEXT"),
     ]:
         if col not in entry_cols:
             conn.execute(f"ALTER TABLE entries ADD COLUMN {col} {definition}")

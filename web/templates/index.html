@@ -88,7 +88,10 @@
 
     {% if entries %}
       {% for entry in entries %}
-      <article class="entry-card{% if entry.read %} read{% endif %}{% if entry.thumbnail_url %} has-thumb{% endif %}" data-entry-id="{{ entry.id }}">
+      {% set display_title = entry.og_title or entry.title %}
+      {% set display_summary = entry.og_description or entry.summary %}
+      {% set display_thumb = entry.og_image_url or entry.thumbnail_url %}
+      <article class="entry-card{% if entry.read %} read{% endif %}{% if display_thumb %} has-thumb{% endif %}" data-entry-id="{{ entry.id }}">
         <div class="entry-meta">
           <img class="entry-favicon" src="https://www.google.com/s2/favicons?domain={{ feed_map[entry.feed_id].domain }}&sz=32" width="14" height="14" alt="" loading="lazy" />
           <span class="tag" style="--feed-color: {{ feed_map[entry.feed_id].color or '' }}">{{ entry.feed_title or "Unknown" }}</span>
@@ -99,15 +102,15 @@
           <div class="entry-content">
             <div class="entry-title">
               <a href="{{ entry.link }}" target="_blank" rel="noopener noreferrer" onclick="markRead({{ entry.id }}, this)">
-                {{ entry.title or "(no title)" }}
+                {{ display_title or "(no title)" }}
               </a>
             </div>
-            {% if entry.summary %}
-            <div class="entry-summary">{{ entry.summary | striptags }}</div>
+            {% if display_summary %}
+            <div class="entry-summary">{{ display_summary | striptags }}</div>
             {% endif %}
           </div>
-          {% if entry.thumbnail_url %}
-          <img class="entry-thumb" src="{{ entry.thumbnail_url }}" alt="" loading="lazy" />
+          {% if display_thumb %}
+          <img class="entry-thumb" src="{{ display_thumb }}" alt="" loading="lazy" />
           {% endif %}
         </div>
       </article>

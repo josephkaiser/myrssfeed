@@ -31,6 +31,17 @@ templates = Jinja2Templates(directory=_templates_dir)
 # UI
 # ---------------------------------------------------------------------------
 
+@router.get("/feeds", response_class=HTMLResponse)
+def feeds_page(request: Request):
+    conn = get_db()
+    rows = conn.execute("SELECT id, url, title FROM feeds ORDER BY title").fetchall()
+    conn.close()
+    return templates.TemplateResponse(
+        "feeds.html",
+        {"request": request, "feeds_json": json.dumps([dict(r) for r in rows])},
+    )
+
+
 @router.get("/devices", response_class=HTMLResponse)
 def devices_page(request: Request):
     conn = get_db()
@@ -324,7 +335,13 @@ def list_entries(
     conn = get_db()
     query = """
         SELECT e.id, e.feed_id, f.title AS feed_title,
-               e.title, e.link, e.published, e.summary
+               e.title, e.link, e.published, e.summary,
+               e.thumbnail_url,
+               COALESCE(e.read, 0) AS read,
+               COALESCE(e.liked, 0) AS liked,
+               e.og_title,
+               e.og_description,
+               e.og_image_url
         FROM entries e
         JOIN feeds f ON f.id = e.feed_id
     """
