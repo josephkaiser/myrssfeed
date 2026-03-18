@@ -432,36 +432,25 @@
 
     <div class="setting-row">
       <div class="setting-info">
-        <div class="setting-label">Automatic refresh schedule</div>
+        <div class="setting-label">Automatic refresh interval</div>
         <div class="setting-desc">
-          Control how often the full pipeline (fetch → rank → visualize → digest) runs automatically.
+          Choose how often the full pipeline (fetch → rank → visualize → digest) runs automatically.
         </div>
       </div>
-      <div class="setting-control setting-control-schedule">
-        <select id="pipeline_schedule_frequency" class="select-input">
-          <option value="off"   {% if settings.pipeline_schedule_frequency == 'off' %}selected{% endif %}>Off</option>
-          <option value="10m"   {% if settings.pipeline_schedule_frequency == '10m' %}selected{% endif %}>Every 10 minutes</option>
-          <option value="hourly" {% if settings.pipeline_schedule_frequency == 'hourly' %}selected{% endif %}>Hourly</option>
-          <option value="daily" {% if settings.pipeline_schedule_frequency == 'daily' or not settings.pipeline_schedule_frequency %}selected{% endif %}>Daily</option>
-        </select>
-        {% set sched_time = settings.pipeline_schedule_time or '06:00' %}
-        <input
-          class="time-input"
-          type="number"
-          id="pipeline_schedule_hour"
-          min="0"
-          max="23"
-          value="{{ sched_time[:2] }}"
-        />
-        <span class="time-sep" id="pipeline_time_sep">:</span>
-        <input
-          class="time-input"
-          type="number"
-          id="pipeline_schedule_minute"
-          min="0"
-          max="59"
-          value="{{ sched_time[3:5] }}"
-        />
+      {% set refresh_minutes = settings.pipeline_refresh_minutes or '15' %}
+      <div class="setting-control setting-control-stacked">
+        <div class="refresh-interval-control">
+          <input
+            class="refresh-interval-slider"
+            type="range"
+            id="pipeline_refresh_minutes"
+            min="5"
+            max="240"
+            step="5"
+            value="{{ refresh_minutes }}"
+          />
+          <span class="refresh-interval-value" id="pipeline_refresh_minutes_value">{{ refresh_minutes }} min</span>
+        </div>
         <div class="refresh-status" id="pipeline-status" aria-live="polite">
           <span class="refresh-status-dot" id="pipeline-status-dot" aria-hidden="true"></span>
           <span class="refresh-status-text" id="pipeline-status-text">No runs yet</span>

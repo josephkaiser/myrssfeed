@@ -1420,8 +1420,24 @@ header {
   align-items: center;
 }
 
-.time-sep {
-  color: var(--muted);
+.refresh-interval-control {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  width: min(100%, 420px);
+}
+
+.refresh-interval-slider {
+  flex: 1 1 auto;
+  min-width: 180px;
+  accent-color: var(--accent);
+}
+
+.refresh-interval-value {
+  min-width: 5.5rem;
+  color: var(--text);
+  font-size: 0.9rem;
+  text-align: right;
 }
 
 .refresh-status {

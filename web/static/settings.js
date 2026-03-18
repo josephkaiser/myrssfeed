@@ -69,76 +69,25 @@
   }
 
   // ── Save settings ───────────────────────────────────────────────
-  function getScheduleParts(freqVal) {
-    const hourInput = document.getElementById("pipeline_schedule_hour");
-    const minuteInput = document.getElementById("pipeline_schedule_minute");
-    let hour = parseInt(hourInput ? hourInput.value : "6", 10);
-    let minute = parseInt(minuteInput ? minuteInput.value : "0", 10);
-
-    if (isNaN(hour)) hour = 6;
-    if (isNaN(minute)) minute = 0;
-
-    if (freqVal === "daily") {
-      hour = Math.min(23, Math.max(0, hour));
-      minute = Math.min(59, Math.max(0, minute));
-    } else if (freqVal === "hourly") {
-      hour = Math.min(23, Math.max(0, hour));
-      minute = 0;
-    } else if (freqVal === "10m") {
-      const slot = Math.min(9, Math.max(0, minute));
-      hour = 0;
-      minute = slot * 10;
-    } else {
-      hour = 6;
-      minute = 0;
-    }
-    return { hour, minute };
+  function getPipelineRefreshMinutes() {
+    const input = document.getElementById("pipeline_refresh_minutes");
+    const raw = input ? parseInt(input.value, 10) : 15;
+    if (isNaN(raw)) return 15;
+    return Math.min(240, Math.max(5, raw));
   }
 
-  function updateScheduleTimeFields() {
-    const freqSelect = document.getElementById("pipeline_schedule_frequency");
-    const hourInput = document.getElementById("pipeline_schedule_hour");
-    const minuteInput = document.getElementById("pipeline_schedule_minute");
-    const sep = document.getElementById("pipeline_time_sep");
-    if (!freqSelect || !hourInput || !minuteInput || !sep) return;
+  function describePipelineRefreshMinutes(minutes) {
+    const value = Math.min(240, Math.max(5, minutes));
+    return `${value} min`;
+  }
 
-    const freqVal = freqSelect.value;
-
-    if (freqVal === "off") {
-      hourInput.style.display = "none";
-      minuteInput.style.display = "none";
-      sep.style.display = "none";
-      return;
-    }
-
-    hourInput.style.display = "";
-    minuteInput.style.display = "";
-    sep.style.display = "";
-
-    if (freqVal === "daily") {
-      // Hour 0–23, minute 0–59.
-      hourInput.min = "0";
-      hourInput.max = "23";
-      minuteInput.min = "0";
-      minuteInput.max = "59";
-      minuteInput.disabled = false;
-    } else if (freqVal === "hourly") {
-      // Hour of day 0–23; minute fixed to :00 and disabled.
-      hourInput.min = "0";
-      hourInput.max = "23";
-      minuteInput.min = "0";
-      minuteInput.max = "59";
-      minuteInput.value = "0";
-      minuteInput.disabled = true;
-    } else if (freqVal === "10m") {
-      // Minute slot 0–9 (slot * 10 minutes); hide hour field.
-      hourInput.style.display = "none";
-      sep.style.display = "none";
-      minuteInput.style.display = "";
-      minuteInput.disabled = false;
-      minuteInput.min = "0";
-      minuteInput.max = "9";
-    }
+  function updatePipelineRefreshDial() {
+    const input = document.getElementById("pipeline_refresh_minutes");
+    const label = document.getElementById("pipeline_refresh_minutes_value");
+    if (!input || !label) return;
+    const minutes = getPipelineRefreshMinutes();
+    input.value = String(minutes);
+    label.textContent = describePipelineRefreshMinutes(minutes);
   }
 
   async function saveSettings() {
@@ -187,20 +136,13 @@
     }
 
     const theme = localStorage.getItem("theme") || "system";
-    const freqSelect = document.getElementById("pipeline_schedule_frequency");
-    const freqVal = freqSelect ? freqSelect.value : "daily";
-    const parts = getScheduleParts(freqVal);
-    const timeVal =
-      String(parts.hour).padStart(2, "0") +
-      ":" +
-      String(parts.minute).padStart(2, "0");
+    const refreshMinutes = getPipelineRefreshMinutes();
 
     const payload = {
       retention_days: String(days),
       theme,
       max_entries: String(maxEntriesVal),
-      pipeline_schedule_frequency: freqVal,
-      pipeline_schedule_time: timeVal,
+      pipeline_refresh_minutes: String(refreshMinutes),
       newsletter_enabled: newsletterEnabled,
       newsletter_imap_host: newsletterHostInput.value.trim(),
       newsletter_imap_port: String(newsletterPortVal),
@@ -600,10 +542,10 @@
 
   // Initialise dynamic schedule time field on settings page load
   (function () {
-    const freqSelect = document.getElementById("pipeline_schedule_frequency");
-    if (freqSelect) {
-      freqSelect.addEventListener("change", updateScheduleTimeFields);
-      updateScheduleTimeFields();
+    const refreshInput = document.getElementById("pipeline_refresh_minutes");
+    if (refreshInput) {
+      refreshInput.addEventListener("input", updatePipelineRefreshDial);
+      updatePipelineRefreshDial();
     }
 
     const wordrankDot = document.getElementById("wordrank-status-dot");

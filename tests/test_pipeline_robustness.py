@@ -262,6 +262,37 @@ class PipelineContinuationTests(unittest.TestCase):
         self.assertEqual(calls, ["compile_feed", "newsletter_ingest", "scraper", "wordrank", "quality_score", "visualization", "digest"])
 
 
+class PipelineIntervalScheduleTests(unittest.TestCase):
+    def setUp(self):
+        self._orig_main_db_file = main.DB_FILE
+        self._orig_helpers_db_file = helpers.DB_FILE
+        self._tmpdir = TemporaryDirectory()
+        db_path = str(Path(self._tmpdir.name) / "rss.db")
+        main.DB_FILE = db_path
+        helpers.DB_FILE = db_path
+        main.init_db()
+
+    def tearDown(self):
+        main.DB_FILE = self._orig_main_db_file
+        helpers.DB_FILE = self._orig_helpers_db_file
+        self._tmpdir.cleanup()
+
+    def test_defaults_to_fifteen_minutes(self):
+        self.assertEqual(scheduler._parse_pipeline_refresh_minutes(), 15)
+
+    def test_legacy_daily_schedule_maps_to_daily_interval(self):
+        helpers.set_setting("pipeline_schedule_frequency", "daily")
+        helpers.set_setting("pipeline_schedule_time", "06:00")
+
+        self.assertEqual(scheduler._parse_pipeline_refresh_minutes(), 1440)
+
+    def test_new_interval_setting_wins_over_legacy_values(self):
+        helpers.set_setting("pipeline_schedule_frequency", "daily")
+        helpers.set_setting("pipeline_refresh_minutes", "45")
+
+        self.assertEqual(scheduler._parse_pipeline_refresh_minutes(), 45)
+
+
 class FeedDiversityRankingTests(unittest.TestCase):
     def setUp(self):
         self._orig_db_file = main.DB_FILE
@@ -692,6 +723,59 @@ class NewsletterIngestTests(unittest.TestCase):
         self.assertEqual(entry_rows[0]["source_uid"], "abc123@example.com")
         self.assertIn("Hello from the newsletter.", entry_rows[0]["summary"])
         self.assertIn("<p>", entry_rows[0]["full_content"])
+        self.assertEqual(status_row["value"], "success")
+
+    def test_manual_newsletter_sync_runs_even_when_polling_is_disabled(self):
+        raw_message = self.message.as_bytes()
+
+        class FakeIMAP:
+            def __init__(self, host, port):
+                self.host = host
+                self.port = port
+
+            def login(self, username, password):
+                return ("OK", [b"logged in"])
+
+            def select(self, folder):
+                self.folder = folder
+                return ("OK", [b"1"])
+
+            def search(self, charset, query):
+                return ("OK", [b"1"])
+
+            def fetch(self, msg_id, query):
+                return ("OK", [(b"1 (RFC822)", raw_message)])
+
+            def close(self):
+                return ("OK", [])
+
+            def logout(self):
+                return ("BYE", [])
+
+        helpers.set_setting("newsletter_enabled", "false")
+
+        original_imap = newsletter_ingest.imaplib.IMAP4_SSL
+        newsletter_ingest.imaplib.IMAP4_SSL = FakeIMAP
+        try:
+            newsletter_ingest.run_newsletter_ingest(require_enabled=False)
+        finally:
+            newsletter_ingest.imaplib.IMAP4_SSL = original_imap
+
+        conn = main.get_db()
+        entry_rows = conn.execute(
+            """
+            SELECT title, link, source_uid
+            FROM entries
+            ORDER BY id ASC
+            """
+        ).fetchall()
+        status_row = conn.execute(
+            "SELECT value FROM settings WHERE key = 'newsletter_last_status'"
+        ).fetchone()
+        conn.close()
+
+        self.assertEqual(len(entry_rows), 1)
+        self.assertEqual(entry_rows[0]["title"], "Daily Briefing")
         self.assertEqual(status_row["value"], "success")
 
 

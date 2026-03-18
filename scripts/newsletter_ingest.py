@@ -337,7 +337,7 @@ def _process_message(cursor, feed_id: int, msg: Message) -> bool:
     )
 
 
-def run_newsletter_ingest() -> None:
+def run_newsletter_ingest(require_enabled: bool = True) -> None:
     global _newsletter_running
     if not _newsletter_lock.acquire(blocking=False):
         logger.info("Newsletter ingest already running — skipping concurrent start.")
@@ -349,7 +349,7 @@ def run_newsletter_ingest() -> None:
     client = None
     try:
         enabled = (get_setting("newsletter_enabled") or "false").lower() == "true"
-        if not enabled:
+        if require_enabled and not enabled:
             logger.info("Newsletter polling disabled via settings.")
             _record_newsletter_status("disabled")
             return
@@ -422,10 +422,15 @@ def run_newsletter_ingest() -> None:
             _newsletter_lock.release()
 
 
-def run_newsletter_ingest_async() -> bool:
+def run_newsletter_ingest_async(require_enabled: bool = True) -> bool:
     if _newsletter_running:
         return False
-    thread = threading.Thread(target=run_newsletter_ingest, daemon=True, name="newsletter-ingest")
+    thread = threading.Thread(
+        target=run_newsletter_ingest,
+        kwargs={"require_enabled": require_enabled},
+        daemon=True,
+        name="newsletter-ingest",
+    )
     thread.start()
     return True
 

@@ -11,16 +11,14 @@ DEFAULTS: dict[str, str] = {
     "ollama_model": "phi3:mini",
     "digest_max_articles": "50",
     "max_entries": "1000",
+    # Automatic refresh interval for the full pipeline, in minutes.
+    "pipeline_refresh_minutes": "15",
     # Scraper limits
     "scrape_enabled": "true",
     "scrape_timeout_seconds": "6",
     "scrape_max_bytes": str(512 * 1024),
     "scrape_max_per_run": "40",
     # Pipeline scheduler & status (for manual/automatic refresh jobs)
-    # Frequency: "off" | "10m" | "hourly" | "daily"
-    "pipeline_schedule_frequency": "daily",
-    # Time of day (local) for "daily" / "hourly" anchors, format HH:MM (24h)
-    "pipeline_schedule_time": "06:00",
     # Newsletter mailbox polling
     "newsletter_enabled": "false",
     "newsletter_imap_host": "",

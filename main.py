@@ -56,6 +56,8 @@ DEFAULTS: dict[str, str] = {
     # Maximum number of articles to show on the main page.
     # Stored in the DB but also exposed here so it can be managed via /api/settings.
     "max_entries": "1000",
+    # Automatic refresh interval for the full pipeline, in minutes.
+    "pipeline_refresh_minutes": "15",
     # Newsletter mailbox polling
     "newsletter_enabled": "false",
     "newsletter_imap_host": "",
@@ -219,6 +221,7 @@ class SettingsUpdate(BaseModel):
     retention_days: Optional[str] = None
     theme: Optional[str] = None
     max_entries: Optional[str] = None
+    pipeline_refresh_minutes: Optional[str] = None
     newsletter_enabled: Optional[str] = None
     newsletter_imap_host: Optional[str] = None
     newsletter_imap_port: Optional[str] = None
@@ -1330,7 +1333,7 @@ def get_scrape_status():
 def trigger_newsletter_sync():
     if is_newsletter_running():
         return {"status": "running", "message": "Newsletter sync already in progress."}
-    started = run_newsletter_ingest_async()
+    started = run_newsletter_ingest_async(require_enabled=False)
     if not started:
         return {"status": "running", "message": "Newsletter sync already in progress."}
     return {"status": "started", "message": "Newsletter sync started in background."}

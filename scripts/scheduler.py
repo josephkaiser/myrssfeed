@@ -4,9 +4,7 @@ from datetime import datetime, timezone
 from typing import Callable, Optional
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.interval import IntervalTrigger
-from apscheduler.triggers.cron import CronTrigger
-
-from utils.helpers import set_setting, get_setting
+from utils.helpers import get_db, set_setting, get_setting
 from scripts.newsletter_ingest import run_newsletter_ingest
 
 logger = logging.getLogger(__name__)
@@ -148,20 +146,43 @@ def _do_pipeline():
     logger.info("Pipeline complete with status %s.", final_status)
 
 
-def _parse_schedule_settings() -> tuple[str, int, int]:
-    """Return (frequency, hour, minute) from settings with safe defaults."""
-    freq = (get_setting("pipeline_schedule_frequency") or "daily").lower()
-    time_str = get_setting("pipeline_schedule_time") or "06:00"
+def _get_persisted_setting(key: str) -> Optional[str]:
+    conn = get_db()
     try:
-        hour_str, minute_str = time_str.split(":", 1)
-        hour = max(0, min(23, int(hour_str)))
-        minute = max(0, min(59, int(minute_str)))
-    except Exception:
-        hour, minute = 6, 0
+        row = conn.execute("SELECT value FROM settings WHERE key = ?", (key,)).fetchone()
+    finally:
+        conn.close()
+    return row["value"] if row else None
 
-    if freq not in {"off", "10m", "hourly", "daily"}:
-        freq = "daily"
-    return freq, hour, minute
+
+def _parse_pipeline_refresh_minutes() -> int:
+    """Return the automatic refresh interval in minutes.
+
+    New installs use `pipeline_refresh_minutes`. Older databases may still
+    have the legacy schedule keys, so keep a compatibility fallback.
+    """
+    raw = _get_persisted_setting("pipeline_refresh_minutes")
+    if raw is not None:
+        try:
+            return max(5, min(1440, int(raw)))
+        except (TypeError, ValueError):
+            return 15
+
+    legacy_freq = (_get_persisted_setting("pipeline_schedule_frequency") or "").strip().lower()
+    if legacy_freq == "off":
+        return 0
+    if legacy_freq == "10m":
+        return 10
+    if legacy_freq == "hourly":
+        return 60
+    if legacy_freq == "daily":
+        return 1440
+
+    raw_default = get_setting("pipeline_refresh_minutes") or "15"
+    try:
+        return max(5, min(1440, int(raw_default)))
+    except (TypeError, ValueError):
+        return 15
 
 
 def _parse_newsletter_settings() -> tuple[bool, int]:
@@ -177,27 +198,18 @@ def _parse_newsletter_settings() -> tuple[bool, int]:
 
 
 def _add_pipeline_job(scheduler: BackgroundScheduler) -> None:
-    freq, hour, minute = _parse_schedule_settings()
-    if freq == "off":
-        logger.info("Scheduler: automatic pipeline disabled via settings.")
+    minutes = _parse_pipeline_refresh_minutes()
+    if minutes <= 0:
+        logger.info("Scheduler: automatic refresh disabled via settings.")
         return
 
-    if freq == "10m":
-        # Every 10 minutes
-        trigger = CronTrigger(minute="*/10")
-        name = "Pipeline every 10 minutes"
-    elif freq == "hourly":
-        # At the chosen minute each hour
-        trigger = CronTrigger(minute=minute)
-        name = f"Pipeline hourly at minute {minute:02d}"
-    else:  # daily
-        trigger = CronTrigger(hour=hour, minute=minute)
-        name = f"Daily pipeline at {hour:02d}:{minute:02d} local time"
+    trigger = IntervalTrigger(minutes=minutes)
+    name = f"Automatic refresh every {minutes} minutes"
 
     scheduler.add_job(
         run_pipeline,
         trigger=trigger,
-        id="daily_pipeline",
+        id="pipeline_refresh",
         name=name,
         replace_existing=True,
         misfire_grace_time=3600,
@@ -242,7 +254,7 @@ def reconfigure_scheduler() -> None:
     try:
         # Remove existing job if present, then add a new one from settings.
         try:
-            _scheduler.remove_job("daily_pipeline")
+            _scheduler.remove_job("pipeline_refresh")
         except Exception:
             # Missing job is fine; we'll just add a new one.
             pass
