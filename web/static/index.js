@@ -169,6 +169,17 @@ async function _openRandomArticle({ excludeId = "", walk = null } = {}) {
 }
 
 async function _walkAndOpenArticle(direction) {
+  const nav = typeof window !== "undefined" ? window.ARTICLE_NAV || null : null;
+  if (nav) {
+    const targetUrl = direction < 0 ? nav.prevUrl : nav.nextUrl;
+    if (targetUrl) {
+      window.location.assign(targetUrl);
+    } else {
+      toast(direction < 0 ? "This is the first article in the feed." : "This is the last article in the feed.");
+    }
+    return;
+  }
+
   const entryId = _currentArticleId();
   if (!entryId) {
     await _openRandomArticle();

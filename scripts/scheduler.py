@@ -5,7 +5,6 @@ from typing import Callable, Optional
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 from utils.helpers import get_db, set_setting, get_setting
-from scripts.newsletter_ingest import run_newsletter_ingest
 
 logger = logging.getLogger(__name__)
 
@@ -80,66 +79,28 @@ def run_pipeline_async() -> bool:
 def _do_pipeline():
     """Actual pipeline logic (called with lock held).
 
-    Each stage is isolated: compile_feed failure (e.g. network) does not block
-    downstream stages (wordrank, visualization, digest) so existing entries
-    still get re-scored and daily digest can run.
+    Streamlined for the Pi: just fetch feeds and apply lightweight quality
+    scoring. Heavy stages (WordRank, visualization, digest, newsletters,
+    scraper) are intentionally omitted.
     """
-    logger.info("Pipeline starting.")
+    logger.info("Pipeline starting (minimal mode).")
     had_error = False
+
     try:
         from scripts.compile_feed import run_compile_feed
     except Exception:
         had_error = True
-        logger.exception("Pipeline stage compile_feed failed to load — continuing with remaining stages.")
+        logger.exception("Pipeline stage compile_feed failed to load.")
     else:
         had_error = _run_pipeline_stages([("compile_feed", run_compile_feed)]) or had_error
 
     try:
-        # Poll newsletters into the same entries table before enrichment and scoring.
-        from scripts.newsletter_ingest import run_newsletter_ingest
-    except Exception:
-        had_error = True
-        logger.exception("Pipeline stage newsletter_ingest failed to load — continuing.")
-    else:
-        had_error = _run_pipeline_stages([("newsletter_ingest", run_newsletter_ingest)]) or had_error
-
-    try:
-        # Scrape/enrich newly fetched entries before scoring.
-        from scripts.scraper import run_scraper
-    except Exception:
-        had_error = True
-        logger.exception("Pipeline stage scraper failed to load — continuing.")
-    else:
-        had_error = _run_pipeline_stages([("scraper", run_scraper)]) or had_error
-
-    try:
-        from scripts.wordrank import run_wordrank
-    except Exception:
-        had_error = True
-        logger.exception("Pipeline stage wordrank failed to load — continuing.")
-    else:
-        had_error = _run_pipeline_stages([("wordrank", run_wordrank)]) or had_error
-    try:
         from scripts.quality_score import run_quality_score
     except Exception:
         had_error = True
-        logger.exception("Pipeline stage quality_score failed to load — continuing.")
+        logger.exception("Pipeline stage quality_score failed to load.")
     else:
         had_error = _run_pipeline_stages([("quality_score", run_quality_score)]) or had_error
-    try:
-        from scripts.visualization import run_visualization
-    except Exception:
-        had_error = True
-        logger.exception("Pipeline stage visualization failed to load — continuing.")
-    else:
-        had_error = _run_pipeline_stages([("visualization", run_visualization)]) or had_error
-    try:
-        from scripts.digest import run_digest
-    except Exception:
-        had_error = True
-        logger.exception("Pipeline stage digest failed to load — continuing.")
-    else:
-        had_error = _run_pipeline_stages([("digest", run_digest)]) or had_error
 
     final_status = "error" if had_error else "success"
     _record_pipeline_status(final_status)
@@ -185,18 +146,6 @@ def _parse_pipeline_refresh_minutes() -> int:
         return 15
 
 
-def _parse_newsletter_settings() -> tuple[bool, int]:
-    enabled = (get_setting("newsletter_enabled") or "false").lower() == "true"
-    try:
-        minutes = int(get_setting("newsletter_poll_minutes") or "30")
-    except (TypeError, ValueError):
-        minutes = 30
-    minutes = max(5, min(1440, minutes))
-    if not enabled:
-        return False, minutes
-    return True, minutes
-
-
 def _add_pipeline_job(scheduler: BackgroundScheduler) -> None:
     minutes = _parse_pipeline_refresh_minutes()
     if minutes <= 0:
@@ -217,28 +166,10 @@ def _add_pipeline_job(scheduler: BackgroundScheduler) -> None:
     logger.info("Scheduler configured: %s.", name)
 
 
-def _add_newsletter_job(scheduler: BackgroundScheduler) -> None:
-    enabled, minutes = _parse_newsletter_settings()
-    if not enabled:
-        logger.info("Scheduler: newsletter polling disabled via settings.")
-        return
-
-    scheduler.add_job(
-        run_newsletter_ingest,
-        trigger=IntervalTrigger(minutes=minutes),
-        id="newsletter_poll",
-        name=f"Newsletter poll every {minutes} minutes",
-        replace_existing=True,
-        misfire_grace_time=600,
-    )
-    logger.info("Scheduler configured: newsletter poll every %d minutes.", minutes)
-
-
 def create_scheduler() -> BackgroundScheduler:
     global _scheduler
     scheduler = BackgroundScheduler()
     _add_pipeline_job(scheduler)
-    _add_newsletter_job(scheduler)
     _scheduler = scheduler
     return scheduler
 

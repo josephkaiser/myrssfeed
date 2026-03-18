@@ -75,15 +75,6 @@
   </form>
 
   <div class="header-right">
-    <div class="header-metrics">
-      <span class="header-count">
-        {{ total_entries_display }} article{% if total_entries != 1 %}s{% endif %}
-        {% if active_feed_id %} · filtered{% endif %}
-        {% if q %} · "{{ q }}"{% endif %}
-        {% if date_range %} · last {{ date_range }} days{% endif %}
-        {% if source_scope == 'discover' %} · discover{% else %} · feed{% endif %}
-      </span>
-    </div>
     <div class="header-actions" aria-label="Quick actions">
       <div class="header-action">
         <button
@@ -100,48 +91,7 @@
           <span class="refresh-status-text" id="header-refresh-status-text">Ready</span>
         </div>
       </div>
-      <div class="header-action">
-        <button
-          class="btn icon-btn"
-          id="header-scrape-btn"
-          type="button"
-          title="Enrich articles with metadata"
-          onclick="headerScrapeNow()"
-        >
-          &#8681;
-        </button>
-        <div class="refresh-status header-scrape-status" aria-live="polite">
-          <span class="refresh-status-dot" id="header-scrape-status-dot" aria-hidden="true"></span>
-          <span class="refresh-status-text" id="header-scrape-status-text">Ready</span>
-        </div>
-      </div>
-      <div class="header-action">
-        <button
-          class="btn icon-btn"
-          id="header-wordrank-btn"
-          type="button"
-          title="Recompute personalized scores (WordRank)"
-          onclick="headerWordrankNow()"
-        >
-          WR
-        </button>
-        <div class="refresh-status header-wordrank-status" aria-live="polite">
-          <span class="refresh-status-dot" id="header-wordrank-status-dot" aria-hidden="true"></span>
-          <span class="refresh-status-text" id="header-wordrank-status-text">Ready</span>
-        </div>
-      </div>
-      <div class="header-action">
-        <button
-          class="btn icon-btn"
-          id="header-filter-btn"
-          type="button"
-          title="Filter out low-quality items"
-          aria-pressed="false"
-          onclick="headerToggleFilter()"
-        >
-          &#128269;
-        </button>
-      </div>
+      <!-- Scrape, WordRank, and quality filter controls removed in minimal mode -->
       <div class="header-action">
         <a
           href="/settings"
@@ -214,9 +164,6 @@
         <a href="/discover">
           <span class="nav-icon">&#128269;</span> Discover
         </a>
-        <a href="/stats">
-          <span class="nav-icon">&#128201;</span> Statistics
-        </a>
         <a href="/settings">
           <span class="nav-icon">&#9881;</span> Settings
         </a>
@@ -262,6 +209,10 @@
         >
           Discover
         </a>
+      </div>
+      <div class="entries-header-count" aria-label="Current feed summary">
+        <span class="entries-header-count-value">{{ total_entries_display }}</span>
+        <span class="entries-header-count-copy">article{% if total_entries != 1 %}s{% endif %}</span>
       </div>
     </div>
 

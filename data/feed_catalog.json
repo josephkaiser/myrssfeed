@@ -1,123 +1,5930 @@
 [
-  {"name": "Hacker News", "url": "https://news.ycombinator.com/rss", "category": "Tech", "description": "Social news and discussion for technology enthusiasts"},
-  {"name": "The Verge", "url": "https://www.theverge.com/rss/index.xml", "category": "Tech", "description": "Technology, science, art, and culture news"},
-  {"name": "Ars Technica", "url": "https://feeds.arstechnica.com/arstechnica/index", "category": "Tech", "description": "In-depth tech reporting and analysis"},
-  {"name": "Wired", "url": "https://www.wired.com/feed/rss", "category": "Tech", "description": "How technology changes every aspect of our lives"},
-  {"name": "TechCrunch", "url": "https://techcrunch.com/feed/", "category": "Tech", "description": "Startup and technology news"},
-  {"name": "MIT Technology Review", "url": "https://www.technologyreview.com/feed/", "category": "Tech", "description": "Coverage of emerging technology from MIT"},
-  {"name": "Phoronix", "url": "https://www.phoronix.com/rss.php", "category": "Tech", "description": "Linux hardware, open-source software, and benchmarks"},
-  {"name": "LWN.net", "url": "https://lwn.net/headlines/rss", "category": "Tech", "description": "Subscriber-supported Linux and free software news"},
-  {"name": "Slashdot", "url": "https://rss.slashdot.org/Slashdot/slashdotMain", "category": "Tech", "description": "News for nerds, stuff that matters"},
-  {"name": "Tom's Hardware", "url": "https://www.tomshardware.com/feeds/all", "category": "Tech", "description": "PC hardware reviews, news, and buyer's guides"},
-  {"name": "AnandTech", "url": "https://www.anandtech.com/rss/", "category": "Tech", "description": "In-depth hardware and platform analysis"},
-  {"name": "The Register", "url": "https://www.theregister.com/headlines.atom", "category": "Tech", "description": "Irreverent tech journalism from the UK"},
-
-  {"name": "NASA Breaking News", "url": "https://www.nasa.gov/news-release/feed/", "category": "Science", "description": "Latest news and press releases from NASA"},
-  {"name": "ScienceDaily", "url": "https://www.sciencedaily.com/rss/all.xml", "category": "Science", "description": "Breaking science news from top universities and journals"},
-  {"name": "Phys.org", "url": "https://phys.org/rss-feed/", "category": "Science", "description": "Science, research, and technology news"},
-  {"name": "Quanta Magazine", "url": "https://api.quantamagazine.org/feed/", "category": "Science", "description": "Mathematics, physics, biology, and computer science"},
-  {"name": "New Scientist", "url": "https://www.newscientist.com/feed/home/", "category": "Science", "description": "Science news and long-read features"},
-  {"name": "Popular Science", "url": "https://www.popsci.com/rss.xml", "category": "Science", "description": "Technology, science, DIY, and environment"},
-  {"name": "Space.com", "url": "https://www.space.com/feeds/all", "category": "Science", "description": "Space exploration and astronomy news"},
-  {"name": "Nature", "url": "https://www.nature.com/nature.rss", "category": "Science", "description": "Leading international weekly journal of science"},
-
-  {"name": "Planet Python", "url": "https://planetpython.org/rss20.xml", "category": "Programming", "description": "Aggregated Python community blog posts"},
-  {"name": "GitHub Blog", "url": "https://github.blog/feed/", "category": "Programming", "description": "Updates, tips, and stories from GitHub"},
-  {"name": "Stack Overflow Blog", "url": "https://stackoverflow.blog/feed/", "category": "Programming", "description": "Long-form posts on technology and programming"},
-  {"name": "Joel on Software", "url": "https://www.joelonsoftware.com/feed/", "category": "Programming", "description": "Software development essays by Joel Spolsky"},
-  {"name": "Lobsters", "url": "https://lobste.rs/rss", "category": "Programming", "description": "Computing-focused link aggregator with discussion"},
-  {"name": "The New Stack", "url": "https://thenewstack.io/feed/", "category": "Programming", "description": "Cloud-native, DevOps, and open-source development"},
-  {"name": "dev.to", "url": "https://dev.to/feed", "category": "Programming", "description": "Community of software developers sharing knowledge"},
-  {"name": "CSS-Tricks", "url": "https://css-tricks.com/feed/", "category": "Programming", "description": "Tips, tricks, and tutorials about web development"},
-  {"name": "Smashing Magazine", "url": "https://www.smashingmagazine.com/feed/", "category": "Programming", "description": "Articles and tutorials for web designers and developers"},
-  {"name": "InfoQ", "url": "https://feed.infoq.com/", "category": "Programming", "description": "Software development news, articles, and community"},
-
-  {"name": "Krebs on Security", "url": "https://krebsonsecurity.com/feed/", "category": "Security", "description": "In-depth security news and investigation"},
-  {"name": "Bruce Schneier", "url": "https://www.schneier.com/feed/atom/", "category": "Security", "description": "Security expert commentary and analysis"},
-  {"name": "The Hacker News", "url": "https://feeds.feedburner.com/TheHackersNews", "category": "Security", "description": "Cybersecurity news, hacking, and data breaches"},
-  {"name": "SANS Internet Storm Center", "url": "https://isc.sans.edu/rssfeed.xml", "category": "Security", "description": "Daily Internet threat level summary and security diaries"},
-  {"name": "Bleeping Computer", "url": "https://www.bleepingcomputer.com/feed/", "category": "Security", "description": "Tech support, security news, and malware information"},
-  {"name": "Google Project Zero", "url": "https://googleprojectzero.blogspot.com/feeds/posts/default", "category": "Security", "description": "Security vulnerability research from Google's Project Zero"},
-  {"name": "Troy Hunt", "url": "https://www.troyhunt.com/rss/", "category": "Security", "description": "Security education and commentary from haveibeenpwned creator"},
-
-  {"name": "Google Research Blog", "url": "https://blog.research.google/feeds/posts/default", "category": "AI/ML", "description": "Research updates from Google's AI and ML teams"},
-  {"name": "Hugging Face Blog", "url": "https://huggingface.co/blog/feed.xml", "category": "AI/ML", "description": "ML models, datasets, and open-source AI updates"},
-  {"name": "The Gradient", "url": "https://thegradient.pub/rss/", "category": "AI/ML", "description": "Perspectives on machine learning research"},
-  {"name": "Distill", "url": "https://distill.pub/rss.xml", "category": "AI/ML", "description": "Clear, interactive machine learning research"},
-  {"name": "fast.ai", "url": "https://www.fast.ai/index.xml", "category": "AI/ML", "description": "Practical deep learning resources and research"},
-  {"name": "The Batch (DeepLearning.AI)", "url": "https://www.deeplearning.ai/the-batch/feed/", "category": "AI/ML", "description": "Weekly AI news and insights from Andrew Ng"},
-
-  {"name": "BBC News", "url": "https://feeds.bbci.co.uk/news/rss.xml", "category": "News", "description": "Breaking news from the BBC"},
-  {"name": "NPR News", "url": "https://feeds.npr.org/1001/rss.xml", "category": "News", "description": "Top stories from National Public Radio"},
-  {"name": "The Guardian World", "url": "https://www.theguardian.com/world/rss", "category": "News", "description": "World news from The Guardian"},
-  {"name": "Al Jazeera", "url": "https://www.aljazeera.com/xml/rss/all.xml", "category": "News", "description": "Global news coverage from Al Jazeera"},
-  {"name": "Associated Press", "url": "https://rsshub.app/apnews/topics/apf-topnews", "category": "News", "description": "Wire service news from the Associated Press"},
-  {"name": "Reuters", "url": "https://feeds.reuters.com/reuters/topNews", "category": "News", "description": "Breaking news and analysis from Reuters"},
-
-  {"name": "IGN", "url": "https://www.ign.com/rss/articles.rss", "category": "Gaming", "description": "Video game news, reviews, and entertainment"},
-  {"name": "Kotaku", "url": "https://kotaku.com/rss", "category": "Gaming", "description": "Games, movies, and culture"},
-  {"name": "Rock Paper Shotgun", "url": "https://www.rockpapershotgun.com/feed", "category": "Gaming", "description": "PC gaming news, reviews, and commentary"},
-  {"name": "Eurogamer", "url": "https://www.eurogamer.net/?format=rss", "category": "Gaming", "description": "European gaming site with reviews and news"},
-  {"name": "PC Gamer", "url": "https://www.pcgamer.com/rss/", "category": "Gaming", "description": "PC gaming news, reviews, and guides"},
-  {"name": "Game Developer", "url": "https://www.gamedeveloper.com/rss.xml", "category": "Gaming", "description": "Game development industry news and postmortems"},
-
-  {"name": "A List Apart", "url": "https://alistapart.com/feed/rss/", "category": "Design", "description": "Web design, development, and best practices"},
-  {"name": "Nielsen Norman Group", "url": "https://www.nngroup.com/feed/rss/", "category": "Design", "description": "UX research, training, and consulting insights"},
-  {"name": "UX Planet", "url": "https://uxplanet.org/feed", "category": "Design", "description": "One-stop resource for everything related to UX"},
-  {"name": "Sidebar.io", "url": "https://sidebar.io/feed.xml", "category": "Design", "description": "Five design links every day"},
-
-  {"name": "The Economist", "url": "https://www.economist.com/finance-and-economics/rss.xml", "category": "Finance", "description": "Finance and economics coverage from The Economist"},
-  {"name": "MarketWatch", "url": "https://feeds.marketwatch.com/marketwatch/topstories/", "category": "Finance", "description": "Stock market news and financial analysis"},
-  {"name": "FT Alphaville", "url": "https://www.ft.com/rss/home/alphaville", "category": "Finance", "description": "Markets and economics from the Financial Times"},
-
-  {"name": "DistroWatch", "url": "https://distrowatch.com/news/dw.xml", "category": "Linux", "description": "Linux distribution news and package updates"},
-  {"name": "It's FOSS", "url": "https://itsfoss.com/feed/", "category": "Linux", "description": "Linux news, tutorials, and open-source software"},
-  {"name": "OpenSource.com", "url": "https://opensource.com/feed", "category": "Linux", "description": "Open-source tools, culture, and community"},
-  {"name": "Linux Journal", "url": "https://www.linuxjournal.com/node/feed", "category": "Linux", "description": "Linux technology news and tutorials"},
-
-  {"name": "NYT Home Page", "url": "https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml", "category": "News", "description": "Top stories from The New York Times home page"},
-  {"name": "NYT World", "url": "https://rss.nytimes.com/services/xml/rss/nyt/World.xml", "category": "News", "description": "World news from The New York Times"},
-  {"name": "NYT US News", "url": "https://rss.nytimes.com/services/xml/rss/nyt/US.xml", "category": "News", "description": "U.S. news from The New York Times"},
-  {"name": "NYT Business", "url": "https://rss.nytimes.com/services/xml/rss/nyt/Business.xml", "category": "Finance", "description": "Business news from The New York Times"},
-  {"name": "NYT Technology", "url": "https://rss.nytimes.com/services/xml/rss/nyt/Technology.xml", "category": "Tech", "description": "Technology coverage from The New York Times"},
-  {"name": "NYT Sports", "url": "https://rss.nytimes.com/services/xml/rss/nyt/Sports.xml", "category": "Sports", "description": "Sports news from The New York Times"},
-  {"name": "NYT Science", "url": "https://rss.nytimes.com/services/xml/rss/nyt/Science.xml", "category": "Science", "description": "Science and research coverage from The New York Times"},
-  {"name": "NYT Health", "url": "https://rss.nytimes.com/services/xml/rss/nyt/Health.xml", "category": "Health", "description": "Health and wellness news from The New York Times"},
-  {"name": "NYT Sunday Review", "url": "https://rss.nytimes.com/services/xml/rss/nyt/sunday-review.xml", "category": "Opinion", "description": "Sunday opinion and commentary from The New York Times"},
-
-  {"name": "WSJ Opinion", "url": "https://feeds.content.dowjones.io/public/rss/RSSOpinion", "category": "Opinion", "description": "Opinion and commentary from The Wall Street Journal"},
-  {"name": "WSJ World News", "url": "https://feeds.content.dowjones.io/public/rss/RSSWorldNews", "category": "News", "description": "World news from The Wall Street Journal"},
-  {"name": "WSJ US Business", "url": "https://feeds.content.dowjones.io/public/rss/WSJcomUSBusiness", "category": "Finance", "description": "U.S. business coverage from The Wall Street Journal"},
-  {"name": "WSJ Markets Main", "url": "https://feeds.content.dowjones.io/public/rss/RSSMarketsMain", "category": "Finance", "description": "Markets and investing news from The Wall Street Journal"},
-  {"name": "WSJ Technology What's News", "url": "https://feeds.content.dowjones.io/public/rss/RSSWSJD", "category": "Tech", "description": "Technology news from The Wall Street Journal"},
-  {"name": "WSJ Lifestyle", "url": "https://feeds.content.dowjones.io/public/rss/RSSLifestyle", "category": "Lifestyle", "description": "Lifestyle coverage from The Wall Street Journal"},
-  {"name": "WSJ US News", "url": "https://feeds.content.dowjones.io/public/rss/RSSUSnews", "category": "News", "description": "U.S. news from The Wall Street Journal"},
-  {"name": "WSJ Politics", "url": "https://feeds.content.dowjones.io/public/rss/socialpoliticsfeed", "category": "News", "description": "Politics coverage from The Wall Street Journal"},
-  {"name": "WSJ Economy", "url": "https://feeds.content.dowjones.io/public/rss/socialeconomyfeed", "category": "News", "description": "Economy coverage from The Wall Street Journal"},
-  {"name": "WSJ Arts Culture", "url": "https://feeds.content.dowjones.io/public/rss/RSSArtsCulture", "category": "Arts", "description": "Arts and culture from The Wall Street Journal"},
-  {"name": "WSJ Real Estate", "url": "https://feeds.content.dowjones.io/public/rss/latestnewsrealestate", "category": "Real Estate", "description": "Real estate news from The Wall Street Journal"},
-  {"name": "WSJ Personal Finance", "url": "https://feeds.content.dowjones.io/public/rss/RSSPersonalFinance", "category": "Finance", "description": "Personal finance coverage from The Wall Street Journal"},
-  {"name": "WSJ Health", "url": "https://feeds.content.dowjones.io/public/rss/socialhealth", "category": "Health", "description": "Health coverage from The Wall Street Journal"},
-  {"name": "WSJ Style", "url": "https://feeds.content.dowjones.io/public/rss/RSSStyle", "category": "Style", "description": "Style and fashion from The Wall Street Journal"},
-  {"name": "WSJ Sports", "url": "https://feeds.content.dowjones.io/public/rss/rsssportsfeed", "category": "Sports", "description": "Sports news from The Wall Street Journal"},
-
-  {"name": "Reuters World News", "url": "https://feeds.reuters.com/reuters/worldNews", "category": "News", "description": "Global news coverage from Reuters"},
-  {"name": "Reuters Business News", "url": "https://feeds.reuters.com/reuters/businessNews", "category": "Finance", "description": "International business and markets news from Reuters"},
-  {"name": "Financial Times World", "url": "https://www.ft.com/world/rss", "category": "News", "description": "World news and analysis from the Financial Times"},
-
-  {"name": "Federal Reserve Board — All Press Releases", "url": "https://www.federalreserve.gov/feeds/press_all.xml", "category": "Central Banks", "description": "U.S. Federal Reserve monetary policy, banking, and regulatory announcements"},
-  {"name": "European Central Bank — Press Releases", "url": "https://www.ecb.europa.eu/rss/press.html", "category": "Central Banks", "description": "ECB policy decisions, speeches, and institutional news"},
-
-  {"name": "CNBC Top News and Analysis", "url": "https://www.cnbc.com/id/100003114/device/rss/rss.html", "category": "Finance", "description": "Markets, business, and investing coverage from CNBC"},
-  {"name": "Investing.com Markets", "url": "https://www.investing.com/rss/news.rss", "category": "Finance", "description": "Global markets, stocks, and macro news from Investing.com"},
-
-  {"name": "Calculated Risk", "url": "https://www.calculatedriskblog.com/feeds/posts/default", "category": "Economics", "description": "Economics and housing market analysis by Bill McBride"},
-  {"name": "Greg Mankiw's Blog", "url": "http://gregmankiw.blogspot.com/feeds/posts/default", "category": "Economics", "description": "Macroeconomics commentary from Harvard professor Greg Mankiw"},
-  {"name": "Econbrowser", "url": "https://econbrowser.com/feed", "category": "Economics", "description": "Analysis of current economic conditions and policy by James Hamilton and Menzie Chinn"},
-
-  {"name": "The Changelog (podcast)", "url": "https://changelog.fm/feed", "category": "Podcasts", "description": "Conversations with hackers, founders, and maintainers in software and open source"},
-  {"name": "Accidental Tech Podcast", "url": "https://atp.fm/episodes?format=RSS", "category": "Podcasts", "description": "A tech podcast focused on Apple, software development, and gadgets"},
-  {"name": "This Week in Tech (TWiT)", "url": "https://feeds.twit.tv/twit.xml", "category": "Podcasts", "description": "Weekly roundtable discussion of the latest technology news"},
-  {"name": "Planet Money", "url": "https://feeds.npr.org/510289/podcast.xml", "category": "Podcasts", "description": "NPR's approachable stories about the economy and money"},
-  {"name": "The Indicator from Planet Money", "url": "https://feeds.npr.org/510325/podcast.xml", "category": "Podcasts", "description": "Quick insights into work, business, and the economy"}
+  {
+    "name": "Hacker News",
+    "url": "https://news.ycombinator.com/rss",
+    "category": "Tech",
+    "description": "Social news and discussion for technology enthusiasts"
+  },
+  {
+    "name": "The Verge",
+    "url": "https://www.theverge.com/rss/index.xml",
+    "category": "Tech",
+    "description": "Technology, science, art, and culture news"
+  },
+  {
+    "name": "Ars Technica",
+    "url": "https://feeds.arstechnica.com/arstechnica/index",
+    "category": "Tech",
+    "description": "In-depth tech reporting and analysis"
+  },
+  {
+    "name": "Wired",
+    "url": "https://www.wired.com/feed/rss",
+    "category": "Tech",
+    "description": "How technology changes every aspect of our lives"
+  },
+  {
+    "name": "TechCrunch",
+    "url": "https://techcrunch.com/feed/",
+    "category": "Tech",
+    "description": "Startup and technology news"
+  },
+  {
+    "name": "MIT Technology Review",
+    "url": "https://www.technologyreview.com/feed/",
+    "category": "Tech",
+    "description": "Coverage of emerging technology from MIT"
+  },
+  {
+    "name": "Phoronix",
+    "url": "https://www.phoronix.com/rss.php",
+    "category": "Tech",
+    "description": "Linux hardware, open-source software, and benchmarks"
+  },
+  {
+    "name": "LWN.net",
+    "url": "https://lwn.net/headlines/rss",
+    "category": "Tech",
+    "description": "Subscriber-supported Linux and free software news"
+  },
+  {
+    "name": "Slashdot",
+    "url": "https://rss.slashdot.org/Slashdot/slashdotMain",
+    "category": "Tech",
+    "description": "News for nerds, stuff that matters"
+  },
+  {
+    "name": "Tom's Hardware",
+    "url": "https://www.tomshardware.com/feeds/all",
+    "category": "Tech",
+    "description": "PC hardware reviews, news, and buyer's guides"
+  },
+  {
+    "name": "AnandTech",
+    "url": "https://www.anandtech.com/rss/",
+    "category": "Tech",
+    "description": "In-depth hardware and platform analysis"
+  },
+  {
+    "name": "The Register",
+    "url": "https://www.theregister.com/headlines.atom",
+    "category": "Tech",
+    "description": "Irreverent tech journalism from the UK"
+  },
+  {
+    "name": "NASA Breaking News",
+    "url": "https://www.nasa.gov/news-release/feed/",
+    "category": "Science",
+    "description": "Latest news and press releases from NASA"
+  },
+  {
+    "name": "ScienceDaily",
+    "url": "https://www.sciencedaily.com/rss/all.xml",
+    "category": "Science",
+    "description": "Breaking science news from top universities and journals"
+  },
+  {
+    "name": "Phys.org",
+    "url": "https://phys.org/rss-feed/",
+    "category": "Science",
+    "description": "Science, research, and technology news"
+  },
+  {
+    "name": "Quanta Magazine",
+    "url": "https://api.quantamagazine.org/feed/",
+    "category": "Science",
+    "description": "Mathematics, physics, biology, and computer science"
+  },
+  {
+    "name": "New Scientist",
+    "url": "https://www.newscientist.com/feed/home/",
+    "category": "Science",
+    "description": "Science news and long-read features"
+  },
+  {
+    "name": "Popular Science",
+    "url": "https://www.popsci.com/rss.xml",
+    "category": "Science",
+    "description": "Technology, science, DIY, and environment"
+  },
+  {
+    "name": "Space.com",
+    "url": "https://www.space.com/feeds/all",
+    "category": "Science",
+    "description": "Space exploration and astronomy news"
+  },
+  {
+    "name": "Nature",
+    "url": "https://www.nature.com/nature.rss",
+    "category": "Science",
+    "description": "Leading international weekly journal of science"
+  },
+  {
+    "name": "Planet Python",
+    "url": "https://planetpython.org/rss20.xml",
+    "category": "Programming",
+    "description": "Aggregated Python community blog posts"
+  },
+  {
+    "name": "GitHub Blog",
+    "url": "https://github.blog/feed/",
+    "category": "Programming",
+    "description": "Updates, tips, and stories from GitHub"
+  },
+  {
+    "name": "Stack Overflow Blog",
+    "url": "https://stackoverflow.blog/feed/",
+    "category": "Programming",
+    "description": "Long-form posts on technology and programming"
+  },
+  {
+    "name": "Joel on Software",
+    "url": "https://www.joelonsoftware.com/feed/",
+    "category": "Programming",
+    "description": "Software development essays by Joel Spolsky"
+  },
+  {
+    "name": "Lobsters",
+    "url": "https://lobste.rs/rss",
+    "category": "Programming",
+    "description": "Computing-focused link aggregator with discussion"
+  },
+  {
+    "name": "The New Stack",
+    "url": "https://thenewstack.io/feed/",
+    "category": "Programming",
+    "description": "Cloud-native, DevOps, and open-source development"
+  },
+  {
+    "name": "dev.to",
+    "url": "https://dev.to/feed",
+    "category": "Programming",
+    "description": "Community of software developers sharing knowledge"
+  },
+  {
+    "name": "CSS-Tricks",
+    "url": "https://css-tricks.com/feed/",
+    "category": "Programming",
+    "description": "Tips, tricks, and tutorials about web development"
+  },
+  {
+    "name": "Smashing Magazine",
+    "url": "https://www.smashingmagazine.com/feed/",
+    "category": "Programming",
+    "description": "Articles and tutorials for web designers and developers"
+  },
+  {
+    "name": "InfoQ",
+    "url": "https://feed.infoq.com/",
+    "category": "Programming",
+    "description": "Software development news, articles, and community"
+  },
+  {
+    "name": "Krebs on Security",
+    "url": "https://krebsonsecurity.com/feed/",
+    "category": "Security",
+    "description": "In-depth security news and investigation"
+  },
+  {
+    "name": "Bruce Schneier",
+    "url": "https://www.schneier.com/feed/atom/",
+    "category": "Security",
+    "description": "Security expert commentary and analysis"
+  },
+  {
+    "name": "The Hacker News",
+    "url": "https://feeds.feedburner.com/TheHackersNews",
+    "category": "Security",
+    "description": "Cybersecurity news, hacking, and data breaches"
+  },
+  {
+    "name": "SANS Internet Storm Center",
+    "url": "https://isc.sans.edu/rssfeed.xml",
+    "category": "Security",
+    "description": "Daily Internet threat level summary and security diaries"
+  },
+  {
+    "name": "Bleeping Computer",
+    "url": "https://www.bleepingcomputer.com/feed/",
+    "category": "Security",
+    "description": "Tech support, security news, and malware information"
+  },
+  {
+    "name": "Google Project Zero",
+    "url": "https://googleprojectzero.blogspot.com/feeds/posts/default",
+    "category": "Security",
+    "description": "Security vulnerability research from Google's Project Zero"
+  },
+  {
+    "name": "Troy Hunt",
+    "url": "https://www.troyhunt.com/rss/",
+    "category": "Security",
+    "description": "Security education and commentary from haveibeenpwned creator"
+  },
+  {
+    "name": "Google Research Blog",
+    "url": "https://blog.research.google/feeds/posts/default",
+    "category": "AI/ML",
+    "description": "Research updates from Google's AI and ML teams"
+  },
+  {
+    "name": "Hugging Face Blog",
+    "url": "https://huggingface.co/blog/feed.xml",
+    "category": "AI/ML",
+    "description": "ML models, datasets, and open-source AI updates"
+  },
+  {
+    "name": "The Gradient",
+    "url": "https://thegradient.pub/rss/",
+    "category": "AI/ML",
+    "description": "Perspectives on machine learning research"
+  },
+  {
+    "name": "Distill",
+    "url": "https://distill.pub/rss.xml",
+    "category": "AI/ML",
+    "description": "Clear, interactive machine learning research"
+  },
+  {
+    "name": "fast.ai",
+    "url": "https://www.fast.ai/index.xml",
+    "category": "AI/ML",
+    "description": "Practical deep learning resources and research"
+  },
+  {
+    "name": "The Batch (DeepLearning.AI)",
+    "url": "https://www.deeplearning.ai/the-batch/feed/",
+    "category": "AI/ML",
+    "description": "Weekly AI news and insights from Andrew Ng"
+  },
+  {
+    "name": "BBC News",
+    "url": "https://feeds.bbci.co.uk/news/rss.xml",
+    "category": "News",
+    "description": "Breaking news from the BBC"
+  },
+  {
+    "name": "NPR News",
+    "url": "https://feeds.npr.org/1001/rss.xml",
+    "category": "News",
+    "description": "Top stories from National Public Radio"
+  },
+  {
+    "name": "The Guardian World",
+    "url": "https://www.theguardian.com/world/rss",
+    "category": "News",
+    "description": "World news from The Guardian"
+  },
+  {
+    "name": "Al Jazeera",
+    "url": "https://www.aljazeera.com/xml/rss/all.xml",
+    "category": "News",
+    "description": "Global news coverage from Al Jazeera"
+  },
+  {
+    "name": "Associated Press",
+    "url": "https://rsshub.app/apnews/topics/apf-topnews",
+    "category": "News",
+    "description": "Wire service news from the Associated Press"
+  },
+  {
+    "name": "Reuters",
+    "url": "https://feeds.reuters.com/reuters/topNews",
+    "category": "News",
+    "description": "Breaking news and analysis from Reuters"
+  },
+  {
+    "name": "IGN",
+    "url": "https://www.ign.com/rss/articles.rss",
+    "category": "Gaming",
+    "description": "Video game news, reviews, and entertainment"
+  },
+  {
+    "name": "Kotaku",
+    "url": "https://kotaku.com/rss",
+    "category": "Gaming",
+    "description": "Games, movies, and culture"
+  },
+  {
+    "name": "Rock Paper Shotgun",
+    "url": "https://www.rockpapershotgun.com/feed",
+    "category": "Gaming",
+    "description": "PC gaming news, reviews, and commentary"
+  },
+  {
+    "name": "Eurogamer",
+    "url": "https://www.eurogamer.net/?format=rss",
+    "category": "Gaming",
+    "description": "European gaming site with reviews and news"
+  },
+  {
+    "name": "PC Gamer",
+    "url": "https://www.pcgamer.com/rss/",
+    "category": "Gaming",
+    "description": "PC gaming news, reviews, and guides"
+  },
+  {
+    "name": "Game Developer",
+    "url": "https://www.gamedeveloper.com/rss.xml",
+    "category": "Gaming",
+    "description": "Game development industry news and postmortems"
+  },
+  {
+    "name": "A List Apart",
+    "url": "https://alistapart.com/feed/rss/",
+    "category": "Design",
+    "description": "Web design, development, and best practices"
+  },
+  {
+    "name": "Nielsen Norman Group",
+    "url": "https://www.nngroup.com/feed/rss/",
+    "category": "Design",
+    "description": "UX research, training, and consulting insights"
+  },
+  {
+    "name": "UX Planet",
+    "url": "https://uxplanet.org/feed",
+    "category": "Design",
+    "description": "One-stop resource for everything related to UX"
+  },
+  {
+    "name": "Sidebar.io",
+    "url": "https://sidebar.io/feed.xml",
+    "category": "Design",
+    "description": "Five design links every day"
+  },
+  {
+    "name": "The Economist",
+    "url": "https://www.economist.com/finance-and-economics/rss.xml",
+    "category": "Finance",
+    "description": "Finance and economics coverage from The Economist"
+  },
+  {
+    "name": "MarketWatch",
+    "url": "https://feeds.marketwatch.com/marketwatch/topstories/",
+    "category": "Finance",
+    "description": "Stock market news and financial analysis"
+  },
+  {
+    "name": "FT Alphaville",
+    "url": "https://www.ft.com/rss/home/alphaville",
+    "category": "Finance",
+    "description": "Markets and economics from the Financial Times"
+  },
+  {
+    "name": "DistroWatch",
+    "url": "https://distrowatch.com/news/dw.xml",
+    "category": "Linux",
+    "description": "Linux distribution news and package updates"
+  },
+  {
+    "name": "It's FOSS",
+    "url": "https://itsfoss.com/feed/",
+    "category": "Linux",
+    "description": "Linux news, tutorials, and open-source software"
+  },
+  {
+    "name": "OpenSource.com",
+    "url": "https://opensource.com/feed",
+    "category": "Linux",
+    "description": "Open-source tools, culture, and community"
+  },
+  {
+    "name": "Linux Journal",
+    "url": "https://www.linuxjournal.com/node/feed",
+    "category": "Linux",
+    "description": "Linux technology news and tutorials"
+  },
+  {
+    "name": "NYT Home Page",
+    "url": "https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml",
+    "category": "News",
+    "description": "Top stories from The New York Times home page"
+  },
+  {
+    "name": "NYT World",
+    "url": "https://rss.nytimes.com/services/xml/rss/nyt/World.xml",
+    "category": "News",
+    "description": "World news from The New York Times"
+  },
+  {
+    "name": "NYT US News",
+    "url": "https://rss.nytimes.com/services/xml/rss/nyt/US.xml",
+    "category": "News",
+    "description": "U.S. news from The New York Times"
+  },
+  {
+    "name": "NYT Business",
+    "url": "https://rss.nytimes.com/services/xml/rss/nyt/Business.xml",
+    "category": "Finance",
+    "description": "Business news from The New York Times"
+  },
+  {
+    "name": "NYT Technology",
+    "url": "https://rss.nytimes.com/services/xml/rss/nyt/Technology.xml",
+    "category": "Tech",
+    "description": "Technology coverage from The New York Times"
+  },
+  {
+    "name": "NYT Sports",
+    "url": "https://rss.nytimes.com/services/xml/rss/nyt/Sports.xml",
+    "category": "Sports",
+    "description": "Sports news from The New York Times"
+  },
+  {
+    "name": "NYT Science",
+    "url": "https://rss.nytimes.com/services/xml/rss/nyt/Science.xml",
+    "category": "Science",
+    "description": "Science and research coverage from The New York Times"
+  },
+  {
+    "name": "NYT Health",
+    "url": "https://rss.nytimes.com/services/xml/rss/nyt/Health.xml",
+    "category": "Health",
+    "description": "Health and wellness news from The New York Times"
+  },
+  {
+    "name": "NYT Sunday Review",
+    "url": "https://rss.nytimes.com/services/xml/rss/nyt/sunday-review.xml",
+    "category": "Opinion",
+    "description": "Sunday opinion and commentary from The New York Times"
+  },
+  {
+    "name": "WSJ Opinion",
+    "url": "https://feeds.content.dowjones.io/public/rss/RSSOpinion",
+    "category": "Opinion",
+    "description": "Opinion and commentary from The Wall Street Journal"
+  },
+  {
+    "name": "WSJ World News",
+    "url": "https://feeds.content.dowjones.io/public/rss/RSSWorldNews",
+    "category": "News",
+    "description": "World news from The Wall Street Journal"
+  },
+  {
+    "name": "WSJ US Business",
+    "url": "https://feeds.content.dowjones.io/public/rss/WSJcomUSBusiness",
+    "category": "Finance",
+    "description": "U.S. business coverage from The Wall Street Journal"
+  },
+  {
+    "name": "WSJ Markets Main",
+    "url": "https://feeds.content.dowjones.io/public/rss/RSSMarketsMain",
+    "category": "Finance",
+    "description": "Markets and investing news from The Wall Street Journal"
+  },
+  {
+    "name": "WSJ Technology What's News",
+    "url": "https://feeds.content.dowjones.io/public/rss/RSSWSJD",
+    "category": "Tech",
+    "description": "Technology news from The Wall Street Journal"
+  },
+  {
+    "name": "WSJ Lifestyle",
+    "url": "https://feeds.content.dowjones.io/public/rss/RSSLifestyle",
+    "category": "Lifestyle",
+    "description": "Lifestyle coverage from The Wall Street Journal"
+  },
+  {
+    "name": "WSJ US News",
+    "url": "https://feeds.content.dowjones.io/public/rss/RSSUSnews",
+    "category": "News",
+    "description": "U.S. news from The Wall Street Journal"
+  },
+  {
+    "name": "WSJ Politics",
+    "url": "https://feeds.content.dowjones.io/public/rss/socialpoliticsfeed",
+    "category": "News",
+    "description": "Politics coverage from The Wall Street Journal"
+  },
+  {
+    "name": "WSJ Economy",
+    "url": "https://feeds.content.dowjones.io/public/rss/socialeconomyfeed",
+    "category": "News",
+    "description": "Economy coverage from The Wall Street Journal"
+  },
+  {
+    "name": "WSJ Arts Culture",
+    "url": "https://feeds.content.dowjones.io/public/rss/RSSArtsCulture",
+    "category": "Arts",
+    "description": "Arts and culture from The Wall Street Journal"
+  },
+  {
+    "name": "WSJ Real Estate",
+    "url": "https://feeds.content.dowjones.io/public/rss/latestnewsrealestate",
+    "category": "Real Estate",
+    "description": "Real estate news from The Wall Street Journal"
+  },
+  {
+    "name": "WSJ Personal Finance",
+    "url": "https://feeds.content.dowjones.io/public/rss/RSSPersonalFinance",
+    "category": "Finance",
+    "description": "Personal finance coverage from The Wall Street Journal"
+  },
+  {
+    "name": "WSJ Health",
+    "url": "https://feeds.content.dowjones.io/public/rss/socialhealth",
+    "category": "Health",
+    "description": "Health coverage from The Wall Street Journal"
+  },
+  {
+    "name": "WSJ Style",
+    "url": "https://feeds.content.dowjones.io/public/rss/RSSStyle",
+    "category": "Style",
+    "description": "Style and fashion from The Wall Street Journal"
+  },
+  {
+    "name": "WSJ Sports",
+    "url": "https://feeds.content.dowjones.io/public/rss/rsssportsfeed",
+    "category": "Sports",
+    "description": "Sports news from The Wall Street Journal"
+  },
+  {
+    "name": "Reuters World News",
+    "url": "https://feeds.reuters.com/reuters/worldNews",
+    "category": "News",
+    "description": "Global news coverage from Reuters"
+  },
+  {
+    "name": "Reuters Business News",
+    "url": "https://feeds.reuters.com/reuters/businessNews",
+    "category": "Finance",
+    "description": "International business and markets news from Reuters"
+  },
+  {
+    "name": "Financial Times World",
+    "url": "https://www.ft.com/world/rss",
+    "category": "News",
+    "description": "World news and analysis from the Financial Times"
+  },
+  {
+    "name": "Federal Reserve Board — All Press Releases",
+    "url": "https://www.federalreserve.gov/feeds/press_all.xml",
+    "category": "Central Banks",
+    "description": "U.S. Federal Reserve monetary policy, banking, and regulatory announcements"
+  },
+  {
+    "name": "European Central Bank — Press Releases",
+    "url": "https://www.ecb.europa.eu/rss/press.html",
+    "category": "Central Banks",
+    "description": "ECB policy decisions, speeches, and institutional news"
+  },
+  {
+    "name": "CNBC Top News and Analysis",
+    "url": "https://www.cnbc.com/id/100003114/device/rss/rss.html",
+    "category": "Finance",
+    "description": "Markets, business, and investing coverage from CNBC"
+  },
+  {
+    "name": "Investing.com Markets",
+    "url": "https://www.investing.com/rss/news.rss",
+    "category": "Finance",
+    "description": "Global markets, stocks, and macro news from Investing.com"
+  },
+  {
+    "name": "Calculated Risk",
+    "url": "https://www.calculatedriskblog.com/feeds/posts/default",
+    "category": "Economics",
+    "description": "Economics and housing market analysis by Bill McBride"
+  },
+  {
+    "name": "Greg Mankiw's Blog",
+    "url": "http://gregmankiw.blogspot.com/feeds/posts/default",
+    "category": "Economics",
+    "description": "Macroeconomics commentary from Harvard professor Greg Mankiw"
+  },
+  {
+    "name": "Econbrowser",
+    "url": "https://econbrowser.com/feed",
+    "category": "Economics",
+    "description": "Analysis of current economic conditions and policy by James Hamilton and Menzie Chinn"
+  },
+  {
+    "name": "The Changelog (podcast)",
+    "url": "https://changelog.fm/feed",
+    "category": "Podcasts",
+    "description": "Conversations with hackers, founders, and maintainers in software and open source"
+  },
+  {
+    "name": "Accidental Tech Podcast",
+    "url": "https://atp.fm/episodes?format=RSS",
+    "category": "Podcasts",
+    "description": "A tech podcast focused on Apple, software development, and gadgets"
+  },
+  {
+    "name": "This Week in Tech (TWiT)",
+    "url": "https://feeds.twit.tv/twit.xml",
+    "category": "Podcasts",
+    "description": "Weekly roundtable discussion of the latest technology news"
+  },
+  {
+    "name": "Planet Money",
+    "url": "https://feeds.npr.org/510289/podcast.xml",
+    "category": "Podcasts",
+    "description": "NPR's approachable stories about the economy and money"
+  },
+  {
+    "name": "The Indicator from Planet Money",
+    "url": "https://feeds.npr.org/510325/podcast.xml",
+    "category": "Podcasts",
+    "description": "Quick insights into work, business, and the economy"
+  },
+  {
+    "name": "BBC News - World",
+    "url": "https://feeds.bbci.co.uk/news/world/rss.xml",
+    "category": "News - General",
+    "description": "RSS feed from BBC News - World"
+  },
+  {
+    "name": "BBC News - Technology",
+    "url": "https://feeds.bbci.co.uk/news/technology/rss.xml",
+    "category": "News - General",
+    "description": "RSS feed from BBC News - Technology"
+  },
+  {
+    "name": "BBC News - Business",
+    "url": "https://feeds.bbci.co.uk/news/business/rss.xml",
+    "category": "News - General",
+    "description": "RSS feed from BBC News - Business"
+  },
+  {
+    "name": "BBC News - Science",
+    "url": "https://feeds.bbci.co.uk/news/science_and_environment/rss.xml",
+    "category": "News - General",
+    "description": "RSS feed from BBC News - Science"
+  },
+  {
+    "name": "NPR World",
+    "url": "https://feeds.npr.org/1004/rss.xml",
+    "category": "News - General",
+    "description": "RSS feed from NPR World"
+  },
+  {
+    "name": "NPR Politics",
+    "url": "https://feeds.npr.org/1014/rss.xml",
+    "category": "News - General",
+    "description": "RSS feed from NPR Politics"
+  },
+  {
+    "name": "NPR Business",
+    "url": "https://feeds.npr.org/1006/rss.xml",
+    "category": "News - General",
+    "description": "RSS feed from NPR Business"
+  },
+  {
+    "name": "NPR Science",
+    "url": "https://feeds.npr.org/1007/rss.xml",
+    "category": "News - General",
+    "description": "RSS feed from NPR Science"
+  },
+  {
+    "name": "Reuters - Top News",
+    "url": "https://www.reutersagency.com/feed/?best-topics=top-news&post_type=best",
+    "category": "News - General",
+    "description": "RSS feed from Reuters - Top News"
+  },
+  {
+    "name": "Reuters - World",
+    "url": "https://www.reutersagency.com/feed/?best-regions=world&post_type=best",
+    "category": "News - General",
+    "description": "RSS feed from Reuters - World"
+  },
+  {
+    "name": "The Guardian - UK",
+    "url": "https://www.theguardian.com/uk/rss",
+    "category": "News - General",
+    "description": "RSS feed from The Guardian - UK"
+  },
+  {
+    "name": "The Guardian - US",
+    "url": "https://www.theguardian.com/us-news/rss",
+    "category": "News - General",
+    "description": "RSS feed from The Guardian - US"
+  },
+  {
+    "name": "The Guardian - Technology",
+    "url": "https://www.theguardian.com/technology/rss",
+    "category": "News - General",
+    "description": "RSS feed from The Guardian - Technology"
+  },
+  {
+    "name": "The Guardian - Science",
+    "url": "https://www.theguardian.com/science/rss",
+    "category": "News - General",
+    "description": "RSS feed from The Guardian - Science"
+  },
+  {
+    "name": "The Guardian - Environment",
+    "url": "https://www.theguardian.com/environment/rss",
+    "category": "News - General",
+    "description": "RSS feed from The Guardian - Environment"
+  },
+  {
+    "name": "The Independent",
+    "url": "https://www.independent.co.uk/rss",
+    "category": "News - General",
+    "description": "RSS feed from The Independent"
+  },
+  {
+    "name": "Sky News",
+    "url": "https://feeds.skynews.com/feeds/rss/home.xml",
+    "category": "News - General",
+    "description": "RSS feed from Sky News"
+  },
+  {
+    "name": "France 24 - English",
+    "url": "https://www.france24.com/en/rss",
+    "category": "News - General",
+    "description": "RSS feed from France 24 - English"
+  },
+  {
+    "name": "Deutsche Welle",
+    "url": "https://rss.dw.com/rdf/rss-en-all",
+    "category": "News - General",
+    "description": "RSS feed from Deutsche Welle"
+  },
+  {
+    "name": "ABC News Australia",
+    "url": "https://www.abc.net.au/news/feed/51120/rss.xml",
+    "category": "News - General",
+    "description": "RSS feed from ABC News Australia"
+  },
+  {
+    "name": "CBC News",
+    "url": "https://www.cbc.ca/cmlink/rss-topstories",
+    "category": "News - General",
+    "description": "RSS feed from CBC News"
+  },
+  {
+    "name": "CBC World",
+    "url": "https://www.cbc.ca/cmlink/rss-world",
+    "category": "News - General",
+    "description": "RSS feed from CBC World"
+  },
+  {
+    "name": "CBC Canada",
+    "url": "https://www.cbc.ca/cmlink/rss-canada",
+    "category": "News - General",
+    "description": "RSS feed from CBC Canada"
+  },
+  {
+    "name": "NHK World",
+    "url": "https://www3.nhk.or.jp/rss/news/cat0.xml",
+    "category": "News - General",
+    "description": "RSS feed from NHK World"
+  },
+  {
+    "name": "South China Morning Post",
+    "url": "https://www.scmp.com/rss/91/feed",
+    "category": "News - General",
+    "description": "RSS feed from South China Morning Post"
+  },
+  {
+    "name": "The Japan Times",
+    "url": "https://www.japantimes.co.jp/feed/",
+    "category": "News - General",
+    "description": "RSS feed from The Japan Times"
+  },
+  {
+    "name": "Sydney Morning Herald",
+    "url": "https://www.smh.com.au/rss/feed.xml",
+    "category": "News - General",
+    "description": "RSS feed from Sydney Morning Herald"
+  },
+  {
+    "name": "Irish Times",
+    "url": "https://www.irishtimes.com/cmlink/the-irish-times-news-1.1319192",
+    "category": "News - General",
+    "description": "RSS feed from Irish Times"
+  },
+  {
+    "name": "Times of India",
+    "url": "https://timesofindia.indiatimes.com/rssfeedstopstories.cms",
+    "category": "News - General",
+    "description": "RSS feed from Times of India"
+  },
+  {
+    "name": "The Hindu",
+    "url": "https://www.thehindu.com/feeder/default.rss",
+    "category": "News - General",
+    "description": "RSS feed from The Hindu"
+  },
+  {
+    "name": "Dawn (Pakistan)",
+    "url": "https://www.dawn.com/feeds/home",
+    "category": "News - General",
+    "description": "RSS feed from Dawn (Pakistan)"
+  },
+  {
+    "name": "New York Times - Politics",
+    "url": "https://rss.nytimes.com/services/xml/rss/nyt/Politics.xml",
+    "category": "News - US",
+    "description": "RSS feed from New York Times - Politics"
+  },
+  {
+    "name": "New York Times - Arts",
+    "url": "https://rss.nytimes.com/services/xml/rss/nyt/Arts.xml",
+    "category": "News - US",
+    "description": "RSS feed from New York Times - Arts"
+  },
+  {
+    "name": "New York Times - Books",
+    "url": "https://rss.nytimes.com/services/xml/rss/nyt/Books.xml",
+    "category": "News - US",
+    "description": "RSS feed from New York Times - Books"
+  },
+  {
+    "name": "New York Times - Movies",
+    "url": "https://rss.nytimes.com/services/xml/rss/nyt/Movies.xml",
+    "category": "News - US",
+    "description": "RSS feed from New York Times - Movies"
+  },
+  {
+    "name": "New York Times - Travel",
+    "url": "https://rss.nytimes.com/services/xml/rss/nyt/Travel.xml",
+    "category": "News - US",
+    "description": "RSS feed from New York Times - Travel"
+  },
+  {
+    "name": "Washington Post - Politics",
+    "url": "https://feeds.washingtonpost.com/rss/politics",
+    "category": "News - US",
+    "description": "RSS feed from Washington Post - Politics"
+  },
+  {
+    "name": "Washington Post - World",
+    "url": "https://feeds.washingtonpost.com/rss/world",
+    "category": "News - US",
+    "description": "RSS feed from Washington Post - World"
+  },
+  {
+    "name": "Washington Post - National",
+    "url": "https://feeds.washingtonpost.com/rss/national",
+    "category": "News - US",
+    "description": "RSS feed from Washington Post - National"
+  },
+  {
+    "name": "Washington Post - Business",
+    "url": "https://feeds.washingtonpost.com/rss/business",
+    "category": "News - US",
+    "description": "RSS feed from Washington Post - Business"
+  },
+  {
+    "name": "Washington Post - Technology",
+    "url": "https://feeds.washingtonpost.com/rss/business/technology",
+    "category": "News - US",
+    "description": "RSS feed from Washington Post - Technology"
+  },
+  {
+    "name": "Washington Post - Lifestyle",
+    "url": "https://feeds.washingtonpost.com/rss/lifestyle",
+    "category": "News - US",
+    "description": "RSS feed from Washington Post - Lifestyle"
+  },
+  {
+    "name": "Wall Street Journal",
+    "url": "https://feeds.a.dj.com/rss/RSSWorldNews.xml",
+    "category": "News - US",
+    "description": "RSS feed from Wall Street Journal"
+  },
+  {
+    "name": "Wall Street Journal - Markets",
+    "url": "https://feeds.a.dj.com/rss/RSSMarketsMain.xml",
+    "category": "News - US",
+    "description": "RSS feed from Wall Street Journal - Markets"
+  },
+  {
+    "name": "Wall Street Journal - Business",
+    "url": "https://feeds.a.dj.com/rss/WSJcomUSBusiness.xml",
+    "category": "News - US",
+    "description": "RSS feed from Wall Street Journal - Business"
+  },
+  {
+    "name": "Wall Street Journal - Technology",
+    "url": "https://feeds.a.dj.com/rss/RSSWSJD.xml",
+    "category": "News - US",
+    "description": "RSS feed from Wall Street Journal - Technology"
+  },
+  {
+    "name": "USA Today",
+    "url": "https://rssfeeds.usatoday.com/usatoday-NewsTopStories",
+    "category": "News - US",
+    "description": "RSS feed from USA Today"
+  },
+  {
+    "name": "USA Today - Tech",
+    "url": "https://rssfeeds.usatoday.com/usatoday-TechTopStories",
+    "category": "News - US",
+    "description": "RSS feed from USA Today - Tech"
+  },
+  {
+    "name": "USA Today - Sports",
+    "url": "https://rssfeeds.usatoday.com/usatoday-SportsTopStories",
+    "category": "News - US",
+    "description": "RSS feed from USA Today - Sports"
+  },
+  {
+    "name": "Los Angeles Times",
+    "url": "https://www.latimes.com/local/rss2.0.xml",
+    "category": "News - US",
+    "description": "RSS feed from Los Angeles Times"
+  },
+  {
+    "name": "Chicago Tribune",
+    "url": "https://www.chicagotribune.com/arcio/rss/",
+    "category": "News - US",
+    "description": "RSS feed from Chicago Tribune"
+  },
+  {
+    "name": "Boston Globe",
+    "url": "https://www.bostonglobe.com/rss/rss.xml",
+    "category": "News - US",
+    "description": "RSS feed from Boston Globe"
+  },
+  {
+    "name": "San Francisco Chronicle",
+    "url": "https://www.sfchronicle.com/bayarea/feed/Bay-Area-News-702.php",
+    "category": "News - US",
+    "description": "RSS feed from San Francisco Chronicle"
+  },
+  {
+    "name": "Politico",
+    "url": "https://www.politico.com/rss/politicopicks.xml",
+    "category": "News - US",
+    "description": "RSS feed from Politico"
+  },
+  {
+    "name": "The Hill",
+    "url": "https://thehill.com/feed/",
+    "category": "News - US",
+    "description": "RSS feed from The Hill"
+  },
+  {
+    "name": "Axios",
+    "url": "https://api.axios.com/feed/",
+    "category": "News - US",
+    "description": "RSS feed from Axios"
+  },
+  {
+    "name": "Vox",
+    "url": "https://www.vox.com/rss/index.xml",
+    "category": "News - US",
+    "description": "RSS feed from Vox"
+  },
+  {
+    "name": "FiveThirtyEight",
+    "url": "https://fivethirtyeight.com/features/feed/",
+    "category": "News - US",
+    "description": "RSS feed from FiveThirtyEight"
+  },
+  {
+    "name": "Ars Technica - Technology Lab",
+    "url": "https://feeds.arstechnica.com/arstechnica/technology-lab",
+    "category": "Technology - General",
+    "description": "RSS feed from Ars Technica - Technology Lab"
+  },
+  {
+    "name": "Ars Technica - Gadgets",
+    "url": "https://feeds.arstechnica.com/arstechnica/gadgets",
+    "category": "Technology - General",
+    "description": "RSS feed from Ars Technica - Gadgets"
+  },
+  {
+    "name": "Ars Technica - Gaming",
+    "url": "https://feeds.arstechnica.com/arstechnica/gaming",
+    "category": "Technology - General",
+    "description": "RSS feed from Ars Technica - Gaming"
+  },
+  {
+    "name": "Ars Technica - Science",
+    "url": "https://feeds.arstechnica.com/arstechnica/science",
+    "category": "Technology - General",
+    "description": "RSS feed from Ars Technica - Science"
+  },
+  {
+    "name": "TechCrunch - Startups",
+    "url": "https://techcrunch.com/startups/feed/",
+    "category": "Technology - General",
+    "description": "RSS feed from TechCrunch - Startups"
+  },
+  {
+    "name": "TechCrunch - Apps",
+    "url": "https://techcrunch.com/apps/feed/",
+    "category": "Technology - General",
+    "description": "RSS feed from TechCrunch - Apps"
+  },
+  {
+    "name": "TechCrunch - AI",
+    "url": "https://techcrunch.com/artificial-intelligence/feed/",
+    "category": "Technology - General",
+    "description": "RSS feed from TechCrunch - AI"
+  },
+  {
+    "name": "The Verge - Tech",
+    "url": "https://www.theverge.com/tech/rss/index.xml",
+    "category": "Technology - General",
+    "description": "RSS feed from The Verge - Tech"
+  },
+  {
+    "name": "The Verge - Science",
+    "url": "https://www.theverge.com/science/rss/index.xml",
+    "category": "Technology - General",
+    "description": "RSS feed from The Verge - Science"
+  },
+  {
+    "name": "The Verge - Reviews",
+    "url": "https://www.theverge.com/reviews/rss/index.xml",
+    "category": "Technology - General",
+    "description": "RSS feed from The Verge - Reviews"
+  },
+  {
+    "name": "Wired - Science",
+    "url": "https://www.wired.com/feed/category/science/latest/rss",
+    "category": "Technology - General",
+    "description": "RSS feed from Wired - Science"
+  },
+  {
+    "name": "Wired - Business",
+    "url": "https://www.wired.com/feed/category/business/latest/rss",
+    "category": "Technology - General",
+    "description": "RSS feed from Wired - Business"
+  },
+  {
+    "name": "Wired - Security",
+    "url": "https://www.wired.com/feed/category/security/latest/rss",
+    "category": "Technology - General",
+    "description": "RSS feed from Wired - Security"
+  },
+  {
+    "name": "Wired - Gear",
+    "url": "https://www.wired.com/feed/category/gear/latest/rss",
+    "category": "Technology - General",
+    "description": "RSS feed from Wired - Gear"
+  },
+  {
+    "name": "Engadget",
+    "url": "https://www.engadget.com/rss.xml",
+    "category": "Technology - General",
+    "description": "RSS feed from Engadget"
+  },
+  {
+    "name": "Gizmodo",
+    "url": "https://gizmodo.com/rss",
+    "category": "Technology - General",
+    "description": "RSS feed from Gizmodo"
+  },
+  {
+    "name": "CNET",
+    "url": "https://www.cnet.com/rss/news/",
+    "category": "Technology - General",
+    "description": "RSS feed from CNET"
+  },
+  {
+    "name": "CNET - Reviews",
+    "url": "https://www.cnet.com/rss/reviews/",
+    "category": "Technology - General",
+    "description": "RSS feed from CNET - Reviews"
+  },
+  {
+    "name": "ZDNet",
+    "url": "https://www.zdnet.com/news/rss.xml",
+    "category": "Technology - General",
+    "description": "RSS feed from ZDNet"
+  },
+  {
+    "name": "Hacker News - Best",
+    "url": "https://hnrss.org/best",
+    "category": "Technology - General",
+    "description": "RSS feed from Hacker News - Best"
+  },
+  {
+    "name": "Hacker News - Show",
+    "url": "https://hnrss.org/show",
+    "category": "Technology - General",
+    "description": "RSS feed from Hacker News - Show"
+  },
+  {
+    "name": "Hacker News - Ask",
+    "url": "https://hnrss.org/ask",
+    "category": "Technology - General",
+    "description": "RSS feed from Hacker News - Ask"
+  },
+  {
+    "name": "IEEE Spectrum",
+    "url": "https://spectrum.ieee.org/feeds/feed.rss",
+    "category": "Technology - General",
+    "description": "RSS feed from IEEE Spectrum"
+  },
+  {
+    "name": "Techdirt",
+    "url": "https://www.techdirt.com/feed/",
+    "category": "Technology - General",
+    "description": "RSS feed from Techdirt"
+  },
+  {
+    "name": "Mashable",
+    "url": "https://mashable.com/feeds/rss/all",
+    "category": "Technology - General",
+    "description": "RSS feed from Mashable"
+  },
+  {
+    "name": "Digital Trends",
+    "url": "https://www.digitaltrends.com/feed/",
+    "category": "Technology - General",
+    "description": "RSS feed from Digital Trends"
+  },
+  {
+    "name": "PCMag",
+    "url": "https://www.pcmag.com/rss-feeds",
+    "category": "Technology - General",
+    "description": "RSS feed from PCMag"
+  },
+  {
+    "name": "How-To Geek",
+    "url": "https://www.howtogeek.com/feed/",
+    "category": "Technology - General",
+    "description": "RSS feed from How-To Geek"
+  },
+  {
+    "name": "Lifehacker",
+    "url": "https://lifehacker.com/rss",
+    "category": "Technology - General",
+    "description": "RSS feed from Lifehacker"
+  },
+  {
+    "name": "9to5Mac",
+    "url": "https://9to5mac.com/feed/",
+    "category": "Technology - General",
+    "description": "RSS feed from 9to5Mac"
+  },
+  {
+    "name": "9to5Google",
+    "url": "https://9to5google.com/feed/",
+    "category": "Technology - General",
+    "description": "RSS feed from 9to5Google"
+  },
+  {
+    "name": "9to5Toys",
+    "url": "https://9to5toys.com/feed/",
+    "category": "Technology - General",
+    "description": "RSS feed from 9to5Toys"
+  },
+  {
+    "name": "MacRumors",
+    "url": "https://feeds.macrumors.com/MacRumors-All",
+    "category": "Technology - General",
+    "description": "RSS feed from MacRumors"
+  },
+  {
+    "name": "Apple Insider",
+    "url": "https://appleinsider.com/rss/news/",
+    "category": "Technology - General",
+    "description": "RSS feed from Apple Insider"
+  },
+  {
+    "name": "Android Police",
+    "url": "https://www.androidpolice.com/feed/",
+    "category": "Technology - General",
+    "description": "RSS feed from Android Police"
+  },
+  {
+    "name": "Android Authority",
+    "url": "https://www.androidauthority.com/feed/",
+    "category": "Technology - General",
+    "description": "RSS feed from Android Authority"
+  },
+  {
+    "name": "XDA Developers",
+    "url": "https://www.xda-developers.com/feed/",
+    "category": "Technology - General",
+    "description": "RSS feed from XDA Developers"
+  },
+  {
+    "name": "GSMArena",
+    "url": "https://www.gsmarena.com/rss-news-reviews.php3",
+    "category": "Technology - General",
+    "description": "RSS feed from GSMArena"
+  },
+  {
+    "name": "Phone Arena",
+    "url": "https://www.phonearena.com/rss",
+    "category": "Technology - General",
+    "description": "RSS feed from Phone Arena"
+  },
+  {
+    "name": "WindowsCentral",
+    "url": "https://www.windowscentral.com/rss.xml",
+    "category": "Technology - General",
+    "description": "RSS feed from WindowsCentral"
+  },
+  {
+    "name": "The Next Web",
+    "url": "https://thenextweb.com/feed/",
+    "category": "Technology - General",
+    "description": "RSS feed from The Next Web"
+  },
+  {
+    "name": "VentureBeat",
+    "url": "https://venturebeat.com/feed/",
+    "category": "Technology - General",
+    "description": "RSS feed from VentureBeat"
+  },
+  {
+    "name": "Protocol",
+    "url": "https://www.protocol.com/feeds/feed.rss",
+    "category": "Technology - General",
+    "description": "RSS feed from Protocol"
+  },
+  {
+    "name": "Fast Company - Technology",
+    "url": "https://www.fastcompany.com/technology/rss",
+    "category": "Technology - General",
+    "description": "RSS feed from Fast Company - Technology"
+  },
+  {
+    "name": "BGR",
+    "url": "https://bgr.com/feed/",
+    "category": "Technology - General",
+    "description": "RSS feed from BGR"
+  },
+  {
+    "name": "BetaNews",
+    "url": "https://betanews.com/feed/",
+    "category": "Technology - General",
+    "description": "RSS feed from BetaNews"
+  },
+  {
+    "name": "Tom's Guide",
+    "url": "https://www.tomsguide.com/feeds/all",
+    "category": "Technology - General",
+    "description": "RSS feed from Tom's Guide"
+  },
+  {
+    "name": "Input",
+    "url": "https://www.inputmag.com/rss",
+    "category": "Technology - General",
+    "description": "RSS feed from Input"
+  },
+  {
+    "name": "The Information",
+    "url": "https://www.theinformation.com/feed",
+    "category": "Technology - General",
+    "description": "RSS feed from The Information"
+  },
+  {
+    "name": "Stratechery",
+    "url": "https://stratechery.com/feed/",
+    "category": "Technology - General",
+    "description": "RSS feed from Stratechery"
+  },
+  {
+    "name": "Hacker Noon",
+    "url": "https://hackernoon.com/feed",
+    "category": "Software Development & Programming",
+    "description": "RSS feed from Hacker Noon"
+  },
+  {
+    "name": "freeCodeCamp",
+    "url": "https://www.freecodecamp.org/news/rss/",
+    "category": "Software Development & Programming",
+    "description": "RSS feed from freeCodeCamp"
+  },
+  {
+    "name": "A List Apart",
+    "url": "https://alistapart.com/main/feed/",
+    "category": "Software Development & Programming",
+    "description": "RSS feed from A List Apart"
+  },
+  {
+    "name": "David Walsh Blog",
+    "url": "https://davidwalsh.name/feed",
+    "category": "Software Development & Programming",
+    "description": "RSS feed from David Walsh Blog"
+  },
+  {
+    "name": "Coding Horror",
+    "url": "https://blog.codinghorror.com/rss/",
+    "category": "Software Development & Programming",
+    "description": "RSS feed from Coding Horror"
+  },
+  {
+    "name": "Scott Hanselman",
+    "url": "https://feeds.hanselman.com/ScottHanselman",
+    "category": "Software Development & Programming",
+    "description": "RSS feed from Scott Hanselman"
+  },
+  {
+    "name": "Martin Fowler",
+    "url": "https://martinfowler.com/feed.atom",
+    "category": "Software Development & Programming",
+    "description": "RSS feed from Martin Fowler"
+  },
+  {
+    "name": "The Pragmatic Engineer",
+    "url": "https://newsletter.pragmaticengineer.com/feed",
+    "category": "Software Development & Programming",
+    "description": "RSS feed from The Pragmatic Engineer"
+  },
+  {
+    "name": "Overreacted (Dan Abramov)",
+    "url": "https://overreacted.io/rss.xml",
+    "category": "Software Development & Programming",
+    "description": "RSS feed from Overreacted (Dan Abramov)"
+  },
+  {
+    "name": "Kent C. Dodds",
+    "url": "https://kentcdodds.com/blog/rss.xml",
+    "category": "Software Development & Programming",
+    "description": "RSS feed from Kent C. Dodds"
+  },
+  {
+    "name": "Julia Evans",
+    "url": "https://jvns.ca/atom.xml",
+    "category": "Software Development & Programming",
+    "description": "RSS feed from Julia Evans"
+  },
+  {
+    "name": "Rachel Andrew",
+    "url": "https://rachelandrew.co.uk/feed/",
+    "category": "Software Development & Programming",
+    "description": "RSS feed from Rachel Andrew"
+  },
+  {
+    "name": "Sara Soueidan",
+    "url": "https://www.sarasoueidan.com/blog/index.xml",
+    "category": "Software Development & Programming",
+    "description": "RSS feed from Sara Soueidan"
+  },
+  {
+    "name": "Addy Osmani",
+    "url": "https://addyosmani.com/rss.xml",
+    "category": "Software Development & Programming",
+    "description": "RSS feed from Addy Osmani"
+  },
+  {
+    "name": "Josh Comeau",
+    "url": "https://www.joshwcomeau.com/rss.xml",
+    "category": "Software Development & Programming",
+    "description": "RSS feed from Josh Comeau"
+  },
+  {
+    "name": "JavaScript Weekly",
+    "url": "https://javascriptweekly.com/rss/",
+    "category": "Software Development & Programming",
+    "description": "RSS feed from JavaScript Weekly"
+  },
+  {
+    "name": "Node Weekly",
+    "url": "https://nodeweekly.com/rss/",
+    "category": "Software Development & Programming",
+    "description": "RSS feed from Node Weekly"
+  },
+  {
+    "name": "React Status",
+    "url": "https://react.statuscode.com/rss/",
+    "category": "Software Development & Programming",
+    "description": "RSS feed from React Status"
+  },
+  {
+    "name": "Python Weekly",
+    "url": "https://www.pythonweekly.com/rss.xml",
+    "category": "Software Development & Programming",
+    "description": "RSS feed from Python Weekly"
+  },
+  {
+    "name": "Ruby Weekly",
+    "url": "https://rubyweekly.com/rss/",
+    "category": "Software Development & Programming",
+    "description": "RSS feed from Ruby Weekly"
+  },
+  {
+    "name": "Golang Weekly",
+    "url": "https://golangweekly.com/rss/",
+    "category": "Software Development & Programming",
+    "description": "RSS feed from Golang Weekly"
+  },
+  {
+    "name": "Rust Blog",
+    "url": "https://blog.rust-lang.org/feed.xml",
+    "category": "Software Development & Programming",
+    "description": "RSS feed from Rust Blog"
+  },
+  {
+    "name": "This Week in Rust",
+    "url": "https://this-week-in-rust.org/rss.xml",
+    "category": "Software Development & Programming",
+    "description": "RSS feed from This Week in Rust"
+  },
+  {
+    "name": "PHP Weekly",
+    "url": "https://www.phpweekly.com/feed.xml",
+    "category": "Software Development & Programming",
+    "description": "RSS feed from PHP Weekly"
+  },
+  {
+    "name": "Android Weekly",
+    "url": "https://androidweekly.net/rss.xml",
+    "category": "Software Development & Programming",
+    "description": "RSS feed from Android Weekly"
+  },
+  {
+    "name": "iOS Dev Weekly",
+    "url": "https://iosdevweekly.com/issues.rss",
+    "category": "Software Development & Programming",
+    "description": "RSS feed from iOS Dev Weekly"
+  },
+  {
+    "name": "Swift by Sundell",
+    "url": "https://www.swiftbysundell.com/rss",
+    "category": "Software Development & Programming",
+    "description": "RSS feed from Swift by Sundell"
+  },
+  {
+    "name": "NSHipster",
+    "url": "https://nshipster.com/feed.xml",
+    "category": "Software Development & Programming",
+    "description": "RSS feed from NSHipster"
+  },
+  {
+    "name": "Ray Wenderlich",
+    "url": "https://www.kodeco.com/rss",
+    "category": "Software Development & Programming",
+    "description": "RSS feed from Ray Wenderlich"
+  },
+  {
+    "name": "InfoQ",
+    "url": "https://feed.infoq.com/articles/",
+    "category": "Software Development & Programming",
+    "description": "RSS feed from InfoQ"
+  },
+  {
+    "name": "DZone",
+    "url": "https://feeds.dzone.com/home",
+    "category": "Software Development & Programming",
+    "description": "RSS feed from DZone"
+  },
+  {
+    "name": "SitePoint",
+    "url": "https://www.sitepoint.com/feed/",
+    "category": "Software Development & Programming",
+    "description": "RSS feed from SitePoint"
+  },
+  {
+    "name": "Tuts+ Code",
+    "url": "https://code.tutsplus.com/posts.atom",
+    "category": "Software Development & Programming",
+    "description": "RSS feed from Tuts+ Code"
+  },
+  {
+    "name": "Real Python",
+    "url": "https://realpython.com/atom.xml",
+    "category": "Software Development & Programming",
+    "description": "RSS feed from Real Python"
+  },
+  {
+    "name": "Full Stack Python",
+    "url": "https://www.fullstackpython.com/feeds/all.atom.xml",
+    "category": "Software Development & Programming",
+    "description": "RSS feed from Full Stack Python"
+  },
+  {
+    "name": "Towards Data Science",
+    "url": "https://towardsdatascience.com/feed",
+    "category": "Software Development & Programming",
+    "description": "RSS feed from Towards Data Science"
+  },
+  {
+    "name": "Better Programming",
+    "url": "https://betterprogramming.pub/feed",
+    "category": "Software Development & Programming",
+    "description": "RSS feed from Better Programming"
+  },
+  {
+    "name": "Level Up Coding",
+    "url": "https://levelup.gitconnected.com/feed",
+    "category": "Software Development & Programming",
+    "description": "RSS feed from Level Up Coding"
+  },
+  {
+    "name": "The Startup",
+    "url": "https://medium.com/feed/swlh",
+    "category": "Software Development & Programming",
+    "description": "RSS feed from The Startup"
+  },
+  {
+    "name": "CodePen Blog",
+    "url": "https://blog.codepen.io/feed/",
+    "category": "Software Development & Programming",
+    "description": "RSS feed from CodePen Blog"
+  },
+  {
+    "name": "LogRocket Blog",
+    "url": "https://blog.logrocket.com/feed/",
+    "category": "Software Development & Programming",
+    "description": "RSS feed from LogRocket Blog"
+  },
+  {
+    "name": "Auth0 Blog",
+    "url": "https://auth0.com/blog/rss.xml",
+    "category": "Software Development & Programming",
+    "description": "RSS feed from Auth0 Blog"
+  },
+  {
+    "name": "Twilio Blog",
+    "url": "https://www.twilio.com/blog/feed",
+    "category": "Software Development & Programming",
+    "description": "RSS feed from Twilio Blog"
+  },
+  {
+    "name": "Stripe Engineering",
+    "url": "https://stripe.com/blog/feed.rss",
+    "category": "Software Development & Programming",
+    "description": "RSS feed from Stripe Engineering"
+  },
+  {
+    "name": "Netflix Tech Blog",
+    "url": "https://netflixtechblog.com/feed",
+    "category": "Software Development & Programming",
+    "description": "RSS feed from Netflix Tech Blog"
+  },
+  {
+    "name": "Airbnb Engineering",
+    "url": "https://medium.com/feed/airbnb-engineering",
+    "category": "Software Development & Programming",
+    "description": "RSS feed from Airbnb Engineering"
+  },
+  {
+    "name": "Uber Engineering",
+    "url": "https://eng.uber.com/feed/",
+    "category": "Software Development & Programming",
+    "description": "RSS feed from Uber Engineering"
+  },
+  {
+    "name": "Spotify Engineering",
+    "url": "https://engineering.atspotify.com/feed/",
+    "category": "Software Development & Programming",
+    "description": "RSS feed from Spotify Engineering"
+  },
+  {
+    "name": "Dropbox Tech",
+    "url": "https://dropbox.tech/feed",
+    "category": "Software Development & Programming",
+    "description": "RSS feed from Dropbox Tech"
+  },
+  {
+    "name": "GitLab Blog",
+    "url": "https://about.gitlab.com/atom.xml",
+    "category": "Software Development & Programming",
+    "description": "RSS feed from GitLab Blog"
+  },
+  {
+    "name": "Mozilla Hacks",
+    "url": "https://hacks.mozilla.org/feed/",
+    "category": "Software Development & Programming",
+    "description": "RSS feed from Mozilla Hacks"
+  },
+  {
+    "name": "Chrome Developers",
+    "url": "https://developer.chrome.com/feeds/blog.xml",
+    "category": "Software Development & Programming",
+    "description": "RSS feed from Chrome Developers"
+  },
+  {
+    "name": "web.dev",
+    "url": "https://web.dev/feed.xml",
+    "category": "Software Development & Programming",
+    "description": "RSS feed from web.dev"
+  },
+  {
+    "name": "V8 Blog",
+    "url": "https://v8.dev/blog.atom",
+    "category": "Software Development & Programming",
+    "description": "RSS feed from V8 Blog"
+  },
+  {
+    "name": "AWS Blog",
+    "url": "https://aws.amazon.com/blogs/aws/feed/",
+    "category": "Software Development & Programming",
+    "description": "RSS feed from AWS Blog"
+  },
+  {
+    "name": "Google Cloud Blog",
+    "url": "https://cloud.google.com/blog/feed",
+    "category": "Software Development & Programming",
+    "description": "RSS feed from Google Cloud Blog"
+  },
+  {
+    "name": "Azure Blog",
+    "url": "https://azure.microsoft.com/en-us/blog/feed/",
+    "category": "Software Development & Programming",
+    "description": "RSS feed from Azure Blog"
+  },
+  {
+    "name": "DigitalOcean Blog",
+    "url": "https://www.digitalocean.com/blog/rss",
+    "category": "Software Development & Programming",
+    "description": "RSS feed from DigitalOcean Blog"
+  },
+  {
+    "name": "Cloudflare Blog",
+    "url": "https://blog.cloudflare.com/rss/",
+    "category": "Software Development & Programming",
+    "description": "RSS feed from Cloudflare Blog"
+  },
+  {
+    "name": "Vercel Blog",
+    "url": "https://vercel.com/blog/rss.xml",
+    "category": "Software Development & Programming",
+    "description": "RSS feed from Vercel Blog"
+  },
+  {
+    "name": "Netlify Blog",
+    "url": "https://www.netlify.com/blog/index.xml",
+    "category": "Software Development & Programming",
+    "description": "RSS feed from Netlify Blog"
+  },
+  {
+    "name": "Heroku Blog",
+    "url": "https://blog.heroku.com/feed",
+    "category": "Software Development & Programming",
+    "description": "RSS feed from Heroku Blog"
+  },
+  {
+    "name": "Docker Blog",
+    "url": "https://www.docker.com/blog/feed/",
+    "category": "Software Development & Programming",
+    "description": "RSS feed from Docker Blog"
+  },
+  {
+    "name": "Kubernetes Blog",
+    "url": "https://kubernetes.io/feed.xml",
+    "category": "Software Development & Programming",
+    "description": "RSS feed from Kubernetes Blog"
+  },
+  {
+    "name": "HashiCorp Blog",
+    "url": "https://www.hashicorp.com/blog/feed.xml",
+    "category": "Software Development & Programming",
+    "description": "RSS feed from HashiCorp Blog"
+  },
+  {
+    "name": "Red Hat Developer",
+    "url": "https://developers.redhat.com/blog/feed/",
+    "category": "Software Development & Programming",
+    "description": "RSS feed from Red Hat Developer"
+  },
+  {
+    "name": "Linux.com",
+    "url": "https://www.linux.com/feed/",
+    "category": "Software Development & Programming",
+    "description": "RSS feed from Linux.com"
+  },
+  {
+    "name": "OpenAI Blog",
+    "url": "https://openai.com/blog/rss.xml",
+    "category": "Artificial Intelligence & Machine Learning",
+    "description": "RSS feed from OpenAI Blog"
+  },
+  {
+    "name": "Anthropic Research",
+    "url": "https://www.anthropic.com/research/rss.xml",
+    "category": "Artificial Intelligence & Machine Learning",
+    "description": "RSS feed from Anthropic Research"
+  },
+  {
+    "name": "DeepMind Blog",
+    "url": "https://deepmind.com/blog/feed/basic/",
+    "category": "Artificial Intelligence & Machine Learning",
+    "description": "RSS feed from DeepMind Blog"
+  },
+  {
+    "name": "Google AI Blog",
+    "url": "https://ai.googleblog.com/feeds/posts/default",
+    "category": "Artificial Intelligence & Machine Learning",
+    "description": "RSS feed from Google AI Blog"
+  },
+  {
+    "name": "Meta AI Blog",
+    "url": "https://ai.meta.com/blog/rss/",
+    "category": "Artificial Intelligence & Machine Learning",
+    "description": "RSS feed from Meta AI Blog"
+  },
+  {
+    "name": "Microsoft AI Blog",
+    "url": "https://blogs.microsoft.com/ai/feed/",
+    "category": "Artificial Intelligence & Machine Learning",
+    "description": "RSS feed from Microsoft AI Blog"
+  },
+  {
+    "name": "NVIDIA AI Blog",
+    "url": "https://blogs.nvidia.com/feed/",
+    "category": "Artificial Intelligence & Machine Learning",
+    "description": "RSS feed from NVIDIA AI Blog"
+  },
+  {
+    "name": "Papers With Code",
+    "url": "https://paperswithcode.com/rss/papers",
+    "category": "Artificial Intelligence & Machine Learning",
+    "description": "RSS feed from Papers With Code"
+  },
+  {
+    "name": "Machine Learning Mastery",
+    "url": "https://machinelearningmastery.com/feed/",
+    "category": "Artificial Intelligence & Machine Learning",
+    "description": "RSS feed from Machine Learning Mastery"
+  },
+  {
+    "name": "KDnuggets",
+    "url": "https://www.kdnuggets.com/feed",
+    "category": "Artificial Intelligence & Machine Learning",
+    "description": "RSS feed from KDnuggets"
+  },
+  {
+    "name": "Analytics Vidhya",
+    "url": "https://www.analyticsvidhya.com/feed/",
+    "category": "Artificial Intelligence & Machine Learning",
+    "description": "RSS feed from Analytics Vidhya"
+  },
+  {
+    "name": "Towards AI",
+    "url": "https://pub.towardsai.net/feed",
+    "category": "Artificial Intelligence & Machine Learning",
+    "description": "RSS feed from Towards AI"
+  },
+  {
+    "name": "Import AI",
+    "url": "https://importai.substack.com/feed",
+    "category": "Artificial Intelligence & Machine Learning",
+    "description": "RSS feed from Import AI"
+  },
+  {
+    "name": "The AI Alignment Forum",
+    "url": "https://www.alignmentforum.org/feed.xml",
+    "category": "Artificial Intelligence & Machine Learning",
+    "description": "RSS feed from The AI Alignment Forum"
+  },
+  {
+    "name": "LessWrong",
+    "url": "https://www.lesswrong.com/feed.xml",
+    "category": "Artificial Intelligence & Machine Learning",
+    "description": "RSS feed from LessWrong"
+  },
+  {
+    "name": "Sebastian Raschka",
+    "url": "https://sebastianraschka.com/rss_feed.xml",
+    "category": "Artificial Intelligence & Machine Learning",
+    "description": "RSS feed from Sebastian Raschka"
+  },
+  {
+    "name": "Jay Alammar",
+    "url": "https://jalammar.github.io/feed.xml",
+    "category": "Artificial Intelligence & Machine Learning",
+    "description": "RSS feed from Jay Alammar"
+  },
+  {
+    "name": "Lilian Weng",
+    "url": "https://lilianweng.github.io/index.xml",
+    "category": "Artificial Intelligence & Machine Learning",
+    "description": "RSS feed from Lilian Weng"
+  },
+  {
+    "name": "Christopher Olah",
+    "url": "https://colah.github.io/rss.xml",
+    "category": "Artificial Intelligence & Machine Learning",
+    "description": "RSS feed from Christopher Olah"
+  },
+  {
+    "name": "Andrej Karpathy",
+    "url": "https://karpathy.github.io/feed.xml",
+    "category": "Artificial Intelligence & Machine Learning",
+    "description": "RSS feed from Andrej Karpathy"
+  },
+  {
+    "name": "PyTorch Blog",
+    "url": "https://pytorch.org/blog/feed.xml",
+    "category": "Artificial Intelligence & Machine Learning",
+    "description": "RSS feed from PyTorch Blog"
+  },
+  {
+    "name": "TensorFlow Blog",
+    "url": "https://blog.tensorflow.org/feeds/posts/default",
+    "category": "Artificial Intelligence & Machine Learning",
+    "description": "RSS feed from TensorFlow Blog"
+  },
+  {
+    "name": "Weights & Biases",
+    "url": "https://wandb.ai/fully-connected/rss.xml",
+    "category": "Artificial Intelligence & Machine Learning",
+    "description": "RSS feed from Weights & Biases"
+  },
+  {
+    "name": "MLOps Community",
+    "url": "https://mlops.community/feed/",
+    "category": "Artificial Intelligence & Machine Learning",
+    "description": "RSS feed from MLOps Community"
+  },
+  {
+    "name": "Neptune.ai Blog",
+    "url": "https://neptune.ai/blog/feed",
+    "category": "Artificial Intelligence & Machine Learning",
+    "description": "RSS feed from Neptune.ai Blog"
+  },
+  {
+    "name": "DataCamp Blog",
+    "url": "https://www.datacamp.com/blog/rss.xml",
+    "category": "Artificial Intelligence & Machine Learning",
+    "description": "RSS feed from DataCamp Blog"
+  },
+  {
+    "name": "FloydHub Blog",
+    "url": "https://blog.floydhub.com/rss/",
+    "category": "Artificial Intelligence & Machine Learning",
+    "description": "RSS feed from FloydHub Blog"
+  },
+  {
+    "name": "Schneier on Security",
+    "url": "https://www.schneier.com/feed/",
+    "category": "Cybersecurity",
+    "description": "RSS feed from Schneier on Security"
+  },
+  {
+    "name": "Dark Reading",
+    "url": "https://www.darkreading.com/rss.xml",
+    "category": "Cybersecurity",
+    "description": "RSS feed from Dark Reading"
+  },
+  {
+    "name": "Threatpost",
+    "url": "https://threatpost.com/feed/",
+    "category": "Cybersecurity",
+    "description": "RSS feed from Threatpost"
+  },
+  {
+    "name": "Security Week",
+    "url": "https://feeds.feedburner.com/securityweek",
+    "category": "Cybersecurity",
+    "description": "RSS feed from Security Week"
+  },
+  {
+    "name": "Naked Security (Sophos)",
+    "url": "https://nakedsecurity.sophos.com/feed/",
+    "category": "Cybersecurity",
+    "description": "RSS feed from Naked Security (Sophos)"
+  },
+  {
+    "name": "Graham Cluley",
+    "url": "https://grahamcluley.com/feed/",
+    "category": "Cybersecurity",
+    "description": "RSS feed from Graham Cluley"
+  },
+  {
+    "name": "US-CERT",
+    "url": "https://www.cisa.gov/uscert/ncas/alerts.xml",
+    "category": "Cybersecurity",
+    "description": "RSS feed from US-CERT"
+  },
+  {
+    "name": "Zero Day Initiative",
+    "url": "https://www.zerodayinitiative.com/rss/published/",
+    "category": "Cybersecurity",
+    "description": "RSS feed from Zero Day Initiative"
+  },
+  {
+    "name": "Talos Intelligence",
+    "url": "https://blog.talosintelligence.com/feeds/posts/default",
+    "category": "Cybersecurity",
+    "description": "RSS feed from Talos Intelligence"
+  },
+  {
+    "name": "Malwarebytes Labs",
+    "url": "https://blog.malwarebytes.com/feed/",
+    "category": "Cybersecurity",
+    "description": "RSS feed from Malwarebytes Labs"
+  },
+  {
+    "name": "Kaspersky SecureList",
+    "url": "https://securelist.com/feed/",
+    "category": "Cybersecurity",
+    "description": "RSS feed from Kaspersky SecureList"
+  },
+  {
+    "name": "Trend Micro Research",
+    "url": "https://www.trendmicro.com/en_us/research.html/feed",
+    "category": "Cybersecurity",
+    "description": "RSS feed from Trend Micro Research"
+  },
+  {
+    "name": "Mandiant Blog",
+    "url": "https://www.mandiant.com/resources/blog/rss.xml",
+    "category": "Cybersecurity",
+    "description": "RSS feed from Mandiant Blog"
+  },
+  {
+    "name": "CrowdStrike Blog",
+    "url": "https://www.crowdstrike.com/blog/feed/",
+    "category": "Cybersecurity",
+    "description": "RSS feed from CrowdStrike Blog"
+  },
+  {
+    "name": "Recorded Future",
+    "url": "https://www.recordedfuture.com/feed",
+    "category": "Cybersecurity",
+    "description": "RSS feed from Recorded Future"
+  },
+  {
+    "name": "Rapid7 Blog",
+    "url": "https://blog.rapid7.com/rss/",
+    "category": "Cybersecurity",
+    "description": "RSS feed from Rapid7 Blog"
+  },
+  {
+    "name": "Palo Alto Unit 42",
+    "url": "https://unit42.paloaltonetworks.com/feed/",
+    "category": "Cybersecurity",
+    "description": "RSS feed from Palo Alto Unit 42"
+  },
+  {
+    "name": "Check Point Research",
+    "url": "https://research.checkpoint.com/feed/",
+    "category": "Cybersecurity",
+    "description": "RSS feed from Check Point Research"
+  },
+  {
+    "name": "Fortinet Blog",
+    "url": "https://www.fortinet.com/blog/threat-research.rss",
+    "category": "Cybersecurity",
+    "description": "RSS feed from Fortinet Blog"
+  },
+  {
+    "name": "ESET WeLiveSecurity",
+    "url": "https://www.welivesecurity.com/feed/",
+    "category": "Cybersecurity",
+    "description": "RSS feed from ESET WeLiveSecurity"
+  },
+  {
+    "name": "F-Secure Labs",
+    "url": "https://labs.f-secure.com/blog/rss.xml",
+    "category": "Cybersecurity",
+    "description": "RSS feed from F-Secure Labs"
+  },
+  {
+    "name": "Sucuri Blog",
+    "url": "https://blog.sucuri.net/feed/",
+    "category": "Cybersecurity",
+    "description": "RSS feed from Sucuri Blog"
+  },
+  {
+    "name": "Wordfence",
+    "url": "https://www.wordfence.com/blog/feed/",
+    "category": "Cybersecurity",
+    "description": "RSS feed from Wordfence"
+  },
+  {
+    "name": "PortSwigger",
+    "url": "https://portswigger.net/daily-swig/rss",
+    "category": "Cybersecurity",
+    "description": "RSS feed from PortSwigger"
+  },
+  {
+    "name": "Daniel Miessler",
+    "url": "https://danielmiessler.com/feed/",
+    "category": "Cybersecurity",
+    "description": "RSS feed from Daniel Miessler"
+  },
+  {
+    "name": "OWASP",
+    "url": "https://owasp.org/feed.xml",
+    "category": "Cybersecurity",
+    "description": "RSS feed from OWASP"
+  },
+  {
+    "name": "InfoSec Write-ups",
+    "url": "https://infosecwriteups.com/feed",
+    "category": "Cybersecurity",
+    "description": "RSS feed from InfoSec Write-ups"
+  },
+  {
+    "name": "Hacking Articles",
+    "url": "https://www.hackingarticles.in/feed/",
+    "category": "Cybersecurity",
+    "description": "RSS feed from Hacking Articles"
+  },
+  {
+    "name": "Null Byte",
+    "url": "https://null-byte.wonderhowto.com/rss.xml",
+    "category": "Cybersecurity",
+    "description": "RSS feed from Null Byte"
+  },
+  {
+    "name": "Security Affairs",
+    "url": "https://securityaffairs.co/wordpress/feed",
+    "category": "Cybersecurity",
+    "description": "RSS feed from Security Affairs"
+  },
+  {
+    "name": "CSO Online",
+    "url": "https://www.csoonline.com/index.rss",
+    "category": "Cybersecurity",
+    "description": "RSS feed from CSO Online"
+  },
+  {
+    "name": "Help Net Security",
+    "url": "https://www.helpnetsecurity.com/feed/",
+    "category": "Cybersecurity",
+    "description": "RSS feed from Help Net Security"
+  },
+  {
+    "name": "Nature News",
+    "url": "https://www.nature.com/subjects/news.rss",
+    "category": "Science & Research",
+    "description": "RSS feed from Nature News"
+  },
+  {
+    "name": "Science Magazine",
+    "url": "https://www.science.org/rss/news_current.xml",
+    "category": "Science & Research",
+    "description": "RSS feed from Science Magazine"
+  },
+  {
+    "name": "Scientific American",
+    "url": "https://rss.sciam.com/ScientificAmerican-Global",
+    "category": "Science & Research",
+    "description": "RSS feed from Scientific American"
+  },
+  {
+    "name": "New Scientist",
+    "url": "https://www.newscientist.com/feed/home",
+    "category": "Science & Research",
+    "description": "RSS feed from New Scientist"
+  },
+  {
+    "name": "EurekAlert",
+    "url": "https://www.eurekalert.org/rss/rss_feed.xml",
+    "category": "Science & Research",
+    "description": "RSS feed from EurekAlert"
+  },
+  {
+    "name": "Live Science",
+    "url": "https://www.livescience.com/feeds/all",
+    "category": "Science & Research",
+    "description": "RSS feed from Live Science"
+  },
+  {
+    "name": "Popular Science",
+    "url": "https://www.popsci.com/feed/",
+    "category": "Science & Research",
+    "description": "RSS feed from Popular Science"
+  },
+  {
+    "name": "Quanta Magazine",
+    "url": "https://www.quantamagazine.org/feed/",
+    "category": "Science & Research",
+    "description": "RSS feed from Quanta Magazine"
+  },
+  {
+    "name": "Nautilus",
+    "url": "https://nautil.us/feed/",
+    "category": "Science & Research",
+    "description": "RSS feed from Nautilus"
+  },
+  {
+    "name": "Aeon",
+    "url": "https://aeon.co/feed.rss",
+    "category": "Science & Research",
+    "description": "RSS feed from Aeon"
+  },
+  {
+    "name": "PNAS",
+    "url": "https://www.pnas.org/rss/current.xml",
+    "category": "Science & Research",
+    "description": "RSS feed from PNAS"
+  },
+  {
+    "name": "PLOS ONE",
+    "url": "https://journals.plos.org/plosone/feed/atom",
+    "category": "Science & Research",
+    "description": "RSS feed from PLOS ONE"
+  },
+  {
+    "name": "arXiv - Computer Science",
+    "url": "https://arxiv.org/rss/cs",
+    "category": "Science & Research",
+    "description": "RSS feed from arXiv - Computer Science"
+  },
+  {
+    "name": "arXiv - Physics",
+    "url": "https://arxiv.org/rss/physics",
+    "category": "Science & Research",
+    "description": "RSS feed from arXiv - Physics"
+  },
+  {
+    "name": "arXiv - Math",
+    "url": "https://arxiv.org/rss/math",
+    "category": "Science & Research",
+    "description": "RSS feed from arXiv - Math"
+  },
+  {
+    "name": "arXiv - Statistics",
+    "url": "https://arxiv.org/rss/stat",
+    "category": "Science & Research",
+    "description": "RSS feed from arXiv - Statistics"
+  },
+  {
+    "name": "arXiv - Quantitative Biology",
+    "url": "https://arxiv.org/rss/q-bio",
+    "category": "Science & Research",
+    "description": "RSS feed from arXiv - Quantitative Biology"
+  },
+  {
+    "name": "arXiv - Quantitative Finance",
+    "url": "https://arxiv.org/rss/q-fin",
+    "category": "Science & Research",
+    "description": "RSS feed from arXiv - Quantitative Finance"
+  },
+  {
+    "name": "arXiv - Electrical Engineering",
+    "url": "https://arxiv.org/rss/eess",
+    "category": "Science & Research",
+    "description": "RSS feed from arXiv - Electrical Engineering"
+  },
+  {
+    "name": "bioRxiv",
+    "url": "https://www.biorxiv.org/rss/recent.xml",
+    "category": "Science & Research",
+    "description": "RSS feed from bioRxiv"
+  },
+  {
+    "name": "medRxiv",
+    "url": "https://www.medrxiv.org/rss/recent.xml",
+    "category": "Science & Research",
+    "description": "RSS feed from medRxiv"
+  },
+  {
+    "name": "Cell",
+    "url": "https://www.cell.com/cell/current.rss",
+    "category": "Science & Research",
+    "description": "RSS feed from Cell"
+  },
+  {
+    "name": "The Lancet",
+    "url": "https://www.thelancet.com/rssfeed/lancet_current.xml",
+    "category": "Science & Research",
+    "description": "RSS feed from The Lancet"
+  },
+  {
+    "name": "BMJ",
+    "url": "https://www.bmj.com/rss/recent.xml",
+    "category": "Science & Research",
+    "description": "RSS feed from BMJ"
+  },
+  {
+    "name": "JAMA",
+    "url": "https://jamanetwork.com/rss/site_3/67.xml",
+    "category": "Science & Research",
+    "description": "RSS feed from JAMA"
+  },
+  {
+    "name": "New England Journal of Medicine",
+    "url": "https://www.nejm.org/action/showFeed?jc=nejm&type=etoc&feed=rss",
+    "category": "Science & Research",
+    "description": "RSS feed from New England Journal of Medicine"
+  },
+  {
+    "name": "Smithsonian Magazine",
+    "url": "https://www.smithsonianmag.com/rss/latest_articles/",
+    "category": "Science & Research",
+    "description": "RSS feed from Smithsonian Magazine"
+  },
+  {
+    "name": "National Geographic",
+    "url": "https://www.nationalgeographic.com/rss/",
+    "category": "Science & Research",
+    "description": "RSS feed from National Geographic"
+  },
+  {
+    "name": "Discover Magazine",
+    "url": "https://www.discovermagazine.com/rss",
+    "category": "Science & Research",
+    "description": "RSS feed from Discover Magazine"
+  },
+  {
+    "name": "Astronomy Magazine",
+    "url": "https://astronomy.com/rss",
+    "category": "Science & Research",
+    "description": "RSS feed from Astronomy Magazine"
+  },
+  {
+    "name": "Sky & Telescope",
+    "url": "https://skyandtelescope.org/feed/",
+    "category": "Science & Research",
+    "description": "RSS feed from Sky & Telescope"
+  },
+  {
+    "name": "NASA",
+    "url": "https://www.nasa.gov/rss/dyn/breaking_news.rss",
+    "category": "Science & Research",
+    "description": "RSS feed from NASA"
+  },
+  {
+    "name": "NASA - Image of the Day",
+    "url": "https://www.nasa.gov/rss/dyn/image_of_the_day.rss",
+    "category": "Science & Research",
+    "description": "RSS feed from NASA - Image of the Day"
+  },
+  {
+    "name": "ESA",
+    "url": "https://www.esa.int/rssfeed/Our_Activities/Space_Science",
+    "category": "Science & Research",
+    "description": "RSS feed from ESA"
+  },
+  {
+    "name": "SpaceNews",
+    "url": "https://spacenews.com/feed/",
+    "category": "Science & Research",
+    "description": "RSS feed from SpaceNews"
+  },
+  {
+    "name": "The Planetary Society",
+    "url": "https://www.planetary.org/rss/articles.rss",
+    "category": "Science & Research",
+    "description": "RSS feed from The Planetary Society"
+  },
+  {
+    "name": "Physics Today",
+    "url": "https://physicstoday.scitation.org/action/showFeed?type=etoc&feed=rss&jc=pto",
+    "category": "Science & Research",
+    "description": "RSS feed from Physics Today"
+  },
+  {
+    "name": "American Physical Society",
+    "url": "https://physics.aps.org/rss/all.xml",
+    "category": "Science & Research",
+    "description": "RSS feed from American Physical Society"
+  },
+  {
+    "name": "Chemistry World",
+    "url": "https://www.chemistryworld.com/rss/all.xml",
+    "category": "Science & Research",
+    "description": "RSS feed from Chemistry World"
+  },
+  {
+    "name": "Chemical & Engineering News",
+    "url": "https://cen.acs.org/rss/feed.html",
+    "category": "Science & Research",
+    "description": "RSS feed from Chemical & Engineering News"
+  },
+  {
+    "name": "Geology",
+    "url": "https://pubs.geoscienceworld.org/rss/site_5/head_15.xml",
+    "category": "Science & Research",
+    "description": "RSS feed from Geology"
+  },
+  {
+    "name": "Psychology Today",
+    "url": "https://www.psychologytoday.com/us/front/feed",
+    "category": "Science & Research",
+    "description": "RSS feed from Psychology Today"
+  },
+  {
+    "name": "Scientific Reports",
+    "url": "https://www.nature.com/srep.rss",
+    "category": "Science & Research",
+    "description": "RSS feed from Scientific Reports"
+  },
+  {
+    "name": "NASA - Solar System",
+    "url": "https://www.nasa.gov/rss/dyn/solar_system.rss",
+    "category": "Space & Astronomy",
+    "description": "RSS feed from NASA - Solar System"
+  },
+  {
+    "name": "NASA - Earth",
+    "url": "https://www.nasa.gov/rss/dyn/earth.rss",
+    "category": "Space & Astronomy",
+    "description": "RSS feed from NASA - Earth"
+  },
+  {
+    "name": "NASA - Aeronautics",
+    "url": "https://www.nasa.gov/rss/dyn/aeronautics.rss",
+    "category": "Space & Astronomy",
+    "description": "RSS feed from NASA - Aeronautics"
+  },
+  {
+    "name": "NASA JPL",
+    "url": "https://www.jpl.nasa.gov/feeds/news",
+    "category": "Space & Astronomy",
+    "description": "RSS feed from NASA JPL"
+  },
+  {
+    "name": "ESA - Human Spaceflight",
+    "url": "https://www.esa.int/rssfeed/Our_Activities/Human_and_Robotic_Exploration",
+    "category": "Space & Astronomy",
+    "description": "RSS feed from ESA - Human Spaceflight"
+  },
+  {
+    "name": "SpaceX",
+    "url": "https://www.spacex.com/news/feed",
+    "category": "Space & Astronomy",
+    "description": "RSS feed from SpaceX"
+  },
+  {
+    "name": "Blue Origin",
+    "url": "https://www.blueorigin.com/news/rss.xml",
+    "category": "Space & Astronomy",
+    "description": "RSS feed from Blue Origin"
+  },
+  {
+    "name": "Rocket Lab",
+    "url": "https://www.rocketlabusa.com/updates/feed/",
+    "category": "Space & Astronomy",
+    "description": "RSS feed from Rocket Lab"
+  },
+  {
+    "name": "SpaceFlightNow",
+    "url": "https://spaceflightnow.com/feed/",
+    "category": "Space & Astronomy",
+    "description": "RSS feed from SpaceFlightNow"
+  },
+  {
+    "name": "NASASpaceFlight",
+    "url": "https://www.nasaspaceflight.com/feed/",
+    "category": "Space & Astronomy",
+    "description": "RSS feed from NASASpaceFlight"
+  },
+  {
+    "name": "Universe Today",
+    "url": "https://www.universetoday.com/feed",
+    "category": "Space & Astronomy",
+    "description": "RSS feed from Universe Today"
+  },
+  {
+    "name": "Astronomy Now",
+    "url": "https://astronomynow.com/feed/",
+    "category": "Space & Astronomy",
+    "description": "RSS feed from Astronomy Now"
+  },
+  {
+    "name": "Bad Astronomy",
+    "url": "https://www.syfy.com/tags/bad-astronomy/feed",
+    "category": "Space & Astronomy",
+    "description": "RSS feed from Bad Astronomy"
+  },
+  {
+    "name": "Centauri Dreams",
+    "url": "https://www.centauri-dreams.org/feed/",
+    "category": "Space & Astronomy",
+    "description": "RSS feed from Centauri Dreams"
+  },
+  {
+    "name": "Orbital Index",
+    "url": "https://orbitalindex.com/rss.xml",
+    "category": "Space & Astronomy",
+    "description": "RSS feed from Orbital Index"
+  },
+  {
+    "name": "Rocket Rundown",
+    "url": "https://rocketrundown.com/feed/",
+    "category": "Space & Astronomy",
+    "description": "RSS feed from Rocket Rundown"
+  },
+  {
+    "name": "Everyday Astronaut",
+    "url": "https://everydayastronaut.com/feed/",
+    "category": "Space & Astronomy",
+    "description": "RSS feed from Everyday Astronaut"
+  },
+  {
+    "name": "Astrobites",
+    "url": "https://astrobites.org/feed/",
+    "category": "Space & Astronomy",
+    "description": "RSS feed from Astrobites"
+  },
+  {
+    "name": "AAS Nova",
+    "url": "https://aasnova.org/feed/",
+    "category": "Space & Astronomy",
+    "description": "RSS feed from AAS Nova"
+  },
+  {
+    "name": "Bloomberg",
+    "url": "https://feeds.bloomberg.com/markets/news.rss",
+    "category": "Business & Finance",
+    "description": "RSS feed from Bloomberg"
+  },
+  {
+    "name": "Bloomberg - Technology",
+    "url": "https://feeds.bloomberg.com/technology/news.rss",
+    "category": "Business & Finance",
+    "description": "RSS feed from Bloomberg - Technology"
+  },
+  {
+    "name": "Bloomberg - Politics",
+    "url": "https://feeds.bloomberg.com/politics/news.rss",
+    "category": "Business & Finance",
+    "description": "RSS feed from Bloomberg - Politics"
+  },
+  {
+    "name": "Financial Times",
+    "url": "https://www.ft.com/rss/home",
+    "category": "Business & Finance",
+    "description": "RSS feed from Financial Times"
+  },
+  {
+    "name": "Financial Times - World",
+    "url": "https://www.ft.com/world?format=rss",
+    "category": "Business & Finance",
+    "description": "RSS feed from Financial Times - World"
+  },
+  {
+    "name": "Financial Times - Markets",
+    "url": "https://www.ft.com/markets?format=rss",
+    "category": "Business & Finance",
+    "description": "RSS feed from Financial Times - Markets"
+  },
+  {
+    "name": "Financial Times - Technology",
+    "url": "https://www.ft.com/technology?format=rss",
+    "category": "Business & Finance",
+    "description": "RSS feed from Financial Times - Technology"
+  },
+  {
+    "name": "The Economist",
+    "url": "https://www.economist.com/rss",
+    "category": "Business & Finance",
+    "description": "RSS feed from The Economist"
+  },
+  {
+    "name": "The Economist - Business",
+    "url": "https://www.economist.com/business/rss.xml",
+    "category": "Business & Finance",
+    "description": "RSS feed from The Economist - Business"
+  },
+  {
+    "name": "Forbes",
+    "url": "https://www.forbes.com/real-time/feed2/",
+    "category": "Business & Finance",
+    "description": "RSS feed from Forbes"
+  },
+  {
+    "name": "Fortune",
+    "url": "https://fortune.com/feed/",
+    "category": "Business & Finance",
+    "description": "RSS feed from Fortune"
+  },
+  {
+    "name": "Business Insider",
+    "url": "https://www.businessinsider.com/rss",
+    "category": "Business & Finance",
+    "description": "RSS feed from Business Insider"
+  },
+  {
+    "name": "Harvard Business Review",
+    "url": "https://hbr.org/feed",
+    "category": "Business & Finance",
+    "description": "RSS feed from Harvard Business Review"
+  },
+  {
+    "name": "Inc.",
+    "url": "https://www.inc.com/rss",
+    "category": "Business & Finance",
+    "description": "RSS feed from Inc."
+  },
+  {
+    "name": "Entrepreneur",
+    "url": "https://www.entrepreneur.com/latest.rss",
+    "category": "Business & Finance",
+    "description": "RSS feed from Entrepreneur"
+  },
+  {
+    "name": "Fast Company",
+    "url": "https://www.fastcompany.com/latest/rss",
+    "category": "Business & Finance",
+    "description": "RSS feed from Fast Company"
+  },
+  {
+    "name": "Quartz",
+    "url": "https://qz.com/feed",
+    "category": "Business & Finance",
+    "description": "RSS feed from Quartz"
+  },
+  {
+    "name": "Seeking Alpha",
+    "url": "https://seekingalpha.com/feed.xml",
+    "category": "Business & Finance",
+    "description": "RSS feed from Seeking Alpha"
+  },
+  {
+    "name": "Investopedia",
+    "url": "https://www.investopedia.com/feedbuilder/feed/getfeed?feedName=rss_headline",
+    "category": "Business & Finance",
+    "description": "RSS feed from Investopedia"
+  },
+  {
+    "name": "Morningstar",
+    "url": "https://www.morningstar.com/feeds/articles.xml",
+    "category": "Business & Finance",
+    "description": "RSS feed from Morningstar"
+  },
+  {
+    "name": "Yahoo Finance",
+    "url": "https://finance.yahoo.com/rss/",
+    "category": "Business & Finance",
+    "description": "RSS feed from Yahoo Finance"
+  },
+  {
+    "name": "CNBC - Technology",
+    "url": "https://www.cnbc.com/id/19854910/device/rss/rss.html",
+    "category": "Business & Finance",
+    "description": "RSS feed from CNBC - Technology"
+  },
+  {
+    "name": "CNBC - Finance",
+    "url": "https://www.cnbc.com/id/10000664/device/rss/rss.html",
+    "category": "Business & Finance",
+    "description": "RSS feed from CNBC - Finance"
+  },
+  {
+    "name": "Barron's",
+    "url": "https://www.barrons.com/feed",
+    "category": "Business & Finance",
+    "description": "RSS feed from Barron's"
+  },
+  {
+    "name": "Motley Fool",
+    "url": "https://www.fool.com/feeds/index.aspx",
+    "category": "Business & Finance",
+    "description": "RSS feed from Motley Fool"
+  },
+  {
+    "name": "CoinDesk",
+    "url": "https://www.coindesk.com/arc/outboundfeeds/rss/",
+    "category": "Business & Finance",
+    "description": "RSS feed from CoinDesk"
+  },
+  {
+    "name": "Decrypt",
+    "url": "https://decrypt.co/feed",
+    "category": "Business & Finance",
+    "description": "RSS feed from Decrypt"
+  },
+  {
+    "name": "The Block",
+    "url": "https://www.theblock.co/rss.xml",
+    "category": "Business & Finance",
+    "description": "RSS feed from The Block"
+  },
+  {
+    "name": "Cointelegraph",
+    "url": "https://cointelegraph.com/rss",
+    "category": "Business & Finance",
+    "description": "RSS feed from Cointelegraph"
+  },
+  {
+    "name": "Bitcoin Magazine",
+    "url": "https://bitcoinmagazine.com/.rss/full/",
+    "category": "Business & Finance",
+    "description": "RSS feed from Bitcoin Magazine"
+  },
+  {
+    "name": "Bankless",
+    "url": "https://bankless.substack.com/feed",
+    "category": "Business & Finance",
+    "description": "RSS feed from Bankless"
+  },
+  {
+    "name": "DeFi Pulse",
+    "url": "https://defipulse.com/blog/feed",
+    "category": "Business & Finance",
+    "description": "RSS feed from DeFi Pulse"
+  },
+  {
+    "name": "Y Combinator Blog",
+    "url": "https://www.ycombinator.com/blog/rss",
+    "category": "Startups & Venture Capital",
+    "description": "RSS feed from Y Combinator Blog"
+  },
+  {
+    "name": "a16z Blog",
+    "url": "https://a16z.com/feed/",
+    "category": "Startups & Venture Capital",
+    "description": "RSS feed from a16z Blog"
+  },
+  {
+    "name": "First Round Review",
+    "url": "https://firstround.com/review/rss/",
+    "category": "Startups & Venture Capital",
+    "description": "RSS feed from First Round Review"
+  },
+  {
+    "name": "Sequoia",
+    "url": "https://www.sequoiacap.com/feed/",
+    "category": "Startups & Venture Capital",
+    "description": "RSS feed from Sequoia"
+  },
+  {
+    "name": "Bessemer Venture Partners",
+    "url": "https://www.bvp.com/rss.xml",
+    "category": "Startups & Venture Capital",
+    "description": "RSS feed from Bessemer Venture Partners"
+  },
+  {
+    "name": "Fred Wilson (AVC)",
+    "url": "https://avc.com/feed/",
+    "category": "Startups & Venture Capital",
+    "description": "RSS feed from Fred Wilson (AVC)"
+  },
+  {
+    "name": "Benedict Evans",
+    "url": "https://www.ben-evans.com/benedictevans?format=rss",
+    "category": "Startups & Venture Capital",
+    "description": "RSS feed from Benedict Evans"
+  },
+  {
+    "name": "Both Sides of the Table",
+    "url": "https://bothsidesofthetable.com/feed",
+    "category": "Startups & Venture Capital",
+    "description": "RSS feed from Both Sides of the Table"
+  },
+  {
+    "name": "Tomasz Tunguz",
+    "url": "https://tomtunguz.com/feed/",
+    "category": "Startups & Venture Capital",
+    "description": "RSS feed from Tomasz Tunguz"
+  },
+  {
+    "name": "Hunter Walk",
+    "url": "https://hunterwalk.com/feed/",
+    "category": "Startups & Venture Capital",
+    "description": "RSS feed from Hunter Walk"
+  },
+  {
+    "name": "Paul Graham Essays",
+    "url": "http://www.aaronsw.com/2002/feeds/pgessays.rss",
+    "category": "Startups & Venture Capital",
+    "description": "RSS feed from Paul Graham Essays"
+  },
+  {
+    "name": "Sam Altman",
+    "url": "https://blog.samaltman.com/feed",
+    "category": "Startups & Venture Capital",
+    "description": "RSS feed from Sam Altman"
+  },
+  {
+    "name": "Lenny's Newsletter",
+    "url": "https://www.lennysnewsletter.com/feed",
+    "category": "Startups & Venture Capital",
+    "description": "RSS feed from Lenny's Newsletter"
+  },
+  {
+    "name": "Product Hunt",
+    "url": "https://www.producthunt.com/feed",
+    "category": "Startups & Venture Capital",
+    "description": "RSS feed from Product Hunt"
+  },
+  {
+    "name": "Indie Hackers",
+    "url": "https://www.indiehackers.com/feed.xml",
+    "category": "Startups & Venture Capital",
+    "description": "RSS feed from Indie Hackers"
+  },
+  {
+    "name": "Crunchbase News",
+    "url": "https://news.crunchbase.com/feed/",
+    "category": "Startups & Venture Capital",
+    "description": "RSS feed from Crunchbase News"
+  },
+  {
+    "name": "EU-Startups",
+    "url": "https://www.eu-startups.com/feed/",
+    "category": "Startups & Venture Capital",
+    "description": "RSS feed from EU-Startups"
+  },
+  {
+    "name": "TechEU",
+    "url": "https://tech.eu/feed/",
+    "category": "Startups & Venture Capital",
+    "description": "RSS feed from TechEU"
+  },
+  {
+    "name": "Sifted",
+    "url": "https://sifted.eu/feed",
+    "category": "Startups & Venture Capital",
+    "description": "RSS feed from Sifted"
+  },
+  {
+    "name": "UX Collective",
+    "url": "https://uxdesign.cc/feed",
+    "category": "Design & UX",
+    "description": "RSS feed from UX Collective"
+  },
+  {
+    "name": "UX Magazine",
+    "url": "https://uxmag.com/feed",
+    "category": "Design & UX",
+    "description": "RSS feed from UX Magazine"
+  },
+  {
+    "name": "UX Booth",
+    "url": "https://www.uxbooth.com/feed/",
+    "category": "Design & UX",
+    "description": "RSS feed from UX Booth"
+  },
+  {
+    "name": "UX Matters",
+    "url": "https://www.uxmatters.com/rss.xml",
+    "category": "Design & UX",
+    "description": "RSS feed from UX Matters"
+  },
+  {
+    "name": "Designmodo",
+    "url": "https://designmodo.com/feed/",
+    "category": "Design & UX",
+    "description": "RSS feed from Designmodo"
+  },
+  {
+    "name": "Creative Bloq",
+    "url": "https://www.creativebloq.com/feed",
+    "category": "Design & UX",
+    "description": "RSS feed from Creative Bloq"
+  },
+  {
+    "name": "It's Nice That",
+    "url": "https://www.itsnicethat.com/rss",
+    "category": "Design & UX",
+    "description": "RSS feed from It's Nice That"
+  },
+  {
+    "name": "Communication Arts",
+    "url": "https://www.commarts.com/feed",
+    "category": "Design & UX",
+    "description": "RSS feed from Communication Arts"
+  },
+  {
+    "name": "Dribbble Blog",
+    "url": "https://dribbble.com/stories.rss",
+    "category": "Design & UX",
+    "description": "RSS feed from Dribbble Blog"
+  },
+  {
+    "name": "Behance",
+    "url": "https://www.behance.net/feeds/projects",
+    "category": "Design & UX",
+    "description": "RSS feed from Behance"
+  },
+  {
+    "name": "Awwwards Blog",
+    "url": "https://www.awwwards.com/blog/feed/",
+    "category": "Design & UX",
+    "description": "RSS feed from Awwwards Blog"
+  },
+  {
+    "name": "Codrops",
+    "url": "https://tympanus.net/codrops/feed/",
+    "category": "Design & UX",
+    "description": "RSS feed from Codrops"
+  },
+  {
+    "name": "Webdesigner Depot",
+    "url": "https://www.webdesignerdepot.com/feed/",
+    "category": "Design & UX",
+    "description": "RSS feed from Webdesigner Depot"
+  },
+  {
+    "name": "Speckyboy",
+    "url": "https://speckyboy.com/feed/",
+    "category": "Design & UX",
+    "description": "RSS feed from Speckyboy"
+  },
+  {
+    "name": "Design Shack",
+    "url": "https://designshack.net/feed/",
+    "category": "Design & UX",
+    "description": "RSS feed from Design Shack"
+  },
+  {
+    "name": "SiteInspire",
+    "url": "https://www.siteinspire.com/websites/feed",
+    "category": "Design & UX",
+    "description": "RSS feed from SiteInspire"
+  },
+  {
+    "name": "Typewolf",
+    "url": "https://www.typewolf.com/feed",
+    "category": "Design & UX",
+    "description": "RSS feed from Typewolf"
+  },
+  {
+    "name": "Fonts In Use",
+    "url": "https://fontsinuse.com/rss",
+    "category": "Design & UX",
+    "description": "RSS feed from Fonts In Use"
+  },
+  {
+    "name": "Brand New",
+    "url": "https://www.underconsideration.com/brandnew/rss.xml",
+    "category": "Design & UX",
+    "description": "RSS feed from Brand New"
+  },
+  {
+    "name": "Logo Design Love",
+    "url": "https://www.logodesignlove.com/feed",
+    "category": "Design & UX",
+    "description": "RSS feed from Logo Design Love"
+  },
+  {
+    "name": "The Dieline",
+    "url": "https://thedieline.com/blog?format=rss",
+    "category": "Design & UX",
+    "description": "RSS feed from The Dieline"
+  },
+  {
+    "name": "Packaging of the World",
+    "url": "https://www.packagingoftheworld.com/feeds/posts/default",
+    "category": "Design & UX",
+    "description": "RSS feed from Packaging of the World"
+  },
+  {
+    "name": "Core77",
+    "url": "https://www.core77.com/rss",
+    "category": "Design & UX",
+    "description": "RSS feed from Core77"
+  },
+  {
+    "name": "Dezeen",
+    "url": "https://www.dezeen.com/feed/",
+    "category": "Design & UX",
+    "description": "RSS feed from Dezeen"
+  },
+  {
+    "name": "Designboom",
+    "url": "https://www.designboom.com/feed/",
+    "category": "Design & UX",
+    "description": "RSS feed from Designboom"
+  },
+  {
+    "name": "Fast Company - Design",
+    "url": "https://www.fastcompany.com/co-design/rss",
+    "category": "Design & UX",
+    "description": "RSS feed from Fast Company - Design"
+  },
+  {
+    "name": "Yanko Design",
+    "url": "https://www.yankodesign.com/feed/",
+    "category": "Design & UX",
+    "description": "RSS feed from Yanko Design"
+  },
+  {
+    "name": "Muzli",
+    "url": "https://medium.com/feed/muzli-design-inspiration",
+    "category": "Design & UX",
+    "description": "RSS feed from Muzli"
+  },
+  {
+    "name": "Hey Designer",
+    "url": "https://heydesigner.com/feed/",
+    "category": "Design & UX",
+    "description": "RSS feed from Hey Designer"
+  },
+  {
+    "name": "Design Milk",
+    "url": "https://design-milk.com/feed/",
+    "category": "Design & UX",
+    "description": "RSS feed from Design Milk"
+  },
+  {
+    "name": "Abduzeedo",
+    "url": "https://abduzeedo.com/feed",
+    "category": "Design & UX",
+    "description": "RSS feed from Abduzeedo"
+  },
+  {
+    "name": "IGN",
+    "url": "https://feeds.feedburner.com/ign/all",
+    "category": "Gaming",
+    "description": "RSS feed from IGN"
+  },
+  {
+    "name": "IGN - PC",
+    "url": "https://feeds.feedburner.com/ign/pc-all",
+    "category": "Gaming",
+    "description": "RSS feed from IGN - PC"
+  },
+  {
+    "name": "IGN - PlayStation",
+    "url": "https://feeds.feedburner.com/ign/playstation-all",
+    "category": "Gaming",
+    "description": "RSS feed from IGN - PlayStation"
+  },
+  {
+    "name": "IGN - Xbox",
+    "url": "https://feeds.feedburner.com/ign/xbox-all",
+    "category": "Gaming",
+    "description": "RSS feed from IGN - Xbox"
+  },
+  {
+    "name": "IGN - Nintendo",
+    "url": "https://feeds.feedburner.com/ign/nintendo-all",
+    "category": "Gaming",
+    "description": "RSS feed from IGN - Nintendo"
+  },
+  {
+    "name": "GameSpot",
+    "url": "https://www.gamespot.com/feeds/mashup/",
+    "category": "Gaming",
+    "description": "RSS feed from GameSpot"
+  },
+  {
+    "name": "Polygon",
+    "url": "https://www.polygon.com/rss/index.xml",
+    "category": "Gaming",
+    "description": "RSS feed from Polygon"
+  },
+  {
+    "name": "Eurogamer",
+    "url": "https://www.eurogamer.net/feed",
+    "category": "Gaming",
+    "description": "RSS feed from Eurogamer"
+  },
+  {
+    "name": "VG247",
+    "url": "https://www.vg247.com/feed/all",
+    "category": "Gaming",
+    "description": "RSS feed from VG247"
+  },
+  {
+    "name": "GamesRadar+",
+    "url": "https://www.gamesradar.com/rss/",
+    "category": "Gaming",
+    "description": "RSS feed from GamesRadar+"
+  },
+  {
+    "name": "Destructoid",
+    "url": "https://www.destructoid.com/feed/",
+    "category": "Gaming",
+    "description": "RSS feed from Destructoid"
+  },
+  {
+    "name": "Game Informer",
+    "url": "https://www.gameinformer.com/rss.xml",
+    "category": "Gaming",
+    "description": "RSS feed from Game Informer"
+  },
+  {
+    "name": "Push Square",
+    "url": "https://www.pushsquare.com/feeds/latest",
+    "category": "Gaming",
+    "description": "RSS feed from Push Square"
+  },
+  {
+    "name": "Pure Xbox",
+    "url": "https://www.purexbox.com/feeds/latest",
+    "category": "Gaming",
+    "description": "RSS feed from Pure Xbox"
+  },
+  {
+    "name": "Nintendo Life",
+    "url": "https://www.nintendolife.com/feeds/latest",
+    "category": "Gaming",
+    "description": "RSS feed from Nintendo Life"
+  },
+  {
+    "name": "Touch Arcade",
+    "url": "https://toucharcade.com/feed/",
+    "category": "Gaming",
+    "description": "RSS feed from Touch Arcade"
+  },
+  {
+    "name": "Android Police - Gaming",
+    "url": "https://www.androidpolice.com/gaming/feed/",
+    "category": "Gaming",
+    "description": "RSS feed from Android Police - Gaming"
+  },
+  {
+    "name": "Indie Games Plus",
+    "url": "https://indiegamesplus.com/feed",
+    "category": "Gaming",
+    "description": "RSS feed from Indie Games Plus"
+  },
+  {
+    "name": "Indie Game Website",
+    "url": "https://indiegamewebsite.com/feed/",
+    "category": "Gaming",
+    "description": "RSS feed from Indie Game Website"
+  },
+  {
+    "name": "PCGamesN",
+    "url": "https://www.pcgamesn.com/rss",
+    "category": "Gaming",
+    "description": "RSS feed from PCGamesN"
+  },
+  {
+    "name": "DualShockers",
+    "url": "https://www.dualshockers.com/feed/",
+    "category": "Gaming",
+    "description": "RSS feed from DualShockers"
+  },
+  {
+    "name": "Siliconera",
+    "url": "https://www.siliconera.com/feed/",
+    "category": "Gaming",
+    "description": "RSS feed from Siliconera"
+  },
+  {
+    "name": "RPGamer",
+    "url": "https://rpgamer.com/feed/",
+    "category": "Gaming",
+    "description": "RSS feed from RPGamer"
+  },
+  {
+    "name": "Hardcore Gamer",
+    "url": "https://hardcoregamer.com/feed/",
+    "category": "Gaming",
+    "description": "RSS feed from Hardcore Gamer"
+  },
+  {
+    "name": "Shacknews",
+    "url": "https://www.shacknews.com/feed/rss",
+    "category": "Gaming",
+    "description": "RSS feed from Shacknews"
+  },
+  {
+    "name": "Giant Bomb",
+    "url": "https://www.giantbomb.com/feeds/reviews/",
+    "category": "Gaming",
+    "description": "RSS feed from Giant Bomb"
+  },
+  {
+    "name": "GameRant",
+    "url": "https://gamerant.com/feed/",
+    "category": "Gaming",
+    "description": "RSS feed from GameRant"
+  },
+  {
+    "name": "ScreenRant - Gaming",
+    "url": "https://screenrant.com/feed/",
+    "category": "Gaming",
+    "description": "RSS feed from ScreenRant - Gaming"
+  },
+  {
+    "name": "TheGamer",
+    "url": "https://www.thegamer.com/feed/",
+    "category": "Gaming",
+    "description": "RSS feed from TheGamer"
+  },
+  {
+    "name": "MP1st",
+    "url": "https://mp1st.com/feed",
+    "category": "Gaming",
+    "description": "RSS feed from MP1st"
+  },
+  {
+    "name": "VGC",
+    "url": "https://www.videogameschronicle.com/feed/",
+    "category": "Gaming",
+    "description": "RSS feed from VGC"
+  },
+  {
+    "name": "NME Gaming",
+    "url": "https://www.nme.com/gaming/feed",
+    "category": "Gaming",
+    "description": "RSS feed from NME Gaming"
+  },
+  {
+    "name": "Variety",
+    "url": "https://variety.com/feed/",
+    "category": "Entertainment & Media",
+    "description": "RSS feed from Variety"
+  },
+  {
+    "name": "The Hollywood Reporter",
+    "url": "https://www.hollywoodreporter.com/feed/",
+    "category": "Entertainment & Media",
+    "description": "RSS feed from The Hollywood Reporter"
+  },
+  {
+    "name": "Deadline",
+    "url": "https://deadline.com/feed/",
+    "category": "Entertainment & Media",
+    "description": "RSS feed from Deadline"
+  },
+  {
+    "name": "Entertainment Weekly",
+    "url": "https://ew.com/feed/",
+    "category": "Entertainment & Media",
+    "description": "RSS feed from Entertainment Weekly"
+  },
+  {
+    "name": "IndieWire",
+    "url": "https://www.indiewire.com/feed/",
+    "category": "Entertainment & Media",
+    "description": "RSS feed from IndieWire"
+  },
+  {
+    "name": "Collider",
+    "url": "https://collider.com/feed/",
+    "category": "Entertainment & Media",
+    "description": "RSS feed from Collider"
+  },
+  {
+    "name": "/Film",
+    "url": "https://www.slashfilm.com/feed/",
+    "category": "Entertainment & Media",
+    "description": "RSS feed from /Film"
+  },
+  {
+    "name": "The Wrap",
+    "url": "https://www.thewrap.com/feed/",
+    "category": "Entertainment & Media",
+    "description": "RSS feed from The Wrap"
+  },
+  {
+    "name": "Vulture",
+    "url": "https://www.vulture.com/rss/index.xml",
+    "category": "Entertainment & Media",
+    "description": "RSS feed from Vulture"
+  },
+  {
+    "name": "AV Club",
+    "url": "https://www.avclub.com/rss",
+    "category": "Entertainment & Media",
+    "description": "RSS feed from AV Club"
+  },
+  {
+    "name": "Den of Geek",
+    "url": "https://www.denofgeek.com/feed/",
+    "category": "Entertainment & Media",
+    "description": "RSS feed from Den of Geek"
+  },
+  {
+    "name": "Nerdist",
+    "url": "https://nerdist.com/feed/",
+    "category": "Entertainment & Media",
+    "description": "RSS feed from Nerdist"
+  },
+  {
+    "name": "io9",
+    "url": "https://gizmodo.com/io9/rss",
+    "category": "Entertainment & Media",
+    "description": "RSS feed from io9"
+  },
+  {
+    "name": "ComicBook.com",
+    "url": "https://comicbook.com/feed/",
+    "category": "Entertainment & Media",
+    "description": "RSS feed from ComicBook.com"
+  },
+  {
+    "name": "CBR",
+    "url": "https://www.cbr.com/feed/",
+    "category": "Entertainment & Media",
+    "description": "RSS feed from CBR"
+  },
+  {
+    "name": "Bleeding Cool",
+    "url": "https://bleedingcool.com/feed/",
+    "category": "Entertainment & Media",
+    "description": "RSS feed from Bleeding Cool"
+  },
+  {
+    "name": "Newsarama",
+    "url": "https://www.newsarama.com/feeds/all",
+    "category": "Entertainment & Media",
+    "description": "RSS feed from Newsarama"
+  },
+  {
+    "name": "The Mary Sue",
+    "url": "https://www.themarysue.com/feed/",
+    "category": "Entertainment & Media",
+    "description": "RSS feed from The Mary Sue"
+  },
+  {
+    "name": "IGN - Movies",
+    "url": "https://feeds.feedburner.com/ign/movies-articles",
+    "category": "Entertainment & Media",
+    "description": "RSS feed from IGN - Movies"
+  },
+  {
+    "name": "IGN - TV",
+    "url": "https://feeds.feedburner.com/ign/tv-articles",
+    "category": "Entertainment & Media",
+    "description": "RSS feed from IGN - TV"
+  },
+  {
+    "name": "Rotten Tomatoes",
+    "url": "https://editorial.rottentomatoes.com/feed/",
+    "category": "Entertainment & Media",
+    "description": "RSS feed from Rotten Tomatoes"
+  },
+  {
+    "name": "Empire",
+    "url": "https://www.empireonline.com/feed",
+    "category": "Entertainment & Media",
+    "description": "RSS feed from Empire"
+  },
+  {
+    "name": "Total Film",
+    "url": "https://www.gamesradar.com/total-film/rss/",
+    "category": "Entertainment & Media",
+    "description": "RSS feed from Total Film"
+  },
+  {
+    "name": "Roger Ebert",
+    "url": "https://www.rogerebert.com/feed",
+    "category": "Entertainment & Media",
+    "description": "RSS feed from Roger Ebert"
+  },
+  {
+    "name": "Film School Rejects",
+    "url": "https://filmschoolrejects.com/feed/",
+    "category": "Entertainment & Media",
+    "description": "RSS feed from Film School Rejects"
+  },
+  {
+    "name": "No Film School",
+    "url": "https://nofilmschool.com/rss.xml",
+    "category": "Entertainment & Media",
+    "description": "RSS feed from No Film School"
+  },
+  {
+    "name": "IndieWire - Criticism",
+    "url": "https://www.indiewire.com/c/criticism/feed/",
+    "category": "Entertainment & Media",
+    "description": "RSS feed from IndieWire - Criticism"
+  },
+  {
+    "name": "Filmmaker Magazine",
+    "url": "https://filmmakermagazine.com/feed/",
+    "category": "Entertainment & Media",
+    "description": "RSS feed from Filmmaker Magazine"
+  },
+  {
+    "name": "Pitchfork",
+    "url": "https://pitchfork.com/feed/feed-news/rss",
+    "category": "Entertainment & Media",
+    "description": "RSS feed from Pitchfork"
+  },
+  {
+    "name": "Pitchfork - Reviews",
+    "url": "https://pitchfork.com/feed/feed-album-reviews/rss",
+    "category": "Entertainment & Media",
+    "description": "RSS feed from Pitchfork - Reviews"
+  },
+  {
+    "name": "Rolling Stone",
+    "url": "https://www.rollingstone.com/feed/",
+    "category": "Entertainment & Media",
+    "description": "RSS feed from Rolling Stone"
+  },
+  {
+    "name": "NME",
+    "url": "https://www.nme.com/feed",
+    "category": "Entertainment & Media",
+    "description": "RSS feed from NME"
+  },
+  {
+    "name": "Consequence",
+    "url": "https://consequence.net/feed/",
+    "category": "Entertainment & Media",
+    "description": "RSS feed from Consequence"
+  },
+  {
+    "name": "Stereogum",
+    "url": "https://www.stereogum.com/feed/",
+    "category": "Entertainment & Media",
+    "description": "RSS feed from Stereogum"
+  },
+  {
+    "name": "The Line of Best Fit",
+    "url": "https://www.thelineofbestfit.com/rss",
+    "category": "Entertainment & Media",
+    "description": "RSS feed from The Line of Best Fit"
+  },
+  {
+    "name": "DIY Magazine",
+    "url": "https://diymag.com/rss",
+    "category": "Entertainment & Media",
+    "description": "RSS feed from DIY Magazine"
+  },
+  {
+    "name": "BrooklynVegan",
+    "url": "https://www.brooklynvegan.com/feed/",
+    "category": "Entertainment & Media",
+    "description": "RSS feed from BrooklynVegan"
+  },
+  {
+    "name": "ESPN",
+    "url": "https://www.espn.com/espn/rss/news",
+    "category": "Sports",
+    "description": "RSS feed from ESPN"
+  },
+  {
+    "name": "ESPN - NFL",
+    "url": "https://www.espn.com/espn/rss/nfl/news",
+    "category": "Sports",
+    "description": "RSS feed from ESPN - NFL"
+  },
+  {
+    "name": "ESPN - NBA",
+    "url": "https://www.espn.com/espn/rss/nba/news",
+    "category": "Sports",
+    "description": "RSS feed from ESPN - NBA"
+  },
+  {
+    "name": "ESPN - MLB",
+    "url": "https://www.espn.com/espn/rss/mlb/news",
+    "category": "Sports",
+    "description": "RSS feed from ESPN - MLB"
+  },
+  {
+    "name": "ESPN - NHL",
+    "url": "https://www.espn.com/espn/rss/nhl/news",
+    "category": "Sports",
+    "description": "RSS feed from ESPN - NHL"
+  },
+  {
+    "name": "ESPN - Soccer",
+    "url": "https://www.espn.com/espn/rss/soccer/news",
+    "category": "Sports",
+    "description": "RSS feed from ESPN - Soccer"
+  },
+  {
+    "name": "ESPN - College Football",
+    "url": "https://www.espn.com/espn/rss/ncf/news",
+    "category": "Sports",
+    "description": "RSS feed from ESPN - College Football"
+  },
+  {
+    "name": "ESPN - College Basketball",
+    "url": "https://www.espn.com/espn/rss/ncb/news",
+    "category": "Sports",
+    "description": "RSS feed from ESPN - College Basketball"
+  },
+  {
+    "name": "ESPN - Tennis",
+    "url": "https://www.espn.com/espn/rss/tennis/news",
+    "category": "Sports",
+    "description": "RSS feed from ESPN - Tennis"
+  },
+  {
+    "name": "ESPN - Golf",
+    "url": "https://www.espn.com/espn/rss/golf/news",
+    "category": "Sports",
+    "description": "RSS feed from ESPN - Golf"
+  },
+  {
+    "name": "ESPN - F1",
+    "url": "https://www.espn.com/espn/rss/rpm/news",
+    "category": "Sports",
+    "description": "RSS feed from ESPN - F1"
+  },
+  {
+    "name": "ESPN - MMA",
+    "url": "https://www.espn.com/espn/rss/mma/news",
+    "category": "Sports",
+    "description": "RSS feed from ESPN - MMA"
+  },
+  {
+    "name": "Bleacher Report",
+    "url": "https://bleacherreport.com/articles/feed",
+    "category": "Sports",
+    "description": "RSS feed from Bleacher Report"
+  },
+  {
+    "name": "Sports Illustrated",
+    "url": "https://www.si.com/rss/si_topstories.rss",
+    "category": "Sports",
+    "description": "RSS feed from Sports Illustrated"
+  },
+  {
+    "name": "CBS Sports",
+    "url": "https://www.cbssports.com/rss/headlines/",
+    "category": "Sports",
+    "description": "RSS feed from CBS Sports"
+  },
+  {
+    "name": "Yahoo Sports",
+    "url": "https://sports.yahoo.com/rss/",
+    "category": "Sports",
+    "description": "RSS feed from Yahoo Sports"
+  },
+  {
+    "name": "The Athletic",
+    "url": "https://theathletic.com/feeds/rss/news/",
+    "category": "Sports",
+    "description": "RSS feed from The Athletic"
+  },
+  {
+    "name": "SB Nation",
+    "url": "https://www.sbnation.com/rss/index.xml",
+    "category": "Sports",
+    "description": "RSS feed from SB Nation"
+  },
+  {
+    "name": "Deadspin",
+    "url": "https://deadspin.com/rss",
+    "category": "Sports",
+    "description": "RSS feed from Deadspin"
+  },
+  {
+    "name": "For The Win",
+    "url": "https://ftw.usatoday.com/feed",
+    "category": "Sports",
+    "description": "RSS feed from For The Win"
+  },
+  {
+    "name": "NBC Sports",
+    "url": "https://www.nbcsports.com/rss.xml",
+    "category": "Sports",
+    "description": "RSS feed from NBC Sports"
+  },
+  {
+    "name": "Fox Sports",
+    "url": "https://api.foxsports.com/v2/content/optimized-rss?partnerKey=MB0Wehpmuz2dNe1Kg",
+    "category": "Sports",
+    "description": "RSS feed from Fox Sports"
+  },
+  {
+    "name": "Sky Sports",
+    "url": "https://www.skysports.com/rss/12040",
+    "category": "Sports",
+    "description": "RSS feed from Sky Sports"
+  },
+  {
+    "name": "BBC Sport",
+    "url": "https://feeds.bbci.co.uk/sport/rss.xml",
+    "category": "Sports",
+    "description": "RSS feed from BBC Sport"
+  },
+  {
+    "name": "BBC Sport - Football",
+    "url": "https://feeds.bbci.co.uk/sport/football/rss.xml",
+    "category": "Sports",
+    "description": "RSS feed from BBC Sport - Football"
+  },
+  {
+    "name": "The Guardian - Sport",
+    "url": "https://www.theguardian.com/sport/rss",
+    "category": "Sports",
+    "description": "RSS feed from The Guardian - Sport"
+  },
+  {
+    "name": "The Guardian - Football",
+    "url": "https://www.theguardian.com/football/rss",
+    "category": "Sports",
+    "description": "RSS feed from The Guardian - Football"
+  },
+  {
+    "name": "Goal.com",
+    "url": "https://www.goal.com/feeds/en/news",
+    "category": "Sports",
+    "description": "RSS feed from Goal.com"
+  },
+  {
+    "name": "Football365",
+    "url": "https://www.football365.com/feed",
+    "category": "Sports",
+    "description": "RSS feed from Football365"
+  },
+  {
+    "name": "Football Italia",
+    "url": "https://www.football-italia.net/rss/feed",
+    "category": "Sports",
+    "description": "RSS feed from Football Italia"
+  },
+  {
+    "name": "MLS Soccer",
+    "url": "https://www.mlssoccer.com/rss-feed",
+    "category": "Sports",
+    "description": "RSS feed from MLS Soccer"
+  },
+  {
+    "name": "Pro Football Talk",
+    "url": "https://profootballtalk.nbcsports.com/feed/",
+    "category": "Sports",
+    "description": "RSS feed from Pro Football Talk"
+  },
+  {
+    "name": "NFL.com",
+    "url": "https://www.nfl.com/rss/rsslanding?searchString=home",
+    "category": "Sports",
+    "description": "RSS feed from NFL.com"
+  },
+  {
+    "name": "NBA.com",
+    "url": "https://www.nba.com/news/rss.xml",
+    "category": "Sports",
+    "description": "RSS feed from NBA.com"
+  },
+  {
+    "name": "MLB.com",
+    "url": "https://www.mlb.com/feeds/news/rss.xml",
+    "category": "Sports",
+    "description": "RSS feed from MLB.com"
+  },
+  {
+    "name": "NHL.com",
+    "url": "https://www.nhl.com/rss/news.xml",
+    "category": "Sports",
+    "description": "RSS feed from NHL.com"
+  },
+  {
+    "name": "PGA Tour",
+    "url": "https://www.pgatour.com/news.rss",
+    "category": "Sports",
+    "description": "RSS feed from PGA Tour"
+  },
+  {
+    "name": "Tennis.com",
+    "url": "https://www.tennis.com/feeds/all/rss.xml",
+    "category": "Sports",
+    "description": "RSS feed from Tennis.com"
+  },
+  {
+    "name": "Autosport",
+    "url": "https://www.autosport.com/rss/feed/all",
+    "category": "Sports",
+    "description": "RSS feed from Autosport"
+  },
+  {
+    "name": "Motorsport.com",
+    "url": "https://www.motorsport.com/rss/all/news/",
+    "category": "Sports",
+    "description": "RSS feed from Motorsport.com"
+  },
+  {
+    "name": "The Race",
+    "url": "https://the-race.com/feed/",
+    "category": "Sports",
+    "description": "RSS feed from The Race"
+  },
+  {
+    "name": "MMA Fighting",
+    "url": "https://www.mmafighting.com/rss/index.xml",
+    "category": "Sports",
+    "description": "RSS feed from MMA Fighting"
+  },
+  {
+    "name": "MMA Junkie",
+    "url": "https://mmajunkie.usatoday.com/feed",
+    "category": "Sports",
+    "description": "RSS feed from MMA Junkie"
+  },
+  {
+    "name": "Cycling News",
+    "url": "https://www.cyclingnews.com/rss",
+    "category": "Sports",
+    "description": "RSS feed from Cycling News"
+  },
+  {
+    "name": "VeloNews",
+    "url": "https://www.velonews.com/feed/",
+    "category": "Sports",
+    "description": "RSS feed from VeloNews"
+  },
+  {
+    "name": "Swimming World",
+    "url": "https://www.swimmingworldmagazine.com/feed/",
+    "category": "Sports",
+    "description": "RSS feed from Swimming World"
+  },
+  {
+    "name": "Track & Field News",
+    "url": "https://trackandfieldnews.com/feed/",
+    "category": "Sports",
+    "description": "RSS feed from Track & Field News"
+  },
+  {
+    "name": "Rugby World",
+    "url": "https://www.rugbyworld.com/feed",
+    "category": "Sports",
+    "description": "RSS feed from Rugby World"
+  },
+  {
+    "name": "Cricket.com.au",
+    "url": "https://www.cricket.com.au/news/rss",
+    "category": "Sports",
+    "description": "RSS feed from Cricket.com.au"
+  },
+  {
+    "name": "ESPNcricinfo",
+    "url": "https://www.espncricinfo.com/rss/content/story/feeds/0.xml",
+    "category": "Sports",
+    "description": "RSS feed from ESPNcricinfo"
+  },
+  {
+    "name": "WebMD",
+    "url": "https://rssfeeds.webmd.com/rss/rss.aspx?RSSSource=RSS_PUBLIC",
+    "category": "Health & Fitness",
+    "description": "RSS feed from WebMD"
+  },
+  {
+    "name": "Healthline",
+    "url": "https://www.healthline.com/rss",
+    "category": "Health & Fitness",
+    "description": "RSS feed from Healthline"
+  },
+  {
+    "name": "Medical News Today",
+    "url": "https://www.medicalnewstoday.com/rss",
+    "category": "Health & Fitness",
+    "description": "RSS feed from Medical News Today"
+  },
+  {
+    "name": "Health.com",
+    "url": "https://www.health.com/syndication/rss.xml",
+    "category": "Health & Fitness",
+    "description": "RSS feed from Health.com"
+  },
+  {
+    "name": "Everyday Health",
+    "url": "https://www.everydayhealth.com/rss/index.xml",
+    "category": "Health & Fitness",
+    "description": "RSS feed from Everyday Health"
+  },
+  {
+    "name": "Harvard Health",
+    "url": "https://www.health.harvard.edu/blog/feed",
+    "category": "Health & Fitness",
+    "description": "RSS feed from Harvard Health"
+  },
+  {
+    "name": "Mayo Clinic",
+    "url": "https://newsnetwork.mayoclinic.org/feed/",
+    "category": "Health & Fitness",
+    "description": "RSS feed from Mayo Clinic"
+  },
+  {
+    "name": "Cleveland Clinic",
+    "url": "https://health.clevelandclinic.org/feed/",
+    "category": "Health & Fitness",
+    "description": "RSS feed from Cleveland Clinic"
+  },
+  {
+    "name": "Johns Hopkins Medicine",
+    "url": "https://www.hopkinsmedicine.org/news/media/rss.xml",
+    "category": "Health & Fitness",
+    "description": "RSS feed from Johns Hopkins Medicine"
+  },
+  {
+    "name": "NIH News",
+    "url": "https://www.nih.gov/rss.xml",
+    "category": "Health & Fitness",
+    "description": "RSS feed from NIH News"
+  },
+  {
+    "name": "CDC Newsroom",
+    "url": "https://tools.cdc.gov/api/v2/resources/media/rss",
+    "category": "Health & Fitness",
+    "description": "RSS feed from CDC Newsroom"
+  },
+  {
+    "name": "WHO News",
+    "url": "https://www.who.int/rss-feeds/news-english.xml",
+    "category": "Health & Fitness",
+    "description": "RSS feed from WHO News"
+  },
+  {
+    "name": "STAT News",
+    "url": "https://www.statnews.com/feed/",
+    "category": "Health & Fitness",
+    "description": "RSS feed from STAT News"
+  },
+  {
+    "name": "Fierce Healthcare",
+    "url": "https://www.fiercehealthcare.com/rss/xml",
+    "category": "Health & Fitness",
+    "description": "RSS feed from Fierce Healthcare"
+  },
+  {
+    "name": "Healthcare Dive",
+    "url": "https://www.healthcaredive.com/feeds/news/",
+    "category": "Health & Fitness",
+    "description": "RSS feed from Healthcare Dive"
+  },
+  {
+    "name": "Modern Healthcare",
+    "url": "https://www.modernhealthcare.com/rss",
+    "category": "Health & Fitness",
+    "description": "RSS feed from Modern Healthcare"
+  },
+  {
+    "name": "MedPage Today",
+    "url": "https://www.medpagetoday.com/rss/headlines.xml",
+    "category": "Health & Fitness",
+    "description": "RSS feed from MedPage Today"
+  },
+  {
+    "name": "Medscape",
+    "url": "https://www.medscape.com/cx/rssfeeds/2685.xml",
+    "category": "Health & Fitness",
+    "description": "RSS feed from Medscape"
+  },
+  {
+    "name": "Science-Based Medicine",
+    "url": "https://sciencebasedmedicine.org/feed/",
+    "category": "Health & Fitness",
+    "description": "RSS feed from Science-Based Medicine"
+  },
+  {
+    "name": "Precision Nutrition",
+    "url": "https://www.precisionnutrition.com/feed",
+    "category": "Health & Fitness",
+    "description": "RSS feed from Precision Nutrition"
+  },
+  {
+    "name": "Nutrition Facts",
+    "url": "https://nutritionfacts.org/feed/",
+    "category": "Health & Fitness",
+    "description": "RSS feed from Nutrition Facts"
+  },
+  {
+    "name": "Examine.com",
+    "url": "https://examine.com/blog/feed/",
+    "category": "Health & Fitness",
+    "description": "RSS feed from Examine.com"
+  },
+  {
+    "name": "Men's Health",
+    "url": "https://www.menshealth.com/rss/all.xml/",
+    "category": "Health & Fitness",
+    "description": "RSS feed from Men's Health"
+  },
+  {
+    "name": "Women's Health",
+    "url": "https://www.womenshealthmag.com/rss/all.xml/",
+    "category": "Health & Fitness",
+    "description": "RSS feed from Women's Health"
+  },
+  {
+    "name": "Runner's World",
+    "url": "https://www.runnersworld.com/rss/all.xml/",
+    "category": "Health & Fitness",
+    "description": "RSS feed from Runner's World"
+  },
+  {
+    "name": "Bicycling",
+    "url": "https://www.bicycling.com/rss/all.xml/",
+    "category": "Health & Fitness",
+    "description": "RSS feed from Bicycling"
+  },
+  {
+    "name": "Shape",
+    "url": "https://www.shape.com/rss/all.xml/",
+    "category": "Health & Fitness",
+    "description": "RSS feed from Shape"
+  },
+  {
+    "name": "Self",
+    "url": "https://www.self.com/feed/rss",
+    "category": "Health & Fitness",
+    "description": "RSS feed from Self"
+  },
+  {
+    "name": "Prevention",
+    "url": "https://www.prevention.com/rss/all.xml/",
+    "category": "Health & Fitness",
+    "description": "RSS feed from Prevention"
+  },
+  {
+    "name": "Yoga Journal",
+    "url": "https://www.yogajournal.com/feed/",
+    "category": "Health & Fitness",
+    "description": "RSS feed from Yoga Journal"
+  },
+  {
+    "name": "Breaking Muscle",
+    "url": "https://breakingmuscle.com/feed/",
+    "category": "Health & Fitness",
+    "description": "RSS feed from Breaking Muscle"
+  },
+  {
+    "name": "T-Nation",
+    "url": "https://www.t-nation.com/feed/",
+    "category": "Health & Fitness",
+    "description": "RSS feed from T-Nation"
+  },
+  {
+    "name": "Stronger by Science",
+    "url": "https://www.strongerbyscience.com/feed/",
+    "category": "Health & Fitness",
+    "description": "RSS feed from Stronger by Science"
+  },
+  {
+    "name": "Barbell Medicine",
+    "url": "https://www.barbellmedicine.com/blog/feed/",
+    "category": "Health & Fitness",
+    "description": "RSS feed from Barbell Medicine"
+  },
+  {
+    "name": "NerdWallet",
+    "url": "https://www.nerdwallet.com/blog/feed/",
+    "category": "Personal Finance",
+    "description": "RSS feed from NerdWallet"
+  },
+  {
+    "name": "Bankrate",
+    "url": "https://www.bankrate.com/rss/index.xml",
+    "category": "Personal Finance",
+    "description": "RSS feed from Bankrate"
+  },
+  {
+    "name": "Kiplinger",
+    "url": "https://www.kiplinger.com/kiplinger?t=feed&item=feed_channel",
+    "category": "Personal Finance",
+    "description": "RSS feed from Kiplinger"
+  },
+  {
+    "name": "Money",
+    "url": "https://money.com/feed/",
+    "category": "Personal Finance",
+    "description": "RSS feed from Money"
+  },
+  {
+    "name": "Clark Howard",
+    "url": "https://clark.com/feed/",
+    "category": "Personal Finance",
+    "description": "RSS feed from Clark Howard"
+  },
+  {
+    "name": "Get Rich Slowly",
+    "url": "https://www.getrichslowly.org/feed/",
+    "category": "Personal Finance",
+    "description": "RSS feed from Get Rich Slowly"
+  },
+  {
+    "name": "The Simple Dollar",
+    "url": "https://www.thesimpledollar.com/feed/",
+    "category": "Personal Finance",
+    "description": "RSS feed from The Simple Dollar"
+  },
+  {
+    "name": "Mr. Money Mustache",
+    "url": "https://www.mrmoneymustache.com/feed/",
+    "category": "Personal Finance",
+    "description": "RSS feed from Mr. Money Mustache"
+  },
+  {
+    "name": "Financial Samurai",
+    "url": "https://www.financialsamurai.com/feed/",
+    "category": "Personal Finance",
+    "description": "RSS feed from Financial Samurai"
+  },
+  {
+    "name": "Afford Anything",
+    "url": "https://affordanything.com/feed/",
+    "category": "Personal Finance",
+    "description": "RSS feed from Afford Anything"
+  },
+  {
+    "name": "Mad Fientist",
+    "url": "https://www.madfientist.com/feed/",
+    "category": "Personal Finance",
+    "description": "RSS feed from Mad Fientist"
+  },
+  {
+    "name": "ChooseFI",
+    "url": "https://www.choosefi.com/feed/",
+    "category": "Personal Finance",
+    "description": "RSS feed from ChooseFI"
+  },
+  {
+    "name": "The College Investor",
+    "url": "https://thecollegeinvestor.com/feed/",
+    "category": "Personal Finance",
+    "description": "RSS feed from The College Investor"
+  },
+  {
+    "name": "Bogleheads",
+    "url": "https://www.bogleheads.org/blog/feed/",
+    "category": "Personal Finance",
+    "description": "RSS feed from Bogleheads"
+  },
+  {
+    "name": "A Wealth of Common Sense",
+    "url": "https://awealthofcommonsense.com/feed/",
+    "category": "Personal Finance",
+    "description": "RSS feed from A Wealth of Common Sense"
+  },
+  {
+    "name": "Of Dollars and Data",
+    "url": "https://ofdollarsanddata.com/feed/",
+    "category": "Personal Finance",
+    "description": "RSS feed from Of Dollars and Data"
+  },
+  {
+    "name": "Morgan Housel",
+    "url": "https://collabfund.com/blog/feed/",
+    "category": "Personal Finance",
+    "description": "RSS feed from Morgan Housel"
+  },
+  {
+    "name": "Ramit Sethi",
+    "url": "https://www.iwillteachyoutoberich.com/feed/",
+    "category": "Personal Finance",
+    "description": "RSS feed from Ramit Sethi"
+  },
+  {
+    "name": "EdSurge",
+    "url": "https://www.edsurge.com/rss",
+    "category": "Education & Learning",
+    "description": "RSS feed from EdSurge"
+  },
+  {
+    "name": "Inside Higher Ed",
+    "url": "https://www.insidehighered.com/rss/xml",
+    "category": "Education & Learning",
+    "description": "RSS feed from Inside Higher Ed"
+  },
+  {
+    "name": "The Chronicle of Higher Education",
+    "url": "https://www.chronicle.com/rss",
+    "category": "Education & Learning",
+    "description": "RSS feed from The Chronicle of Higher Education"
+  },
+  {
+    "name": "Education Week",
+    "url": "https://www.edweek.org/feed",
+    "category": "Education & Learning",
+    "description": "RSS feed from Education Week"
+  },
+  {
+    "name": "Edutopia",
+    "url": "https://www.edutopia.org/rss.xml",
+    "category": "Education & Learning",
+    "description": "RSS feed from Edutopia"
+  },
+  {
+    "name": "MindShift",
+    "url": "https://www.kqed.org/mindshift/feed",
+    "category": "Education & Learning",
+    "description": "RSS feed from MindShift"
+  },
+  {
+    "name": "eLearning Industry",
+    "url": "https://elearningindustry.com/feed",
+    "category": "Education & Learning",
+    "description": "RSS feed from eLearning Industry"
+  },
+  {
+    "name": "Class Central",
+    "url": "https://www.classcentral.com/report/feed/",
+    "category": "Education & Learning",
+    "description": "RSS feed from Class Central"
+  },
+  {
+    "name": "Open Culture",
+    "url": "https://www.openculture.com/feed",
+    "category": "Education & Learning",
+    "description": "RSS feed from Open Culture"
+  },
+  {
+    "name": "Brain Pickings",
+    "url": "https://www.themarginalian.org/feed/",
+    "category": "Education & Learning",
+    "description": "RSS feed from Brain Pickings"
+  },
+  {
+    "name": "Farnam Street",
+    "url": "https://fs.blog/feed/",
+    "category": "Education & Learning",
+    "description": "RSS feed from Farnam Street"
+  },
+  {
+    "name": "Wait But Why",
+    "url": "https://waitbutwhy.com/feed",
+    "category": "Education & Learning",
+    "description": "RSS feed from Wait But Why"
+  },
+  {
+    "name": "Gwern",
+    "url": "https://gwern.net/atom.xml",
+    "category": "Education & Learning",
+    "description": "RSS feed from Gwern"
+  },
+  {
+    "name": "Derek Sivers",
+    "url": "https://sive.rs/en.atom",
+    "category": "Education & Learning",
+    "description": "RSS feed from Derek Sivers"
+  },
+  {
+    "name": "Cal Newport",
+    "url": "https://calnewport.com/feed/",
+    "category": "Education & Learning",
+    "description": "RSS feed from Cal Newport"
+  },
+  {
+    "name": "James Clear",
+    "url": "https://jamesclear.com/feed",
+    "category": "Education & Learning",
+    "description": "RSS feed from James Clear"
+  },
+  {
+    "name": "Nir Eyal",
+    "url": "https://www.nirandfar.com/feed/",
+    "category": "Education & Learning",
+    "description": "RSS feed from Nir Eyal"
+  },
+  {
+    "name": "Scott Young",
+    "url": "https://www.scotthyoung.com/blog/feed/",
+    "category": "Education & Learning",
+    "description": "RSS feed from Scott Young"
+  },
+  {
+    "name": "Coursera Blog",
+    "url": "https://blog.coursera.org/feed/",
+    "category": "Education & Learning",
+    "description": "RSS feed from Coursera Blog"
+  },
+  {
+    "name": "Duolingo Blog",
+    "url": "https://blog.duolingo.com/rss/",
+    "category": "Education & Learning",
+    "description": "RSS feed from Duolingo Blog"
+  },
+  {
+    "name": "Khan Academy",
+    "url": "https://www.khanacademy.org/rss.xml",
+    "category": "Education & Learning",
+    "description": "RSS feed from Khan Academy"
+  },
+  {
+    "name": "Serious Eats",
+    "url": "https://www.seriouseats.com/feeds/all",
+    "category": "Food & Cooking",
+    "description": "RSS feed from Serious Eats"
+  },
+  {
+    "name": "Food52",
+    "url": "https://food52.com/blog.rss",
+    "category": "Food & Cooking",
+    "description": "RSS feed from Food52"
+  },
+  {
+    "name": "Bon Appétit",
+    "url": "https://www.bonappetit.com/feed/rss",
+    "category": "Food & Cooking",
+    "description": "RSS feed from Bon Appétit"
+  },
+  {
+    "name": "Epicurious",
+    "url": "https://www.epicurious.com/feed/rss",
+    "category": "Food & Cooking",
+    "description": "RSS feed from Epicurious"
+  },
+  {
+    "name": "Saveur",
+    "url": "https://www.saveur.com/feed/",
+    "category": "Food & Cooking",
+    "description": "RSS feed from Saveur"
+  },
+  {
+    "name": "Food & Wine",
+    "url": "https://www.foodandwine.com/feeds/all",
+    "category": "Food & Cooking",
+    "description": "RSS feed from Food & Wine"
+  },
+  {
+    "name": "Taste",
+    "url": "https://www.tastecooking.com/feed/",
+    "category": "Food & Cooking",
+    "description": "RSS feed from Taste"
+  },
+  {
+    "name": "The Kitchn",
+    "url": "https://www.thekitchn.com/rss",
+    "category": "Food & Cooking",
+    "description": "RSS feed from The Kitchn"
+  },
+  {
+    "name": "Budget Bytes",
+    "url": "https://www.budgetbytes.com/feed/",
+    "category": "Food & Cooking",
+    "description": "RSS feed from Budget Bytes"
+  },
+  {
+    "name": "Minimalist Baker",
+    "url": "https://minimalistbaker.com/feed/",
+    "category": "Food & Cooking",
+    "description": "RSS feed from Minimalist Baker"
+  },
+  {
+    "name": "Cookie and Kate",
+    "url": "https://cookieandkate.com/feed/",
+    "category": "Food & Cooking",
+    "description": "RSS feed from Cookie and Kate"
+  },
+  {
+    "name": "Smitten Kitchen",
+    "url": "https://smittenkitchen.com/feed/",
+    "category": "Food & Cooking",
+    "description": "RSS feed from Smitten Kitchen"
+  },
+  {
+    "name": "Oh She Glows",
+    "url": "https://ohsheglows.com/feed/",
+    "category": "Food & Cooking",
+    "description": "RSS feed from Oh She Glows"
+  },
+  {
+    "name": "Love and Lemons",
+    "url": "https://www.loveandlemons.com/feed/",
+    "category": "Food & Cooking",
+    "description": "RSS feed from Love and Lemons"
+  },
+  {
+    "name": "Half Baked Harvest",
+    "url": "https://www.halfbakedharvest.com/feed/",
+    "category": "Food & Cooking",
+    "description": "RSS feed from Half Baked Harvest"
+  },
+  {
+    "name": "Sally's Baking Addiction",
+    "url": "https://sallysbakingaddiction.com/feed/",
+    "category": "Food & Cooking",
+    "description": "RSS feed from Sally's Baking Addiction"
+  },
+  {
+    "name": "King Arthur Baking",
+    "url": "https://www.kingarthurbaking.com/blog/feed",
+    "category": "Food & Cooking",
+    "description": "RSS feed from King Arthur Baking"
+  },
+  {
+    "name": "America's Test Kitchen",
+    "url": "https://www.americastestkitchen.com/feeds/articles",
+    "category": "Food & Cooking",
+    "description": "RSS feed from America's Test Kitchen"
+  },
+  {
+    "name": "Cook's Illustrated",
+    "url": "https://www.cooksillustrated.com/feeds/articles",
+    "category": "Food & Cooking",
+    "description": "RSS feed from Cook's Illustrated"
+  },
+  {
+    "name": "The Spruce Eats",
+    "url": "https://www.thespruceeats.com/rss",
+    "category": "Food & Cooking",
+    "description": "RSS feed from The Spruce Eats"
+  },
+  {
+    "name": "Eater",
+    "url": "https://www.eater.com/rss/index.xml",
+    "category": "Food & Cooking",
+    "description": "RSS feed from Eater"
+  },
+  {
+    "name": "Grub Street",
+    "url": "https://www.grubstreet.com/rss/index.xml",
+    "category": "Food & Cooking",
+    "description": "RSS feed from Grub Street"
+  },
+  {
+    "name": "First We Feast",
+    "url": "https://firstwefeast.com/feed",
+    "category": "Food & Cooking",
+    "description": "RSS feed from First We Feast"
+  },
+  {
+    "name": "Punch",
+    "url": "https://punchdrink.com/feed/",
+    "category": "Food & Cooking",
+    "description": "RSS feed from Punch"
+  },
+  {
+    "name": "Wine Enthusiast",
+    "url": "https://www.wineenthusiast.com/feed/",
+    "category": "Food & Cooking",
+    "description": "RSS feed from Wine Enthusiast"
+  },
+  {
+    "name": "VinePair",
+    "url": "https://vinepair.com/feed/",
+    "category": "Food & Cooking",
+    "description": "RSS feed from VinePair"
+  },
+  {
+    "name": "Lonely Planet",
+    "url": "https://www.lonelyplanet.com/blog/feed/atom",
+    "category": "Travel",
+    "description": "RSS feed from Lonely Planet"
+  },
+  {
+    "name": "Condé Nast Traveler",
+    "url": "https://www.cntraveler.com/feed/rss",
+    "category": "Travel",
+    "description": "RSS feed from Condé Nast Traveler"
+  },
+  {
+    "name": "Travel + Leisure",
+    "url": "https://www.travelandleisure.com/feeds/all",
+    "category": "Travel",
+    "description": "RSS feed from Travel + Leisure"
+  },
+  {
+    "name": "AFAR",
+    "url": "https://www.afar.com/rss",
+    "category": "Travel",
+    "description": "RSS feed from AFAR"
+  },
+  {
+    "name": "National Geographic Travel",
+    "url": "https://www.nationalgeographic.com/travel/feed",
+    "category": "Travel",
+    "description": "RSS feed from National Geographic Travel"
+  },
+  {
+    "name": "Fodor's Travel",
+    "url": "https://www.fodors.com/news/feed",
+    "category": "Travel",
+    "description": "RSS feed from Fodor's Travel"
+  },
+  {
+    "name": "The Points Guy",
+    "url": "https://thepointsguy.com/feed/",
+    "category": "Travel",
+    "description": "RSS feed from The Points Guy"
+  },
+  {
+    "name": "One Mile at a Time",
+    "url": "https://onemileatatime.com/feed/",
+    "category": "Travel",
+    "description": "RSS feed from One Mile at a Time"
+  },
+  {
+    "name": "Nomadic Matt",
+    "url": "https://www.nomadicmatt.com/travel-blog/feed/",
+    "category": "Travel",
+    "description": "RSS feed from Nomadic Matt"
+  },
+  {
+    "name": "Expert Vagabond",
+    "url": "https://expertvagabond.com/feed/",
+    "category": "Travel",
+    "description": "RSS feed from Expert Vagabond"
+  },
+  {
+    "name": "Adventurous Kate",
+    "url": "https://www.adventurouskate.com/feed/",
+    "category": "Travel",
+    "description": "RSS feed from Adventurous Kate"
+  },
+  {
+    "name": "The Blonde Abroad",
+    "url": "https://www.theblondeabroad.com/feed/",
+    "category": "Travel",
+    "description": "RSS feed from The Blonde Abroad"
+  },
+  {
+    "name": "Legal Nomads",
+    "url": "https://www.legalnomads.com/feed/",
+    "category": "Travel",
+    "description": "RSS feed from Legal Nomads"
+  },
+  {
+    "name": "Seat 31B",
+    "url": "https://seat31b.boardingarea.com/feed/",
+    "category": "Travel",
+    "description": "RSS feed from Seat 31B"
+  },
+  {
+    "name": "View from the Wing",
+    "url": "https://viewfromthewing.com/feed/",
+    "category": "Travel",
+    "description": "RSS feed from View from the Wing"
+  },
+  {
+    "name": "God Save the Points",
+    "url": "https://godsavethepoints.com/feed/",
+    "category": "Travel",
+    "description": "RSS feed from God Save the Points"
+  },
+  {
+    "name": "Skift",
+    "url": "https://skift.com/feed/",
+    "category": "Travel",
+    "description": "RSS feed from Skift"
+  },
+  {
+    "name": "PhocusWire",
+    "url": "https://www.phocuswire.com/rss.xml",
+    "category": "Travel",
+    "description": "RSS feed from PhocusWire"
+  },
+  {
+    "name": "Tnooz",
+    "url": "https://www.tnooz.com/feed/",
+    "category": "Travel",
+    "description": "RSS feed from Tnooz"
+  },
+  {
+    "name": "CNN Travel",
+    "url": "https://www.cnn.com/travel/rss",
+    "category": "Travel",
+    "description": "RSS feed from CNN Travel"
+  },
+  {
+    "name": "BBC Travel",
+    "url": "https://www.bbc.com/travel/feed.rss",
+    "category": "Travel",
+    "description": "RSS feed from BBC Travel"
+  },
+  {
+    "name": "Atlas Obscura",
+    "url": "https://www.atlasobscura.com/feeds/latest",
+    "category": "Travel",
+    "description": "RSS feed from Atlas Obscura"
+  },
+  {
+    "name": "Roads & Kingdoms",
+    "url": "https://roadsandkingdoms.com/feed/",
+    "category": "Travel",
+    "description": "RSS feed from Roads & Kingdoms"
+  },
+  {
+    "name": "Vox - Culture",
+    "url": "https://www.vox.com/culture/rss/index.xml",
+    "category": "Lifestyle & Culture",
+    "description": "RSS feed from Vox - Culture"
+  },
+  {
+    "name": "The Cut",
+    "url": "https://www.thecut.com/rss/index.xml",
+    "category": "Lifestyle & Culture",
+    "description": "RSS feed from The Cut"
+  },
+  {
+    "name": "Refinery29",
+    "url": "https://www.refinery29.com/rss.xml",
+    "category": "Lifestyle & Culture",
+    "description": "RSS feed from Refinery29"
+  },
+  {
+    "name": "Bustle",
+    "url": "https://www.bustle.com/rss",
+    "category": "Lifestyle & Culture",
+    "description": "RSS feed from Bustle"
+  },
+  {
+    "name": "Vice",
+    "url": "https://www.vice.com/en/rss",
+    "category": "Lifestyle & Culture",
+    "description": "RSS feed from Vice"
+  },
+  {
+    "name": "Vice - Life",
+    "url": "https://www.vice.com/en/section/life/rss",
+    "category": "Lifestyle & Culture",
+    "description": "RSS feed from Vice - Life"
+  },
+  {
+    "name": "Dazed",
+    "url": "https://www.dazeddigital.com/rss",
+    "category": "Lifestyle & Culture",
+    "description": "RSS feed from Dazed"
+  },
+  {
+    "name": "i-D",
+    "url": "https://i-d.co/feed/",
+    "category": "Lifestyle & Culture",
+    "description": "RSS feed from i-D"
+  },
+  {
+    "name": "Paper Magazine",
+    "url": "https://www.papermag.com/rss.xml",
+    "category": "Lifestyle & Culture",
+    "description": "RSS feed from Paper Magazine"
+  },
+  {
+    "name": "Interview Magazine",
+    "url": "https://www.interviewmagazine.com/feed",
+    "category": "Lifestyle & Culture",
+    "description": "RSS feed from Interview Magazine"
+  },
+  {
+    "name": "GQ",
+    "url": "https://www.gq.com/feed/rss",
+    "category": "Lifestyle & Culture",
+    "description": "RSS feed from GQ"
+  },
+  {
+    "name": "Esquire",
+    "url": "https://www.esquire.com/rss/all.xml/",
+    "category": "Lifestyle & Culture",
+    "description": "RSS feed from Esquire"
+  },
+  {
+    "name": "Vogue",
+    "url": "https://www.vogue.com/feed/rss",
+    "category": "Lifestyle & Culture",
+    "description": "RSS feed from Vogue"
+  },
+  {
+    "name": "Harper's Bazaar",
+    "url": "https://www.harpersbazaar.com/rss/all.xml/",
+    "category": "Lifestyle & Culture",
+    "description": "RSS feed from Harper's Bazaar"
+  },
+  {
+    "name": "Elle",
+    "url": "https://www.elle.com/rss/all.xml/",
+    "category": "Lifestyle & Culture",
+    "description": "RSS feed from Elle"
+  },
+  {
+    "name": "W Magazine",
+    "url": "https://www.wmagazine.com/feed/rss",
+    "category": "Lifestyle & Culture",
+    "description": "RSS feed from W Magazine"
+  },
+  {
+    "name": "Highsnobiety",
+    "url": "https://www.highsnobiety.com/feed/",
+    "category": "Lifestyle & Culture",
+    "description": "RSS feed from Highsnobiety"
+  },
+  {
+    "name": "Hypebeast",
+    "url": "https://hypebeast.com/feed",
+    "category": "Lifestyle & Culture",
+    "description": "RSS feed from Hypebeast"
+  },
+  {
+    "name": "Complex",
+    "url": "https://www.complex.com/rss",
+    "category": "Lifestyle & Culture",
+    "description": "RSS feed from Complex"
+  },
+  {
+    "name": "The Outline",
+    "url": "https://theoutline.com/feed",
+    "category": "Lifestyle & Culture",
+    "description": "RSS feed from The Outline"
+  },
+  {
+    "name": "Longreads",
+    "url": "https://longreads.com/feed/",
+    "category": "Lifestyle & Culture",
+    "description": "RSS feed from Longreads"
+  },
+  {
+    "name": "Pocket",
+    "url": "https://getpocket.com/explore/feed",
+    "category": "Lifestyle & Culture",
+    "description": "RSS feed from Pocket"
+  },
+  {
+    "name": "Boing Boing",
+    "url": "https://boingboing.net/feed",
+    "category": "Lifestyle & Culture",
+    "description": "RSS feed from Boing Boing"
+  },
+  {
+    "name": "Kottke",
+    "url": "https://kottke.org/index.xml",
+    "category": "Lifestyle & Culture",
+    "description": "RSS feed from Kottke"
+  },
+  {
+    "name": "Arts & Letters Daily",
+    "url": "https://www.aldaily.com/feed/",
+    "category": "Lifestyle & Culture",
+    "description": "RSS feed from Arts & Letters Daily"
+  },
+  {
+    "name": "The Guardian - Books",
+    "url": "https://www.theguardian.com/books/rss",
+    "category": "Books & Literature",
+    "description": "RSS feed from The Guardian - Books"
+  },
+  {
+    "name": "Literary Hub",
+    "url": "https://lithub.com/feed/",
+    "category": "Books & Literature",
+    "description": "RSS feed from Literary Hub"
+  },
+  {
+    "name": "The Paris Review",
+    "url": "https://www.theparisreview.org/feed",
+    "category": "Books & Literature",
+    "description": "RSS feed from The Paris Review"
+  },
+  {
+    "name": "Electric Literature",
+    "url": "https://electricliterature.com/feed/",
+    "category": "Books & Literature",
+    "description": "RSS feed from Electric Literature"
+  },
+  {
+    "name": "The Millions",
+    "url": "https://themillions.com/feed",
+    "category": "Books & Literature",
+    "description": "RSS feed from The Millions"
+  },
+  {
+    "name": "Book Riot",
+    "url": "https://bookriot.com/feed/",
+    "category": "Books & Literature",
+    "description": "RSS feed from Book Riot"
+  },
+  {
+    "name": "Tor.com",
+    "url": "https://www.tor.com/feed/",
+    "category": "Books & Literature",
+    "description": "RSS feed from Tor.com"
+  },
+  {
+    "name": "io9 - Books",
+    "url": "https://gizmodo.com/io9/tag/books/rss",
+    "category": "Books & Literature",
+    "description": "RSS feed from io9 - Books"
+  },
+  {
+    "name": "The Fantasy Hive",
+    "url": "https://fantasy-hive.co.uk/feed/",
+    "category": "Books & Literature",
+    "description": "RSS feed from The Fantasy Hive"
+  },
+  {
+    "name": "Crime Reads",
+    "url": "https://crimereads.com/feed/",
+    "category": "Books & Literature",
+    "description": "RSS feed from Crime Reads"
+  },
+  {
+    "name": "LitReactor",
+    "url": "https://litreactor.com/feed",
+    "category": "Books & Literature",
+    "description": "RSS feed from LitReactor"
+  },
+  {
+    "name": "Publishers Weekly",
+    "url": "https://www.publishersweekly.com/pw/feeds/all.xml",
+    "category": "Books & Literature",
+    "description": "RSS feed from Publishers Weekly"
+  },
+  {
+    "name": "Kirkus Reviews",
+    "url": "https://www.kirkusreviews.com/feeds/rss/",
+    "category": "Books & Literature",
+    "description": "RSS feed from Kirkus Reviews"
+  },
+  {
+    "name": "Library Journal",
+    "url": "https://www.libraryjournal.com/feed",
+    "category": "Books & Literature",
+    "description": "RSS feed from Library Journal"
+  },
+  {
+    "name": "Goodreads Blog",
+    "url": "https://www.goodreads.com/blog/rss",
+    "category": "Books & Literature",
+    "description": "RSS feed from Goodreads Blog"
+  },
+  {
+    "name": "Austin Kleon",
+    "url": "https://austinkleon.com/feed/",
+    "category": "Books & Literature",
+    "description": "RSS feed from Austin Kleon"
+  },
+  {
+    "name": "Ryan Holiday",
+    "url": "https://ryanholiday.net/feed/",
+    "category": "Books & Literature",
+    "description": "RSS feed from Ryan Holiday"
+  },
+  {
+    "name": "PetaPixel",
+    "url": "https://petapixel.com/feed/",
+    "category": "Photography",
+    "description": "RSS feed from PetaPixel"
+  },
+  {
+    "name": "DPReview",
+    "url": "https://www.dpreview.com/feeds/news.xml",
+    "category": "Photography",
+    "description": "RSS feed from DPReview"
+  },
+  {
+    "name": "Fstoppers",
+    "url": "https://fstoppers.com/rss.xml",
+    "category": "Photography",
+    "description": "RSS feed from Fstoppers"
+  },
+  {
+    "name": "DIY Photography",
+    "url": "https://www.diyphotography.net/feed/",
+    "category": "Photography",
+    "description": "RSS feed from DIY Photography"
+  },
+  {
+    "name": "Photography Life",
+    "url": "https://photographylife.com/feed",
+    "category": "Photography",
+    "description": "RSS feed from Photography Life"
+  },
+  {
+    "name": "Digital Photography School",
+    "url": "https://digital-photography-school.com/feed/",
+    "category": "Photography",
+    "description": "RSS feed from Digital Photography School"
+  },
+  {
+    "name": "Shotkit",
+    "url": "https://shotkit.com/feed/",
+    "category": "Photography",
+    "description": "RSS feed from Shotkit"
+  },
+  {
+    "name": "The Phoblographer",
+    "url": "https://www.thephoblographer.com/feed/",
+    "category": "Photography",
+    "description": "RSS feed from The Phoblographer"
+  },
+  {
+    "name": "Photofocus",
+    "url": "https://photofocus.com/feed/",
+    "category": "Photography",
+    "description": "RSS feed from Photofocus"
+  },
+  {
+    "name": "SLR Lounge",
+    "url": "https://www.slrlounge.com/feed/",
+    "category": "Photography",
+    "description": "RSS feed from SLR Lounge"
+  },
+  {
+    "name": "Shutterbug",
+    "url": "https://www.shutterbug.com/rss.xml",
+    "category": "Photography",
+    "description": "RSS feed from Shutterbug"
+  },
+  {
+    "name": "Popular Photography",
+    "url": "https://www.popphoto.com/feed/",
+    "category": "Photography",
+    "description": "RSS feed from Popular Photography"
+  },
+  {
+    "name": "Photo District News",
+    "url": "https://pdnonline.com/feed/",
+    "category": "Photography",
+    "description": "RSS feed from Photo District News"
+  },
+  {
+    "name": "British Journal of Photography",
+    "url": "https://www.bjp-online.com/feed/",
+    "category": "Photography",
+    "description": "RSS feed from British Journal of Photography"
+  },
+  {
+    "name": "LensCulture",
+    "url": "https://www.lensculture.com/rss",
+    "category": "Photography",
+    "description": "RSS feed from LensCulture"
+  },
+  {
+    "name": "Feature Shoot",
+    "url": "https://www.featureshoot.com/feed/",
+    "category": "Photography",
+    "description": "RSS feed from Feature Shoot"
+  },
+  {
+    "name": "500px Blog",
+    "url": "https://iso.500px.com/feed/",
+    "category": "Photography",
+    "description": "RSS feed from 500px Blog"
+  },
+  {
+    "name": "Colossal - Photography",
+    "url": "https://www.thisiscolossal.com/category/photography/feed/",
+    "category": "Photography",
+    "description": "RSS feed from Colossal - Photography"
+  },
+  {
+    "name": "Climate Home News",
+    "url": "https://www.climatechangenews.com/feed/",
+    "category": "Environment & Climate",
+    "description": "RSS feed from Climate Home News"
+  },
+  {
+    "name": "Carbon Brief",
+    "url": "https://www.carbonbrief.org/feed",
+    "category": "Environment & Climate",
+    "description": "RSS feed from Carbon Brief"
+  },
+  {
+    "name": "Grist",
+    "url": "https://grist.org/feed/",
+    "category": "Environment & Climate",
+    "description": "RSS feed from Grist"
+  },
+  {
+    "name": "Yale Environment 360",
+    "url": "https://e360.yale.edu/feed",
+    "category": "Environment & Climate",
+    "description": "RSS feed from Yale Environment 360"
+  },
+  {
+    "name": "Inside Climate News",
+    "url": "https://insideclimatenews.org/feed/",
+    "category": "Environment & Climate",
+    "description": "RSS feed from Inside Climate News"
+  },
+  {
+    "name": "The Revelator",
+    "url": "https://therevelator.org/feed/",
+    "category": "Environment & Climate",
+    "description": "RSS feed from The Revelator"
+  },
+  {
+    "name": "Mongabay",
+    "url": "https://news.mongabay.com/feed/",
+    "category": "Environment & Climate",
+    "description": "RSS feed from Mongabay"
+  },
+  {
+    "name": "TreeHugger",
+    "url": "https://www.treehugger.com/feeds/all",
+    "category": "Environment & Climate",
+    "description": "RSS feed from TreeHugger"
+  },
+  {
+    "name": "EcoWatch",
+    "url": "https://www.ecowatch.com/rss",
+    "category": "Environment & Climate",
+    "description": "RSS feed from EcoWatch"
+  },
+  {
+    "name": "Environmental Health News",
+    "url": "https://www.ehn.org/rss.xml",
+    "category": "Environment & Climate",
+    "description": "RSS feed from Environmental Health News"
+  },
+  {
+    "name": "Earther",
+    "url": "https://gizmodo.com/earther/rss",
+    "category": "Environment & Climate",
+    "description": "RSS feed from Earther"
+  },
+  {
+    "name": "Drilled",
+    "url": "https://drilled.media/feed",
+    "category": "Environment & Climate",
+    "description": "RSS feed from Drilled"
+  },
+  {
+    "name": "Heated",
+    "url": "https://heated.world/feed",
+    "category": "Environment & Climate",
+    "description": "RSS feed from Heated"
+  },
+  {
+    "name": "The Energy Mix",
+    "url": "https://www.theenergymix.com/feed/",
+    "category": "Environment & Climate",
+    "description": "RSS feed from The Energy Mix"
+  },
+  {
+    "name": "Canary Media",
+    "url": "https://www.canarymedia.com/rss",
+    "category": "Environment & Climate",
+    "description": "RSS feed from Canary Media"
+  },
+  {
+    "name": "Electrek",
+    "url": "https://electrek.co/feed/",
+    "category": "Environment & Climate",
+    "description": "RSS feed from Electrek"
+  },
+  {
+    "name": "CleanTechnica",
+    "url": "https://cleantechnica.com/feed/",
+    "category": "Environment & Climate",
+    "description": "RSS feed from CleanTechnica"
+  },
+  {
+    "name": "Greentech Media",
+    "url": "https://www.greentechmedia.com/feed/",
+    "category": "Environment & Climate",
+    "description": "RSS feed from Greentech Media"
+  },
+  {
+    "name": "Utility Dive",
+    "url": "https://www.utilitydive.com/feeds/news/",
+    "category": "Environment & Climate",
+    "description": "RSS feed from Utility Dive"
+  },
+  {
+    "name": "NRDC",
+    "url": "https://www.nrdc.org/rss.xml",
+    "category": "Environment & Climate",
+    "description": "RSS feed from NRDC"
+  },
+  {
+    "name": "Sierra Club",
+    "url": "https://www.sierraclub.org/rss.xml",
+    "category": "Environment & Climate",
+    "description": "RSS feed from Sierra Club"
+  },
+  {
+    "name": "World Wildlife Fund",
+    "url": "https://www.worldwildlife.org/rss/news.xml",
+    "category": "Environment & Climate",
+    "description": "RSS feed from World Wildlife Fund"
+  },
+  {
+    "name": "Conservation International",
+    "url": "https://www.conservation.org/blog/rss",
+    "category": "Environment & Climate",
+    "description": "RSS feed from Conservation International"
+  },
+  {
+    "name": "History.com",
+    "url": "https://www.history.com/rss",
+    "category": "History",
+    "description": "RSS feed from History.com"
+  },
+  {
+    "name": "Smithsonian Magazine - History",
+    "url": "https://www.smithsonianmag.com/rss/history/",
+    "category": "History",
+    "description": "RSS feed from Smithsonian Magazine - History"
+  },
+  {
+    "name": "History Today",
+    "url": "https://www.historytoday.com/feed/rss.xml",
+    "category": "History",
+    "description": "RSS feed from History Today"
+  },
+  {
+    "name": "History Extra",
+    "url": "https://www.historyextra.com/feed/",
+    "category": "History",
+    "description": "RSS feed from History Extra"
+  },
+  {
+    "name": "The History Blog",
+    "url": "https://www.thehistoryblog.com/feed",
+    "category": "History",
+    "description": "RSS feed from The History Blog"
+  },
+  {
+    "name": "Medievalists.net",
+    "url": "https://www.medievalists.net/feed/",
+    "category": "History",
+    "description": "RSS feed from Medievalists.net"
+  },
+  {
+    "name": "Ancient History Encyclopedia",
+    "url": "https://www.worldhistory.org/feed/",
+    "category": "History",
+    "description": "RSS feed from Ancient History Encyclopedia"
+  },
+  {
+    "name": "Military History Now",
+    "url": "https://militaryhistorynow.com/feed/",
+    "category": "History",
+    "description": "RSS feed from Military History Now"
+  },
+  {
+    "name": "War History Online",
+    "url": "https://www.warhistoryonline.com/feed",
+    "category": "History",
+    "description": "RSS feed from War History Online"
+  },
+  {
+    "name": "Age of Revolutions",
+    "url": "https://ageofrevolutions.com/feed/",
+    "category": "History",
+    "description": "RSS feed from Age of Revolutions"
+  },
+  {
+    "name": "Not Even Past",
+    "url": "https://notevenpast.org/feed/",
+    "category": "History",
+    "description": "RSS feed from Not Even Past"
+  },
+  {
+    "name": "The Junto",
+    "url": "https://earlyamericanists.com/feed/",
+    "category": "History",
+    "description": "RSS feed from The Junto"
+  },
+  {
+    "name": "Nursing Clio",
+    "url": "https://nursingclio.org/feed/",
+    "category": "History",
+    "description": "RSS feed from Nursing Clio"
+  },
+  {
+    "name": "Black Perspectives",
+    "url": "https://www.aaihs.org/feed/",
+    "category": "History",
+    "description": "RSS feed from Black Perspectives"
+  },
+  {
+    "name": "Hyperallergic - Art History",
+    "url": "https://hyperallergic.com/feed/",
+    "category": "History",
+    "description": "RSS feed from Hyperallergic - Art History"
+  },
+  {
+    "name": "Art History News",
+    "url": "https://arthistorynews.com/feed/",
+    "category": "History",
+    "description": "RSS feed from Art History News"
+  },
+  {
+    "name": "Aeon - Philosophy",
+    "url": "https://aeon.co/philosophy/feed.rss",
+    "category": "Philosophy & Psychology",
+    "description": "RSS feed from Aeon - Philosophy"
+  },
+  {
+    "name": "Philosophy Now",
+    "url": "https://philosophynow.org/rss",
+    "category": "Philosophy & Psychology",
+    "description": "RSS feed from Philosophy Now"
+  },
+  {
+    "name": "The Stone (NYT)",
+    "url": "https://rss.nytimes.com/services/xml/rss/nyt/philosophy.xml",
+    "category": "Philosophy & Psychology",
+    "description": "RSS feed from The Stone (NYT)"
+  },
+  {
+    "name": "Daily Nous",
+    "url": "https://dailynous.com/feed/",
+    "category": "Philosophy & Psychology",
+    "description": "RSS feed from Daily Nous"
+  },
+  {
+    "name": "Leiter Reports",
+    "url": "https://leiterreports.typepad.com/blog/atom.xml",
+    "category": "Philosophy & Psychology",
+    "description": "RSS feed from Leiter Reports"
+  },
+  {
+    "name": "The Philosophers' Magazine",
+    "url": "https://www.philosophersmag.com/feed",
+    "category": "Philosophy & Psychology",
+    "description": "RSS feed from The Philosophers' Magazine"
+  },
+  {
+    "name": "3 Quarks Daily",
+    "url": "https://3quarksdaily.com/3quarksdaily/atom.xml",
+    "category": "Philosophy & Psychology",
+    "description": "RSS feed from 3 Quarks Daily"
+  },
+  {
+    "name": "The Brains Blog",
+    "url": "https://philosophyofbrains.com/feed",
+    "category": "Philosophy & Psychology",
+    "description": "RSS feed from The Brains Blog"
+  },
+  {
+    "name": "Experimental Philosophy",
+    "url": "https://xphi.net/feed/",
+    "category": "Philosophy & Psychology",
+    "description": "RSS feed from Experimental Philosophy"
+  },
+  {
+    "name": "Psyche",
+    "url": "https://psyche.co/feed",
+    "category": "Philosophy & Psychology",
+    "description": "RSS feed from Psyche"
+  },
+  {
+    "name": "BPS Research Digest",
+    "url": "https://www.bps.org.uk/research-digest/rss",
+    "category": "Philosophy & Psychology",
+    "description": "RSS feed from BPS Research Digest"
+  },
+  {
+    "name": "The Psych Report",
+    "url": "https://thepsychreport.com/feed/",
+    "category": "Philosophy & Psychology",
+    "description": "RSS feed from The Psych Report"
+  },
+  {
+    "name": "Mind Hacks",
+    "url": "https://mindhacks.com/feed/",
+    "category": "Philosophy & Psychology",
+    "description": "RSS feed from Mind Hacks"
+  },
+  {
+    "name": "Neuroskeptic",
+    "url": "https://www.discovermagazine.com/author/neuroskeptic/feed",
+    "category": "Philosophy & Psychology",
+    "description": "RSS feed from Neuroskeptic"
+  },
+  {
+    "name": "The Neurocritic",
+    "url": "https://neurocritic.blogspot.com/feeds/posts/default",
+    "category": "Philosophy & Psychology",
+    "description": "RSS feed from The Neurocritic"
+  },
+  {
+    "name": "Cognitive Daily",
+    "url": "https://scienceblogs.com/cognitivedaily/feed",
+    "category": "Philosophy & Psychology",
+    "description": "RSS feed from Cognitive Daily"
+  },
+  {
+    "name": "The Tim Ferriss Show",
+    "url": "https://tim.blog/feed/",
+    "category": "Podcasts",
+    "description": "RSS feed from The Tim Ferriss Show"
+  },
+  {
+    "name": "Lex Fridman Podcast",
+    "url": "https://lexfridman.com/feed/podcast/",
+    "category": "Podcasts",
+    "description": "RSS feed from Lex Fridman Podcast"
+  },
+  {
+    "name": "Joe Rogan Experience",
+    "url": "https://feeds.megaphone.fm/GLT1412515089",
+    "category": "Podcasts",
+    "description": "RSS feed from Joe Rogan Experience"
+  },
+  {
+    "name": "Hardcore History",
+    "url": "https://feeds.feedburner.com/dancarlin/history",
+    "category": "Podcasts",
+    "description": "RSS feed from Hardcore History"
+  },
+  {
+    "name": "Freakonomics",
+    "url": "https://freakonomics.com/feed/",
+    "category": "Podcasts",
+    "description": "RSS feed from Freakonomics"
+  },
+  {
+    "name": "This American Life",
+    "url": "https://www.thisamericanlife.org/podcast/rss.xml",
+    "category": "Podcasts",
+    "description": "RSS feed from This American Life"
+  },
+  {
+    "name": "Radiolab",
+    "url": "https://feeds.feedburner.com/radiolab",
+    "category": "Podcasts",
+    "description": "RSS feed from Radiolab"
+  },
+  {
+    "name": "99% Invisible",
+    "url": "https://feeds.99percentinvisible.org/99percentinvisible",
+    "category": "Podcasts",
+    "description": "RSS feed from 99% Invisible"
+  },
+  {
+    "name": "The Daily",
+    "url": "https://feeds.simplecast.com/54nAGcIl",
+    "category": "Podcasts",
+    "description": "RSS feed from The Daily"
+  },
+  {
+    "name": "How I Built This",
+    "url": "https://feeds.npr.org/510313/podcast.xml",
+    "category": "Podcasts",
+    "description": "RSS feed from How I Built This"
+  },
+  {
+    "name": "Masters of Scale",
+    "url": "https://feeds.megaphone.fm/masters-of-scale",
+    "category": "Podcasts",
+    "description": "RSS feed from Masters of Scale"
+  },
+  {
+    "name": "a16z Podcast",
+    "url": "https://a16z.com/a16z-podcast/feed/",
+    "category": "Podcasts",
+    "description": "RSS feed from a16z Podcast"
+  },
+  {
+    "name": "Acquired",
+    "url": "https://feeds.megaphone.fm/acquired",
+    "category": "Podcasts",
+    "description": "RSS feed from Acquired"
+  },
+  {
+    "name": "Invest Like the Best",
+    "url": "https://feeds.megaphone.fm/investlikethebest",
+    "category": "Podcasts",
+    "description": "RSS feed from Invest Like the Best"
+  },
+  {
+    "name": "The Knowledge Project",
+    "url": "https://fs.blog/the-knowledge-project/feed/",
+    "category": "Podcasts",
+    "description": "RSS feed from The Knowledge Project"
+  },
+  {
+    "name": "Naval Podcast",
+    "url": "https://nav.al/feed",
+    "category": "Podcasts",
+    "description": "RSS feed from Naval Podcast"
+  },
+  {
+    "name": "The Ezra Klein Show",
+    "url": "https://feeds.simplecast.com/82FI35Px",
+    "category": "Podcasts",
+    "description": "RSS feed from The Ezra Klein Show"
+  },
+  {
+    "name": "Conversations with Tyler",
+    "url": "https://conversationswithtyler.com/feed/",
+    "category": "Podcasts",
+    "description": "RSS feed from Conversations with Tyler"
+  },
+  {
+    "name": "EconTalk",
+    "url": "https://feeds.simplecast.com/wgl4xEgL",
+    "category": "Podcasts",
+    "description": "RSS feed from EconTalk"
+  },
+  {
+    "name": "Revolutions",
+    "url": "https://revolutionspodcast.libsyn.com/rss",
+    "category": "Podcasts",
+    "description": "RSS feed from Revolutions"
+  },
+  {
+    "name": "The History of Rome",
+    "url": "https://thehistoryofrome.typepad.com/the_history_of_rome/atom.xml",
+    "category": "Podcasts",
+    "description": "RSS feed from The History of Rome"
+  },
+  {
+    "name": "Dan Carlin's Common Sense",
+    "url": "https://feeds.feedburner.com/dancarlin/commonsense",
+    "category": "Podcasts",
+    "description": "RSS feed from Dan Carlin's Common Sense"
+  },
+  {
+    "name": "Making Sense",
+    "url": "https://wakingup.libsyn.com/rss",
+    "category": "Podcasts",
+    "description": "RSS feed from Making Sense"
+  },
+  {
+    "name": "Very Bad Wizards",
+    "url": "https://verybadwizards.fireside.fm/rss",
+    "category": "Podcasts",
+    "description": "RSS feed from Very Bad Wizards"
+  },
+  {
+    "name": "Philosophize This!",
+    "url": "https://feeds.soundcloud.com/users/soundcloud:users:96aborsch/sounds.rss",
+    "category": "Podcasts",
+    "description": "RSS feed from Philosophize This!"
+  },
+  {
+    "name": "The Skeptics' Guide",
+    "url": "https://feed.theskepticsguide.org/feed/rss.aspx",
+    "category": "Podcasts",
+    "description": "RSS feed from The Skeptics' Guide"
+  },
+  {
+    "name": "Science Vs",
+    "url": "https://feeds.megaphone.fm/sciencevs",
+    "category": "Podcasts",
+    "description": "RSS feed from Science Vs"
+  },
+  {
+    "name": "StarTalk Radio",
+    "url": "https://feeds.simplecast.com/dHoohVNH",
+    "category": "Podcasts",
+    "description": "RSS feed from StarTalk Radio"
+  },
+  {
+    "name": "Darknet Diaries",
+    "url": "https://feeds.megaphone.fm/darknetdiaries",
+    "category": "Podcasts",
+    "description": "RSS feed from Darknet Diaries"
+  },
+  {
+    "name": "Reply All",
+    "url": "https://feeds.megaphone.fm/replyall",
+    "category": "Podcasts",
+    "description": "RSS feed from Reply All"
+  },
+  {
+    "name": "Syntax",
+    "url": "https://feed.syntax.fm/rss",
+    "category": "Podcasts",
+    "description": "RSS feed from Syntax"
+  },
+  {
+    "name": "ShopTalk",
+    "url": "https://shoptalkshow.com/feed/podcast/",
+    "category": "Podcasts",
+    "description": "RSS feed from ShopTalk"
+  },
+  {
+    "name": "Changelog",
+    "url": "https://changelog.com/podcast/feed",
+    "category": "Podcasts",
+    "description": "RSS feed from Changelog"
+  },
+  {
+    "name": "Software Engineering Daily",
+    "url": "https://softwareengineeringdaily.com/feed/podcast/",
+    "category": "Podcasts",
+    "description": "RSS feed from Software Engineering Daily"
+  },
+  {
+    "name": "CoRecursive",
+    "url": "https://corecursive.com/feed.xml",
+    "category": "Podcasts",
+    "description": "RSS feed from CoRecursive"
+  },
+  {
+    "name": "Developer Tea",
+    "url": "https://feeds.simplecast.com/dLRotFGk",
+    "category": "Podcasts",
+    "description": "RSS feed from Developer Tea"
+  },
+  {
+    "name": "The Bike Shed",
+    "url": "https://feeds.fireside.fm/bikeshed/rss",
+    "category": "Podcasts",
+    "description": "RSS feed from The Bike Shed"
+  },
+  {
+    "name": "Giant Robots Smashing",
+    "url": "https://feeds.fireside.fm/giantrobots/rss",
+    "category": "Podcasts",
+    "description": "RSS feed from Giant Robots Smashing"
+  },
+  {
+    "name": "Full Stack Radio",
+    "url": "https://feeds.transistor.fm/full-stack-radio",
+    "category": "Podcasts",
+    "description": "RSS feed from Full Stack Radio"
+  },
+  {
+    "name": "Morning Brew",
+    "url": "https://www.morningbrew.com/daily/feed",
+    "category": "Newsletters",
+    "description": "RSS feed from Morning Brew"
+  },
+  {
+    "name": "The Hustle",
+    "url": "https://thehustle.co/feed/",
+    "category": "Newsletters",
+    "description": "RSS feed from The Hustle"
+  },
+  {
+    "name": "Dense Discovery",
+    "url": "https://www.densediscovery.com/feed",
+    "category": "Newsletters",
+    "description": "RSS feed from Dense Discovery"
+  },
+  {
+    "name": "Hacker Newsletter",
+    "url": "https://hackernewsletter.com/rss.xml",
+    "category": "Newsletters",
+    "description": "RSS feed from Hacker Newsletter"
+  },
+  {
+    "name": "TLDR",
+    "url": "https://tldr.tech/rss",
+    "category": "Newsletters",
+    "description": "RSS feed from TLDR"
+  },
+  {
+    "name": "Changelog Weekly",
+    "url": "https://changelog.com/weekly/feed",
+    "category": "Newsletters",
+    "description": "RSS feed from Changelog Weekly"
+  },
+  {
+    "name": "Bytes",
+    "url": "https://bytes.dev/rss",
+    "category": "Newsletters",
+    "description": "RSS feed from Bytes"
+  },
+  {
+    "name": "Pointer",
+    "url": "https://www.pointer.io/feed.xml",
+    "category": "Newsletters",
+    "description": "RSS feed from Pointer"
+  },
+  {
+    "name": "Software Lead Weekly",
+    "url": "https://softwareleadweekly.com/feed",
+    "category": "Newsletters",
+    "description": "RSS feed from Software Lead Weekly"
+  },
+  {
+    "name": "StatusCode Weekly",
+    "url": "https://weekly.statuscode.com/rss/",
+    "category": "Newsletters",
+    "description": "RSS feed from StatusCode Weekly"
+  },
+  {
+    "name": "Frontend Focus",
+    "url": "https://frontendfoc.us/rss/",
+    "category": "Newsletters",
+    "description": "RSS feed from Frontend Focus"
+  },
+  {
+    "name": "CSS Weekly",
+    "url": "https://css-weekly.com/feed/",
+    "category": "Newsletters",
+    "description": "RSS feed from CSS Weekly"
+  },
+  {
+    "name": "Web Tools Weekly",
+    "url": "https://webtoolsweekly.com/feed",
+    "category": "Newsletters",
+    "description": "RSS feed from Web Tools Weekly"
+  },
+  {
+    "name": "Accessibility Weekly",
+    "url": "https://a11yweekly.com/feed/feed.xml",
+    "category": "Newsletters",
+    "description": "RSS feed from Accessibility Weekly"
+  },
+  {
+    "name": "Mobile Dev Weekly",
+    "url": "https://mobiledevweekly.com/rss/",
+    "category": "Newsletters",
+    "description": "RSS feed from Mobile Dev Weekly"
+  },
+  {
+    "name": "Serverless Status",
+    "url": "https://serverless.email/rss/",
+    "category": "Newsletters",
+    "description": "RSS feed from Serverless Status"
+  },
+  {
+    "name": "DB Weekly",
+    "url": "https://dbweekly.com/rss/",
+    "category": "Newsletters",
+    "description": "RSS feed from DB Weekly"
+  },
+  {
+    "name": "Postgres Weekly",
+    "url": "https://postgresweekly.com/rss/",
+    "category": "Newsletters",
+    "description": "RSS feed from Postgres Weekly"
+  },
+  {
+    "name": "NoSQL Weekly",
+    "url": "https://www.nosqlweekly.com/rss",
+    "category": "Newsletters",
+    "description": "RSS feed from NoSQL Weekly"
+  },
+  {
+    "name": "Data Elixir",
+    "url": "https://dataelixir.com/feed",
+    "category": "Newsletters",
+    "description": "RSS feed from Data Elixir"
+  },
+  {
+    "name": "Data Science Weekly",
+    "url": "https://www.datascienceweekly.org/rss",
+    "category": "Newsletters",
+    "description": "RSS feed from Data Science Weekly"
+  },
+  {
+    "name": "O'Reilly Data",
+    "url": "https://www.oreilly.com/radar/topics/data/feed/index.xml",
+    "category": "Newsletters",
+    "description": "RSS feed from O'Reilly Data"
+  },
+  {
+    "name": "O'Reilly AI",
+    "url": "https://www.oreilly.com/radar/topics/ai-ml/feed/index.xml",
+    "category": "Newsletters",
+    "description": "RSS feed from O'Reilly AI"
+  },
+  {
+    "name": "The Diff",
+    "url": "https://www.thediff.co/feed",
+    "category": "Newsletters",
+    "description": "RSS feed from The Diff"
+  },
+  {
+    "name": "Money Stuff",
+    "url": "https://www.bloomberg.com/opinion/authors/ARbTQlRLRjE/matthew-s-levine.rss",
+    "category": "Newsletters",
+    "description": "RSS feed from Money Stuff"
+  },
+  {
+    "name": "The Oatmeal",
+    "url": "https://theoatmeal.com/feed/rss",
+    "category": "Miscellaneous & Interesting",
+    "description": "RSS feed from The Oatmeal"
+  },
+  {
+    "name": "XKCD",
+    "url": "https://xkcd.com/rss.xml",
+    "category": "Miscellaneous & Interesting",
+    "description": "RSS feed from XKCD"
+  },
+  {
+    "name": "Dinosaur Comics",
+    "url": "https://www.qwantz.com/rssfeed.php",
+    "category": "Miscellaneous & Interesting",
+    "description": "RSS feed from Dinosaur Comics"
+  },
+  {
+    "name": "Saturday Morning Breakfast Cereal",
+    "url": "https://www.smbc-comics.com/comic/rss",
+    "category": "Miscellaneous & Interesting",
+    "description": "RSS feed from Saturday Morning Breakfast Cereal"
+  },
+  {
+    "name": "The Far Side",
+    "url": "https://www.thefarside.com/rss",
+    "category": "Miscellaneous & Interesting",
+    "description": "RSS feed from The Far Side"
+  },
+  {
+    "name": "Existential Comics",
+    "url": "https://existentialcomics.com/rss.xml",
+    "category": "Miscellaneous & Interesting",
+    "description": "RSS feed from Existential Comics"
+  },
+  {
+    "name": "Questionable Content",
+    "url": "https://www.questionablecontent.net/QCRSS.xml",
+    "category": "Miscellaneous & Interesting",
+    "description": "RSS feed from Questionable Content"
+  },
+  {
+    "name": "Penny Arcade",
+    "url": "https://www.penny-arcade.com/feed",
+    "category": "Miscellaneous & Interesting",
+    "description": "RSS feed from Penny Arcade"
+  },
+  {
+    "name": "The Verge - Longform",
+    "url": "https://www.theverge.com/longform/rss/index.xml",
+    "category": "Miscellaneous & Interesting",
+    "description": "RSS feed from The Verge - Longform"
+  },
+  {
+    "name": "Narratively",
+    "url": "https://narratively.com/feed/",
+    "category": "Miscellaneous & Interesting",
+    "description": "RSS feed from Narratively"
+  },
+  {
+    "name": "The Atavist",
+    "url": "https://magazine.atavist.com/feed/",
+    "category": "Miscellaneous & Interesting",
+    "description": "RSS feed from The Atavist"
+  },
+  {
+    "name": "Epic Magazine",
+    "url": "https://www.epicmagazine.com/feed/",
+    "category": "Miscellaneous & Interesting",
+    "description": "RSS feed from Epic Magazine"
+  },
+  {
+    "name": "Curbed",
+    "url": "https://www.curbed.com/rss/index.xml",
+    "category": "Miscellaneous & Interesting",
+    "description": "RSS feed from Curbed"
+  },
+  {
+    "name": "CityLab",
+    "url": "https://www.bloomberg.com/citylab/feed/rss",
+    "category": "Miscellaneous & Interesting",
+    "description": "RSS feed from CityLab"
+  },
+  {
+    "name": "Strong Towns",
+    "url": "https://www.strongtowns.org/journal?format=rss",
+    "category": "Miscellaneous & Interesting",
+    "description": "RSS feed from Strong Towns"
+  },
+  {
+    "name": "Streetsblog",
+    "url": "https://usa.streetsblog.org/feed/",
+    "category": "Miscellaneous & Interesting",
+    "description": "RSS feed from Streetsblog"
+  },
+  {
+    "name": "This Old House",
+    "url": "https://www.thisoldhouse.com/rss",
+    "category": "Miscellaneous & Interesting",
+    "description": "RSS feed from This Old House"
+  },
+  {
+    "name": "Family Handyman",
+    "url": "https://www.familyhandyman.com/feed/",
+    "category": "Miscellaneous & Interesting",
+    "description": "RSS feed from Family Handyman"
+  },
+  {
+    "name": "Instructables",
+    "url": "https://www.instructables.com/feed",
+    "category": "Miscellaneous & Interesting",
+    "description": "RSS feed from Instructables"
+  },
+  {
+    "name": "Make:",
+    "url": "https://makezine.com/feed/",
+    "category": "Miscellaneous & Interesting",
+    "description": "RSS feed from Make:"
+  },
+  {
+    "name": "Hackaday",
+    "url": "https://hackaday.com/feed/",
+    "category": "Miscellaneous & Interesting",
+    "description": "RSS feed from Hackaday"
+  },
+  {
+    "name": "Adafruit",
+    "url": "https://blog.adafruit.com/feed/",
+    "category": "Miscellaneous & Interesting",
+    "description": "RSS feed from Adafruit"
+  },
+  {
+    "name": "SparkFun",
+    "url": "https://www.sparkfun.com/feeds/news",
+    "category": "Miscellaneous & Interesting",
+    "description": "RSS feed from SparkFun"
+  },
+  {
+    "name": "Evil Mad Scientist",
+    "url": "https://www.evilmadscientist.com/feed/",
+    "category": "Miscellaneous & Interesting",
+    "description": "RSS feed from Evil Mad Scientist"
+  },
+  {
+    "name": "Arduino Blog",
+    "url": "https://blog.arduino.cc/feed/",
+    "category": "Miscellaneous & Interesting",
+    "description": "RSS feed from Arduino Blog"
+  },
+  {
+    "name": "Raspberry Pi",
+    "url": "https://www.raspberrypi.org/blog/feed/",
+    "category": "Miscellaneous & Interesting",
+    "description": "RSS feed from Raspberry Pi"
+  },
+  {
+    "name": "Hackster.io",
+    "url": "https://www.hackster.io/feed",
+    "category": "Miscellaneous & Interesting",
+    "description": "RSS feed from Hackster.io"
+  },
+  {
+    "name": "Elektor",
+    "url": "https://www.elektormagazine.com/rss",
+    "category": "Miscellaneous & Interesting",
+    "description": "RSS feed from Elektor"
+  },
+  {
+    "name": "All About Circuits",
+    "url": "https://www.allaboutcircuits.com/rss",
+    "category": "Miscellaneous & Interesting",
+    "description": "RSS feed from All About Circuits"
+  },
+  {
+    "name": "EDN",
+    "url": "https://www.edn.com/feed/",
+    "category": "Miscellaneous & Interesting",
+    "description": "RSS feed from EDN"
+  },
+  {
+    "name": "EE Times",
+    "url": "https://www.eetimes.com/feed/",
+    "category": "Miscellaneous & Interesting",
+    "description": "RSS feed from EE Times"
+  },
+  {
+    "name": "Embedded.com",
+    "url": "https://www.embedded.com/feed/",
+    "category": "Miscellaneous & Interesting",
+    "description": "RSS feed from Embedded.com"
+  },
+  {
+    "name": "The White House",
+    "url": "https://www.whitehouse.gov/feed/",
+    "category": "Government & Policy",
+    "description": "RSS feed from The White House"
+  },
+  {
+    "name": "Congress.gov",
+    "url": "https://www.congress.gov/rss/most-viewed-bills.xml",
+    "category": "Government & Policy",
+    "description": "RSS feed from Congress.gov"
+  },
+  {
+    "name": "Federal Register",
+    "url": "https://www.federalregister.gov/documents/search.atom",
+    "category": "Government & Policy",
+    "description": "RSS feed from Federal Register"
+  },
+  {
+    "name": "GAO Reports",
+    "url": "https://www.gao.gov/rss/reports.xml",
+    "category": "Government & Policy",
+    "description": "RSS feed from GAO Reports"
+  },
+  {
+    "name": "CBO",
+    "url": "https://www.cbo.gov/taxonomy/term/3/feed",
+    "category": "Government & Policy",
+    "description": "RSS feed from CBO"
+  },
+  {
+    "name": "Brookings",
+    "url": "https://www.brookings.edu/feed/",
+    "category": "Government & Policy",
+    "description": "RSS feed from Brookings"
+  },
+  {
+    "name": "RAND",
+    "url": "https://www.rand.org/content/rand/blog.rss.xml",
+    "category": "Government & Policy",
+    "description": "RSS feed from RAND"
+  },
+  {
+    "name": "Council on Foreign Relations",
+    "url": "https://www.cfr.org/rss.xml",
+    "category": "Government & Policy",
+    "description": "RSS feed from Council on Foreign Relations"
+  },
+  {
+    "name": "Foreign Affairs",
+    "url": "https://www.foreignaffairs.com/rss.xml",
+    "category": "Government & Policy",
+    "description": "RSS feed from Foreign Affairs"
+  },
+  {
+    "name": "Foreign Policy",
+    "url": "https://foreignpolicy.com/feed/",
+    "category": "Government & Policy",
+    "description": "RSS feed from Foreign Policy"
+  },
+  {
+    "name": "War on the Rocks",
+    "url": "https://warontherocks.com/feed/",
+    "category": "Government & Policy",
+    "description": "RSS feed from War on the Rocks"
+  },
+  {
+    "name": "Lawfare",
+    "url": "https://www.lawfaremedia.org/rss",
+    "category": "Government & Policy",
+    "description": "RSS feed from Lawfare"
+  },
+  {
+    "name": "Just Security",
+    "url": "https://www.justsecurity.org/feed/",
+    "category": "Government & Policy",
+    "description": "RSS feed from Just Security"
+  },
+  {
+    "name": "SCOTUSblog",
+    "url": "https://www.scotusblog.com/feed/",
+    "category": "Government & Policy",
+    "description": "RSS feed from SCOTUSblog"
+  },
+  {
+    "name": "Volokh Conspiracy",
+    "url": "https://reason.com/volokh/feed/",
+    "category": "Government & Policy",
+    "description": "RSS feed from Volokh Conspiracy"
+  },
+  {
+    "name": "Balkinization",
+    "url": "https://balkin.blogspot.com/feeds/posts/default",
+    "category": "Government & Policy",
+    "description": "RSS feed from Balkinization"
+  },
+  {
+    "name": "Above the Law",
+    "url": "https://abovethelaw.com/feed/",
+    "category": "Government & Policy",
+    "description": "RSS feed from Above the Law"
+  },
+  {
+    "name": "Tax Foundation",
+    "url": "https://taxfoundation.org/feed/",
+    "category": "Government & Policy",
+    "description": "RSS feed from Tax Foundation"
+  },
+  {
+    "name": "Urban Institute",
+    "url": "https://www.urban.org/rss.xml",
+    "category": "Government & Policy",
+    "description": "RSS feed from Urban Institute"
+  },
+  {
+    "name": "Center for American Progress",
+    "url": "https://www.americanprogress.org/feed/",
+    "category": "Government & Policy",
+    "description": "RSS feed from Center for American Progress"
+  },
+  {
+    "name": "Heritage Foundation",
+    "url": "https://www.heritage.org/rss",
+    "category": "Government & Policy",
+    "description": "RSS feed from Heritage Foundation"
+  },
+  {
+    "name": "Cato Institute",
+    "url": "https://www.cato.org/rss/recent-opeds",
+    "category": "Government & Policy",
+    "description": "RSS feed from Cato Institute"
+  },
+  {
+    "name": "American Enterprise Institute",
+    "url": "https://www.aei.org/feed/",
+    "category": "Government & Policy",
+    "description": "RSS feed from American Enterprise Institute"
+  },
+  {
+    "name": "Hoover Institution",
+    "url": "https://www.hoover.org/rss",
+    "category": "Government & Policy",
+    "description": "RSS feed from Hoover Institution"
+  },
+  {
+    "name": "Center for a New American Security",
+    "url": "https://www.cnas.org/rss",
+    "category": "Government & Policy",
+    "description": "RSS feed from Center for a New American Security"
+  },
+  {
+    "name": "The New Yorker",
+    "url": "https://www.newyorker.com/feed/everything",
+    "category": "Regional News",
+    "description": "RSS feed from The New Yorker"
+  },
+  {
+    "name": "Gothamist",
+    "url": "https://gothamist.com/feed",
+    "category": "Regional News",
+    "description": "RSS feed from Gothamist"
+  },
+  {
+    "name": "Curbed NY",
+    "url": "https://ny.curbed.com/rss/index.xml",
+    "category": "Regional News",
+    "description": "RSS feed from Curbed NY"
+  },
+  {
+    "name": "DNAinfo (archived)",
+    "url": "https://www.dnainfo.com/new-york/feed",
+    "category": "Regional News",
+    "description": "RSS feed from DNAinfo (archived)"
+  },
+  {
+    "name": "LAist",
+    "url": "https://laist.com/feed",
+    "category": "Regional News",
+    "description": "RSS feed from LAist"
+  },
+  {
+    "name": "SF Gate",
+    "url": "https://www.sfgate.com/bayarea/feed/Bay-Area-News-702.php",
+    "category": "Regional News",
+    "description": "RSS feed from SF Gate"
+  },
+  {
+    "name": "Mission Local",
+    "url": "https://missionlocal.org/feed/",
+    "category": "Regional News",
+    "description": "RSS feed from Mission Local"
+  },
+  {
+    "name": "Chicago Reader",
+    "url": "https://chicagoreader.com/feed/",
+    "category": "Regional News",
+    "description": "RSS feed from Chicago Reader"
+  },
+  {
+    "name": "Block Club Chicago",
+    "url": "https://blockclubchicago.org/feed/",
+    "category": "Regional News",
+    "description": "RSS feed from Block Club Chicago"
+  },
+  {
+    "name": "Texas Tribune",
+    "url": "https://www.texastribune.org/feeds/articles/",
+    "category": "Regional News",
+    "description": "RSS feed from Texas Tribune"
+  },
+  {
+    "name": "Austin Chronicle",
+    "url": "https://www.austinchronicle.com/rss/rss_daily.xml",
+    "category": "Regional News",
+    "description": "RSS feed from Austin Chronicle"
+  },
+  {
+    "name": "Seattle Times",
+    "url": "https://www.seattletimes.com/feed/",
+    "category": "Regional News",
+    "description": "RSS feed from Seattle Times"
+  },
+  {
+    "name": "Portland Mercury",
+    "url": "https://www.portlandmercury.com/rss",
+    "category": "Regional News",
+    "description": "RSS feed from Portland Mercury"
+  },
+  {
+    "name": "Willamette Week",
+    "url": "https://www.wweek.com/feed/",
+    "category": "Regional News",
+    "description": "RSS feed from Willamette Week"
+  },
+  {
+    "name": "Denver Post",
+    "url": "https://www.denverpost.com/feed/",
+    "category": "Regional News",
+    "description": "RSS feed from Denver Post"
+  },
+  {
+    "name": "Philadelphia Inquirer",
+    "url": "https://www.inquirer.com/arcio/rss/",
+    "category": "Regional News",
+    "description": "RSS feed from Philadelphia Inquirer"
+  },
+  {
+    "name": "Baltimore Sun",
+    "url": "https://www.baltimoresun.com/arcio/rss/",
+    "category": "Regional News",
+    "description": "RSS feed from Baltimore Sun"
+  },
+  {
+    "name": "Atlanta Journal-Constitution",
+    "url": "https://www.ajc.com/arcio/rss/",
+    "category": "Regional News",
+    "description": "RSS feed from Atlanta Journal-Constitution"
+  },
+  {
+    "name": "Miami Herald",
+    "url": "https://www.miamiherald.com/latest-news/index.rss",
+    "category": "Regional News",
+    "description": "RSS feed from Miami Herald"
+  },
+  {
+    "name": "Tampa Bay Times",
+    "url": "https://www.tampabay.com/arcio/rss/",
+    "category": "Regional News",
+    "description": "RSS feed from Tampa Bay Times"
+  },
+  {
+    "name": "Minneapolis Star Tribune",
+    "url": "https://www.startribune.com/rss",
+    "category": "Regional News",
+    "description": "RSS feed from Minneapolis Star Tribune"
+  },
+  {
+    "name": "Detroit Free Press",
+    "url": "https://rssfeeds.freep.com/freep/home",
+    "category": "Regional News",
+    "description": "RSS feed from Detroit Free Press"
+  },
+  {
+    "name": "Cleveland Plain Dealer",
+    "url": "https://www.cleveland.com/arc/outboundfeeds/rss/",
+    "category": "Regional News",
+    "description": "RSS feed from Cleveland Plain Dealer"
+  },
+  {
+    "name": "Pittsburgh Post-Gazette",
+    "url": "https://www.post-gazette.com/rss/headlines.xml",
+    "category": "Regional News",
+    "description": "RSS feed from Pittsburgh Post-Gazette"
+  },
+  {
+    "name": "Toronto Star",
+    "url": "https://www.thestar.com/content/thestar/feed.RSSManagerServlet.articles.topstories.rss",
+    "category": "Regional News",
+    "description": "RSS feed from Toronto Star"
+  },
+  {
+    "name": "Globe and Mail",
+    "url": "https://www.theglobeandmail.com/arc/outboundfeeds/rss/category/canada/",
+    "category": "Regional News",
+    "description": "RSS feed from Globe and Mail"
+  },
+  {
+    "name": "Montreal Gazette",
+    "url": "https://montrealgazette.com/feed",
+    "category": "Regional News",
+    "description": "RSS feed from Montreal Gazette"
+  },
+  {
+    "name": "Vancouver Sun",
+    "url": "https://vancouversun.com/feed",
+    "category": "Regional News",
+    "description": "RSS feed from Vancouver Sun"
+  }
 ]

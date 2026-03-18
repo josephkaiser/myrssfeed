@@ -23,9 +23,13 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, HttpUrl
 from scripts.scheduler import create_scheduler, run_pipeline_async, is_pipeline_running, reconfigure_scheduler
-from scripts.newsletter_ingest import run_newsletter_ingest_async, is_newsletter_running
-from scripts.scraper import run_scraper_async, is_scraper_running
-from scripts.wordrank import run_wordrank
+from utils.helpers import (
+    DEFAULTS as CORE_DEFAULTS,
+    get_db as core_get_db,
+    get_setting as core_get_setting,
+    init_db as core_init_db,
+    set_setting as core_set_setting,
+)
 
 
 # ── Logging ───────────────────────────────────────────────────────────────────
@@ -47,140 +51,34 @@ _root.addHandler(_fh)
 logger = logging.getLogger(__name__)
 
 
-# ── Database ──────────────────────────────────────────────────────────────────
+# ── Database / settings (delegating to utils.helpers) ──────────────────────────
 
-DB_FILE = os.path.normpath(os.path.join(os.path.dirname(__file__), "feeds", "rss.db"))
-
-DEFAULTS: dict[str, str] = {
-    "retention_days": "90",
-    "theme": "system",
-    # Maximum number of articles to show on the main page.
-    # Stored in the DB but also exposed here so it can be managed via /api/settings.
-    "max_entries": "1000",
-    # Automatic refresh interval for the full pipeline, in minutes.
-    "pipeline_refresh_minutes": "15",
-    # Newsletter mailbox polling
-    "newsletter_enabled": "false",
-    "newsletter_imap_host": "",
-    "newsletter_imap_port": "993",
-    "newsletter_imap_username": "",
-    "newsletter_imap_password": "",
-    "newsletter_imap_folder": "INBOX",
-    "newsletter_poll_minutes": "30",
-    # WordRank status (for manual/scheduled recomputes)
-    "wordrank_last_status": "never",
-    # Newsletter status
-    "newsletter_last_status": "never",
-    "newsletter_last_success_ts": "",
-    "newsletter_last_error": "",
-}
+# Reuse the shared helpers module for DB access and settings so the web app and
+# pipeline scripts always agree on schema and defaults.
+DEFAULTS: dict[str, str] = CORE_DEFAULTS
 
 
 def get_db() -> sqlite3.Connection:
-    conn = sqlite3.connect(DB_FILE)
-    conn.row_factory = sqlite3.Row
-    return conn
+    """Compatibility wrapper for tests and callers that imported main.get_db."""
+    return core_get_db()
 
 
-def init_db():
-    os.makedirs(os.path.dirname(DB_FILE), exist_ok=True)
-    conn = get_db()
-    conn.executescript("""
-        CREATE TABLE IF NOT EXISTS feeds (
-            id    INTEGER PRIMARY KEY AUTOINCREMENT,
-            url   TEXT UNIQUE NOT NULL,
-            title TEXT,
-            color TEXT,
-            kind  TEXT NOT NULL DEFAULT 'rss'
-        );
-
-        CREATE TABLE IF NOT EXISTS entries (
-            id            INTEGER PRIMARY KEY AUTOINCREMENT,
-            feed_id       INTEGER NOT NULL,
-            source_uid    TEXT,
-            title         TEXT,
-            link          TEXT,
-            published     TEXT,
-            summary       TEXT,
-            thumbnail_url TEXT,
-            read          INTEGER DEFAULT 0,
-            liked         INTEGER DEFAULT 0,
-            UNIQUE(feed_id, link),
-            FOREIGN KEY(feed_id) REFERENCES feeds(id) ON DELETE CASCADE
-        );
-
-        CREATE TABLE IF NOT EXISTS settings (
-            key   TEXT PRIMARY KEY,
-            value TEXT NOT NULL
-        );
-
-        CREATE TABLE IF NOT EXISTS user_catalog (
-            url         TEXT PRIMARY KEY,
-            name        TEXT NOT NULL,
-            category    TEXT NOT NULL DEFAULT 'User Added',
-            description TEXT NOT NULL DEFAULT ''
-        );
-    """)
-    conn.commit()
-    # Migrate existing databases so older installs pick up new columns.
-    entry_cols = {r[1] for r in conn.execute("PRAGMA table_info(entries)").fetchall()}
-    for col, definition in [
-        ("thumbnail_url", "TEXT"),
-        ("read", "INTEGER DEFAULT 0"),
-        ("liked", "INTEGER DEFAULT 0"),
-        ("score", "REAL DEFAULT 0.0"),
-        ("viz_x", "REAL"),
-        ("viz_y", "REAL"),
-        ("og_title", "TEXT"),
-        ("og_description", "TEXT"),
-        ("og_image_url", "TEXT"),
-        ("full_content", "TEXT"),
-        ("quality_score", "REAL DEFAULT 0.0"),
-        ("assessment_label", "TEXT"),
-        ("assessment_label_color", "TEXT"),
-    ]:
-        if col not in entry_cols:
-            conn.execute(f"ALTER TABLE entries ADD COLUMN {col} {definition}")
-    feed_cols = {r[1] for r in conn.execute("PRAGMA table_info(feeds)").fetchall()}
-    if "color" not in feed_cols:
-        conn.execute("ALTER TABLE feeds ADD COLUMN color TEXT")
-    if "subscribed" not in feed_cols:
-        conn.execute("ALTER TABLE feeds ADD COLUMN subscribed INTEGER NOT NULL DEFAULT 1")
-    if "category" not in feed_cols:
-        conn.execute("ALTER TABLE feeds ADD COLUMN category TEXT")
-    if "kind" not in feed_cols:
-        conn.execute("ALTER TABLE feeds ADD COLUMN kind TEXT NOT NULL DEFAULT 'rss'")
-    entry_cols = {r[1] for r in conn.execute("PRAGMA table_info(entries)").fetchall()}
-    if "source_uid" not in entry_cols:
-        conn.execute("ALTER TABLE entries ADD COLUMN source_uid TEXT")
-    if "quality_score" not in entry_cols:
-        conn.execute("ALTER TABLE entries ADD COLUMN quality_score REAL DEFAULT 0.0")
-    conn.execute(
-        "CREATE UNIQUE INDEX IF NOT EXISTS idx_entries_feed_source_uid ON entries(feed_id, source_uid)"
-    )
-    conn.commit()
-    _seed_catalogue_feeds(conn)
-    conn.close()
+def init_db() -> None:
+    """Initialize the core schema and then seed the local feed catalogue."""
+    core_init_db()
+    conn = core_get_db()
+    try:
+        _seed_catalogue_feeds(conn)
+    finally:
+        conn.close()
 
 
 def get_setting(key: str) -> str:
-    env_val = os.environ.get(f"MYRSSFEED_{key.upper()}")
-    if env_val is not None:
-        return env_val
-    conn = get_db()
-    row = conn.execute("SELECT value FROM settings WHERE key = ?", (key,)).fetchone()
-    conn.close()
-    return row["value"] if row else DEFAULTS.get(key, "")
+    return core_get_setting(key)
 
 
 def set_setting(key: str, value: str) -> None:
-    conn = get_db()
-    conn.execute(
-        "INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
-        (key, value),
-    )
-    conn.commit()
-    conn.close()
+    core_set_setting(key, value)
 
 
 # ── Schemas ───────────────────────────────────────────────────────────────────
@@ -878,6 +776,40 @@ def _fetch_ranked_entries(
     )
 
 
+def _article_neighbor_urls(
+    conn: sqlite3.Connection,
+    entry_id: int,
+    q: Optional[str],
+    feed_id: Optional[int],
+    quality_level: Optional[int],
+    days_int: Optional[int],
+    source_scope: str,
+) -> tuple[Optional[str], Optional[str]]:
+    rows = _fetch_ranked_entries(conn, None, q, feed_id, quality_level, days_int, source_scope)
+    if not rows:
+        return None, None
+
+    current_index = next((idx for idx, row in enumerate(rows) if int(row.get("id") or 0) == entry_id), None)
+    if current_index is None:
+        return None, None
+
+    context_params = {
+        "q": q,
+        "feed_id": str(feed_id) if feed_id is not None else None,
+        "quality_level": str(quality_level) if quality_level is not None else None,
+        "days": str(days_int) if days_int is not None else None,
+        "scope": source_scope if source_scope != SOURCE_SCOPE_MY else None,
+    }
+
+    prev_url = None
+    next_url = None
+    if current_index > 0:
+        prev_url = _build_url_with_query_params(f"/article/{rows[current_index - 1]['id']}", context_params)
+    if current_index + 1 < len(rows):
+        next_url = _build_url_with_query_params(f"/article/{rows[current_index + 1]['id']}", context_params)
+    return prev_url, next_url
+
+
 def _fetch_random_entry(
     conn: sqlite3.Connection,
     q: Optional[str],
@@ -1226,6 +1158,12 @@ def article_page(request: Request, entry_id: int):
         conn.close()
         raise HTTPException(status_code=404, detail="Article not found.")
     entry = dict(row)
+    q = request.query_params.get("q")
+    feed_id = _parse_int(request.query_params.get("feed_id"))
+    quality_level = _parse_int(request.query_params.get("quality_level"))
+    days_int = _parse_days(request.query_params.get("days"))
+    source_scope = _normalize_source_scope(request.query_params.get("scope"))
+    active_feed_id = feed_id if source_scope == SOURCE_SCOPE_MY else None
     back_url = _build_url_with_query_params(
         "/",
         {
@@ -1235,6 +1173,15 @@ def article_page(request: Request, entry_id: int):
             "days": request.query_params.get("days"),
             "scope": request.query_params.get("scope"),
         },
+    )
+    prev_url, next_url = _article_neighbor_urls(
+        conn,
+        entry_id,
+        q,
+        active_feed_id,
+        quality_level,
+        days_int,
+        source_scope,
     )
     feed_row = conn.execute("SELECT id, url, title, color FROM feeds WHERE id = ?", (entry["feed_id"],)).fetchone()
     conn.execute("UPDATE entries SET read = 1 WHERE id = ?", (entry_id,))
@@ -1250,6 +1197,8 @@ def article_page(request: Request, entry_id: int):
         "entry": entry,
         "feed_map": feed_map,
         "back_url": back_url,
+        "prev_article_url": prev_url,
+        "next_article_url": next_url,
     })
 
 
@@ -1705,121 +1654,6 @@ def get_refresh_status():
         "running": running,
         "last_status": last_status,
         "minutes_since_last_success": minutes_since_last_success,
-    }
-
-
-# ── WordRank API (manual recompute + status) ──────────────────────────────────
-
-
-@app.post("/api/wordrank", status_code=202)
-def trigger_wordrank():
-    """Run WordRank scoring synchronously and report basic status."""
-    try:
-        run_wordrank()
-    except Exception as exc:
-        logger.exception("WordRank job failed: %s", exc)
-        return {"status": "error", "message": "WordRank failed (see logs)."}
-    return {"status": "success", "message": "WordRank completed."}
-
-
-@app.get("/api/wordrank/status")
-def get_wordrank_status():
-    """
-    Return the last recorded status of the WordRank job.
-
-    Values:
-    - "never"   : no completed runs yet
-    - "success" : last run completed without errors
-    - "error"   : last run encountered at least one error
-    """
-    last_status = get_setting("wordrank_last_status") or "never"
-    minutes_since_last_success: Optional[int] = None
-    ts = get_setting("wordrank_last_success_ts")
-    if ts:
-        try:
-            last_dt = datetime.fromisoformat(ts)
-            now = datetime.now(timezone.utc)
-            if last_dt.tzinfo is None:
-                last_dt = last_dt.replace(tzinfo=timezone.utc)
-            diff = now - last_dt
-            minutes_since_last_success = max(0, int(diff.total_seconds() // 60))
-        except Exception:
-            minutes_since_last_success = None
-    return {
-        "last_status": last_status,
-        "minutes_since_last_success": minutes_since_last_success,
-    }
-
-
-# ── Scrape/enrichment API ─────────────────────────────────────────────────────
-
-@app.post("/api/scrape", status_code=202)
-def trigger_scrape():
-    if is_scraper_running():
-        return {"status": "running", "message": "Scraper already in progress."}
-    started = run_scraper_async()
-    if not started:
-        return {"status": "running", "message": "Scraper already in progress."}
-    return {"status": "started", "message": "Scrape job started in background."}
-
-
-@app.get("/api/scrape/status")
-def get_scrape_status():
-    running = is_scraper_running()
-    last_status = get_setting("scrape_last_status") or "never"
-    minutes_since_last_success: Optional[int] = None
-    ts = get_setting("scrape_last_success_ts")
-    if ts:
-        try:
-            last_dt = datetime.fromisoformat(ts)
-            now = datetime.now(timezone.utc)
-            if last_dt.tzinfo is None:
-                last_dt = last_dt.replace(tzinfo=timezone.utc)
-            diff = now - last_dt
-            minutes_since_last_success = max(0, int(diff.total_seconds() // 60))
-        except Exception:
-            minutes_since_last_success = None
-    return {
-        "running": running,
-        "last_status": last_status,
-        "minutes_since_last_success": minutes_since_last_success,
-    }
-
-
-# ── Newsletter inbox API ──────────────────────────────────────────────────────
-
-
-@app.post("/api/newsletters/sync", status_code=202)
-def trigger_newsletter_sync():
-    if is_newsletter_running():
-        return {"status": "running", "message": "Newsletter sync already in progress."}
-    started = run_newsletter_ingest_async(require_enabled=False)
-    if not started:
-        return {"status": "running", "message": "Newsletter sync already in progress."}
-    return {"status": "started", "message": "Newsletter sync started in background."}
-
-
-@app.get("/api/newsletters/status")
-def get_newsletter_status():
-    running = is_newsletter_running()
-    last_status = get_setting("newsletter_last_status") or "never"
-    minutes_since_last_success: Optional[int] = None
-    ts = get_setting("newsletter_last_success_ts")
-    if ts:
-        try:
-            last_dt = datetime.fromisoformat(ts)
-            now = datetime.now(timezone.utc)
-            if last_dt.tzinfo is None:
-                last_dt = last_dt.replace(tzinfo=timezone.utc)
-            diff = now - last_dt
-            minutes_since_last_success = max(0, int(diff.total_seconds() // 60))
-        except Exception:
-            minutes_since_last_success = None
-    return {
-        "running": running,
-        "last_status": last_status,
-        "minutes_since_last_success": minutes_since_last_success,
-        "last_error": get_setting("newsletter_last_error") or "",
     }
 
 
