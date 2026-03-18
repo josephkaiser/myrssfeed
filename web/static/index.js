@@ -1,12 +1,189 @@
   // ── Nav drawer (overlay only on mobile; desktop uses sidebar) ─────
   const navOverlay = document.getElementById("nav-overlay");
   const NAV_OPEN_KEY = "nav-open";
-  const RANDOM_SEED_KEY = "myrssfeed_random_seed";
   const MOBILE_MAX = 640;
+const ARTICLE_PATH_RE = /^\/article\/(\d+)\/?$/;
+const ARTICLE_CONTEXT_KEYS = ["q", "feed_id", "quality_level", "days", "scope"];
+const RANDOM_HISTORY_KEY = "myrssfeed_random_history";
+const RANDOM_HISTORY_LIMIT = 120;
+const RANDOM_RETRY_WINDOWS = [120, 40, 12, 0];
 
   function isMobileViewport() {
     return typeof window !== "undefined" && window.innerWidth <= MOBILE_MAX;
   }
+
+function getCurrentFilters() {
+  const params = new URLSearchParams(window.location.search || "");
+  return {
+    q: params.get("q") || "",
+    scope: params.get("scope") || "my",
+    feedId: params.get("feed_id") || "",
+    qualityLevel: params.get("quality_level") || "",
+    days: params.get("days") || "",
+  };
+}
+
+function _articleContextParams() {
+  const params = new URLSearchParams();
+  const current = new URLSearchParams(window.location.search || "");
+  ARTICLE_CONTEXT_KEYS.forEach((key) => {
+    const value = current.get(key);
+    if (value) params.set(key, value);
+  });
+  return params;
+}
+
+function _currentArticleId() {
+  const match = (window.location.pathname || "").match(ARTICLE_PATH_RE);
+  return match ? match[1] : "";
+}
+
+function _articleUrlForId(entryId) {
+  const params = _articleContextParams();
+  const qs = params.toString();
+  return "/article/" + encodeURIComponent(entryId) + (qs ? "?" + qs : "");
+}
+
+function _withArticleContext(href) {
+  if (!href) return href;
+  try {
+    const url = new URL(href, window.location.origin);
+    if (url.origin !== window.location.origin || !url.pathname.startsWith("/article/")) {
+      return href;
+    }
+    const params = _articleContextParams();
+    params.forEach((value, key) => {
+      if (!url.searchParams.has(key)) {
+        url.searchParams.set(key, value);
+      }
+    });
+    const qs = url.searchParams.toString();
+    return url.pathname + (qs ? "?" + qs : "");
+  } catch (_) {
+    return href;
+  }
+}
+
+function _parseRandomHistory(raw) {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .map((value) => parseInt(value, 10))
+      .filter((value) => Number.isInteger(value) && value > 0);
+  } catch (_) {
+    return [];
+  }
+}
+
+function _loadRandomHistory() {
+  return _parseRandomHistory(_safeSessionGet(RANDOM_HISTORY_KEY));
+}
+
+function _saveRandomHistory(history) {
+  const next = Array.isArray(history) ? history.slice(-RANDOM_HISTORY_LIMIT) : [];
+  _safeSessionSet(RANDOM_HISTORY_KEY, JSON.stringify(next));
+}
+
+function _rememberRandomArticle(entryId) {
+  const id = parseInt(entryId, 10);
+  if (!Number.isInteger(id) || id <= 0) return;
+  const history = _loadRandomHistory().filter((value) => value !== id);
+  history.push(id);
+  _saveRandomHistory(history);
+}
+
+function _sessionRandomIds(extraIds = []) {
+  const ids = [];
+  const seen = new Set();
+  const add = (value) => {
+    const id = parseInt(value, 10);
+    if (!Number.isInteger(id) || id <= 0 || seen.has(id)) return;
+    seen.add(id);
+    ids.push(id);
+  };
+  _loadRandomHistory().forEach(add);
+  extraIds.forEach(add);
+  return ids.slice(-RANDOM_HISTORY_LIMIT);
+}
+
+function _randomExclusionBatches(extraIds = []) {
+  const full = _sessionRandomIds(extraIds);
+  const batches = [];
+  const seen = new Set();
+  for (const windowSize of RANDOM_RETRY_WINDOWS) {
+    const batch = windowSize > 0 ? full.slice(-windowSize) : [];
+    const key = batch.join(",");
+    if (seen.has(key)) continue;
+    seen.add(key);
+    batches.push(batch);
+  }
+  return batches;
+}
+
+async function _openRandomArticle({ excludeId = "", walk = null } = {}) {
+  const currentId = _currentArticleId();
+  const extraIds = [];
+  if (excludeId) extraIds.push(excludeId);
+  if (currentId) extraIds.push(currentId);
+  const batches = _randomExclusionBatches(extraIds);
+
+  for (const batch of batches) {
+    const params = _articleContextParams();
+    if (batch.length) {
+      params.set("exclude_ids", batch.join(","));
+    }
+    if (walk && walk.anchorId) {
+      params.set("walk_anchor_id", walk.anchorId);
+    }
+    if (walk && typeof walk.direction === "number" && !Number.isNaN(walk.direction)) {
+      params.set("walk_direction", String(walk.direction));
+    }
+    if (walk && typeof walk.strength === "number" && !Number.isNaN(walk.strength)) {
+      params.set("walk_strength", String(walk.strength));
+    }
+
+    try {
+      const res = await fetch("/api/random-article?" + params.toString());
+      if (!res.ok) {
+        if (res.status === 404) {
+          continue;
+        }
+        const data = await res.json().catch(() => ({}));
+        toast(data.detail || "No random article found.", false);
+        return;
+      }
+      const data = await res.json();
+      _rememberRandomArticle(data.id);
+      const target = data.article_url || _articleUrlForId(data.id);
+      window.location.assign(target);
+      return;
+    } catch (_) {
+      toast("Network error loading a random article.", false);
+      return;
+    }
+  }
+
+  toast("No random article found.", false);
+}
+
+async function _walkAndOpenArticle(direction) {
+  const entryId = _currentArticleId();
+  if (!entryId) {
+    await _openRandomArticle();
+    return;
+  }
+
+  await _openRandomArticle({
+    excludeId: entryId,
+    walk: {
+      anchorId: entryId,
+      direction: direction < 0 ? -1 : 1,
+      strength: 1,
+    },
+  });
+}
 
   function openNav() {
     if (!navOverlay) return;
@@ -42,6 +219,138 @@
     } catch (_) {}
   })();
 
+  function bindMobileBrandToggle() {
+    const brands = document.querySelectorAll(".header-brand");
+    if (!brands.length) return;
+    brands.forEach((brand) => {
+      brand.addEventListener("click", (e) => {
+        if (!isMobileViewport()) return;
+        if (!navOverlay) return;
+        e.preventDefault();
+        toggleNav();
+      });
+    });
+  }
+  bindMobileBrandToggle();
+
+  function buildTabletHeaderControls() {
+    const headerRight = document.querySelector("header .header-right");
+    if (!headerRight || headerRight.querySelector(".header-actions-compact")) return;
+
+    const compact = document.createElement("div");
+    compact.className = "header-actions-compact";
+    compact.innerHTML = `
+      <button
+        class="btn icon-btn header-compact-refresh-btn"
+        type="button"
+        title="Fetch latest from all feeds"
+        aria-label="Fetch latest from all feeds"
+      >
+        &#10227;
+      </button>
+      <div class="header-compact-more-wrap">
+        <button
+          class="btn icon-btn header-compact-more-btn"
+          type="button"
+          title="More actions"
+          aria-label="More actions"
+          aria-haspopup="true"
+          aria-expanded="false"
+        >
+          &#8942;
+        </button>
+        <div class="header-compact-menu" hidden>
+          <button type="button" data-action="scrape">
+            <span class="menu-icon">&#8681;</span><span>Enrich now</span>
+          </button>
+          <button type="button" data-action="wordrank">
+            <span class="menu-icon">WR</span><span>Run WordRank</span>
+          </button>
+          <button type="button" data-action="filter">
+            <span class="menu-icon">&#128269;</span><span>Toggle filter</span>
+          </button>
+          <button type="button" data-action="random">
+            <span class="menu-icon">&#127922;</span><span>Random article</span>
+          </button>
+          <a href="/settings">
+            <span class="menu-icon">&#9881;</span><span>Settings</span>
+          </a>
+        </div>
+      </div>
+    `;
+
+    headerRight.appendChild(compact);
+
+    const refreshBtn = compact.querySelector(".header-compact-refresh-btn");
+    const moreBtn = compact.querySelector(".header-compact-more-btn");
+    const menu = compact.querySelector(".header-compact-menu");
+
+    function closeMenu() {
+      menu.hidden = true;
+      menu.classList.remove("open");
+      moreBtn.setAttribute("aria-expanded", "false");
+    }
+
+    function toggleMenu() {
+      const open = menu.hidden;
+      menu.hidden = !open;
+      menu.classList.toggle("open", open);
+      moreBtn.setAttribute("aria-expanded", open ? "true" : "false");
+      if (open) {
+        const first = menu.querySelector("button, a");
+        if (first && typeof first.focus === "function") first.focus();
+      }
+    }
+
+    refreshBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      closeMenu();
+      headerRefreshNow();
+    });
+
+    moreBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      toggleMenu();
+    });
+
+    menu.querySelectorAll("[data-action]").forEach((item) => {
+      item.addEventListener("click", (e) => {
+        e.preventDefault();
+        closeMenu();
+        switch (item.dataset.action) {
+          case "scrape":
+            headerScrapeNow();
+            break;
+          case "wordrank":
+            headerWordrankNow();
+            break;
+          case "filter":
+            headerToggleFilter();
+            break;
+          case "random":
+            headerToggleRandom();
+            break;
+          default:
+            break;
+        }
+      });
+    });
+
+    document.addEventListener("click", (e) => {
+      if (!compact.contains(e.target)) {
+        closeMenu();
+      }
+    });
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") {
+        closeMenu();
+      }
+    });
+  }
+  buildTabletHeaderControls();
+
   function toggleNavFeeds() {
     const btn = document.getElementById("nav-feeds-toggle");
     const list = document.getElementById("nav-feeds-list");
@@ -49,47 +358,8 @@
     list.classList.toggle("open");
   }
 
-  function _getCookie(name) {
-    const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const match = document.cookie.match(new RegExp("(?:^|; )" + escaped + "=([^;]*)"));
-    return match ? decodeURIComponent(match[1]) : "";
-  }
-
-  function _setCookie(name, value) {
-    document.cookie = `${encodeURIComponent(name)}=${encodeURIComponent(value)}; Path=/; Max-Age=31536000; SameSite=Lax`;
-  }
-
-  function _getRandomSeed() {
-    const raw = _getCookie(RANDOM_SEED_KEY);
-    return /^\d+$/.test(raw) ? raw : "";
-  }
-
-  function _hasRandomSeed() {
-    return !!_getRandomSeed();
-  }
-
-  function _generateRandomSeed() {
-    try {
-      const buf = new Uint32Array(1);
-      window.crypto.getRandomValues(buf);
-      return String(buf[0] >>> 0);
-    } catch (_) {
-      return String(Date.now() ^ Math.floor(Math.random() * 0xffffffff));
-    }
-  }
-
-  function _syncRandomButtonState(enabled) {
-    const btn = document.getElementById("header-random-btn");
-    if (!btn) return;
-    btn.classList.toggle("active", enabled);
-    btn.setAttribute("aria-pressed", enabled ? "true" : "false");
-    btn.title = enabled ? "Re-randomize article order" : "Randomize article order";
-  }
-
-  function headerToggleRandom() {
-    _setCookie(RANDOM_SEED_KEY, _generateRandomSeed());
-    _syncRandomButtonState(true);
-    window.location.reload();
+  async function headerToggleRandom() {
+    await _openRandomArticle();
   }
   window.headerToggleRandom = headerToggleRandom;
 
@@ -108,7 +378,7 @@
       dot.classList.add("running");
       if (opts.textId) {
         const textEl = document.getElementById(opts.textId);
-        if (textEl) textEl.textContent = "Job in progress";
+        if (textEl) textEl.textContent = "Running";
       }
       return;
     }
@@ -127,31 +397,31 @@
     if (opts.textId) {
       const textEl = document.getElementById(opts.textId);
       if (textEl) {
-        let label = "No runs yet";
+        let label = "Ready";
         const mins = typeof state.minutes_since_last_success === "number"
           ? state.minutes_since_last_success
           : null;
         if (opts.kind === "refresh" || opts.kind === "scrape") {
           if (last === "success") {
             if (mins !== null) {
-              label = mins === 0 ? "Just now" : `${mins} min ago`;
+              label = mins === 0 ? "Now" : `${mins}m ago`;
             } else {
-              label = "Last job completed";
+              label = "Done";
             }
           } else if (last === "error") {
-            label = "Last job failed";
+            label = "Failed";
           }
         } else if (opts.kind === "wordrank") {
           if (last === "success") {
             if (mins !== null) {
-              label = mins === 0 ? "Last run just now" : `Last run ${mins} min ago`;
+              label = mins === 0 ? "Now" : `${mins}m ago`;
             } else {
-              label = "Last run completed";
+              label = "Done";
             }
           } else if (last === "error") {
-            label = "Last run failed";
+            label = "Failed";
           } else if (!last || last === "idle" || last === "never") {
-            label = "Idle";
+            label = "Ready";
           }
         }
         textEl.textContent = label;
@@ -323,11 +593,6 @@
     }
   })();
 
-  (function initHeaderRandomState() {
-    if (!document.getElementById("header-random-btn")) return;
-    _syncRandomButtonState(_hasRandomSeed());
-  })();
-
   // ── Quality filter for feed items ─────────────────────────────────
   let _entryFilterEnabled = false;
 
@@ -401,6 +666,90 @@
      openLightbox(e.target.src);
    }
  });
+
+(function initArticleLinkContext() {
+  document.querySelectorAll('a[href^="/article/"]').forEach((link) => {
+    link.href = _withArticleContext(link.getAttribute("href") || link.href);
+  });
+})();
+
+(function initArticleVoteOffset() {
+  if (!document.body.classList.contains("article-page")) return;
+  const header = document.querySelector(".article-header");
+  if (!header) return;
+
+  function syncHeaderHeight() {
+    const height = Math.ceil(header.getBoundingClientRect().height || 0);
+    document.documentElement.style.setProperty("--article-header-height", height + "px");
+  }
+
+  syncHeaderHeight();
+  window.addEventListener("resize", syncHeaderHeight);
+  if (document.fonts && document.fonts.ready && typeof document.fonts.ready.then === "function") {
+    document.fonts.ready.then(syncHeaderHeight).catch(() => {});
+  }
+})();
+
+(function initRandomArticleHistory() {
+  if (!document.body.classList.contains("article-page")) return;
+  _rememberRandomArticle(_currentArticleId());
+})();
+
+(function initArticleSwipeNavigation() {
+  if (!document.body.classList.contains("article-page")) return;
+  const articleView = document.querySelector(".article-view");
+  if (!articleView) return;
+
+  let startX = 0;
+  let startY = 0;
+  let tracking = false;
+
+  function reset() {
+    tracking = false;
+    startX = 0;
+    startY = 0;
+  }
+
+  articleView.addEventListener("touchstart", (e) => {
+    if (!e.touches || e.touches.length !== 1) return;
+    const touch = e.touches[0];
+    tracking = true;
+    startX = touch.clientX;
+    startY = touch.clientY;
+  }, { passive: true });
+
+  articleView.addEventListener("touchend", async (e) => {
+    if (!tracking) return;
+    const touch = e.changedTouches && e.changedTouches[0];
+    if (!touch) {
+      reset();
+      return;
+    }
+    const dx = touch.clientX - startX;
+    const dy = touch.clientY - startY;
+    reset();
+    if (Math.abs(dx) < 72) return;
+    if (Math.abs(dx) < Math.abs(dy) * 1.25) return;
+    await _walkAndOpenArticle(dx > 0 ? 1 : -1);
+  }, { passive: true });
+
+  articleView.addEventListener("touchcancel", reset, { passive: true });
+
+  function isTypingTarget(target) {
+    if (!target || !target.tagName) return false;
+    const tag = target.tagName.toLowerCase();
+    return tag === "input" || tag === "textarea" || tag === "select" || target.isContentEditable;
+  }
+
+  document.addEventListener("keydown", async (e) => {
+    if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.altKey) return;
+    if (isTypingTarget(e.target)) return;
+    if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+
+    e.preventDefault();
+    await _walkAndOpenArticle(e.key === "ArrowRight" ? 1 : -1);
+  });
+})();
 
   // ── Toast ───────────────────────────────────────────────────────
   function toast(msg, ok = true) {
@@ -478,6 +827,60 @@
       .replace(/"/g, "&quot;");
   }
 
+function _toDate(value) {
+  if (!value) return null;
+  const dt = new Date(value);
+  return Number.isNaN(dt.getTime()) ? null : dt;
+}
+
+function _formatDate(value, options) {
+  const dt = _toDate(value);
+  if (!dt) return "";
+  try {
+    return new Intl.DateTimeFormat(undefined, options).format(dt);
+  } catch (_) {
+    return dt.toLocaleString();
+  }
+}
+
+function formatLocalDate(value) {
+  return _formatDate(value, {
+    year: "2-digit",
+    month: "numeric",
+    day: "numeric",
+  });
+}
+
+function formatLocalDateTime(value) {
+  return _formatDate(value, {
+    year: "2-digit",
+    month: "numeric",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    timeZoneName: "short",
+  });
+}
+
+function applyLocalPublishedDates(root = document) {
+  if (!root || typeof root.querySelectorAll !== "function") return;
+  root.querySelectorAll("[data-published]").forEach((el) => {
+    const published = el.getAttribute("data-published") || el.getAttribute("datetime") || "";
+    if (!published) return;
+    const fmt = (el.getAttribute("data-published-format") || "date").toLowerCase();
+    const text = fmt === "datetime" ? formatLocalDateTime(published) : formatLocalDate(published);
+    if (text) {
+      el.textContent = text;
+    }
+  });
+}
+
+applyLocalPublishedDates();
+
+function _publishedDateText(published) {
+  return formatLocalDate(published);
+}
+
   function formatAssessmentLabel(label) {
     if (!label) return "";
     return String(label).replace(/_/g, " ").replace(/\b\w/g, (ch) => ch.toUpperCase());
@@ -500,16 +903,6 @@
     // Use the number of server-rendered cards as our page size heuristic.
     const INITIAL_CARDS = entriesPanel.querySelectorAll(".entry-card").length;
     const PAGE_SIZE = INITIAL_CARDS || 40;
-
-    function getCurrentFilters() {
-      const params = new URLSearchParams(window.location.search || "");
-      const q = params.get("q") || "";
-      const scope = params.get("scope") || "my";
-      const feedId = params.get("feed_id") || "";
-      const qualityLevel = params.get("quality_level") || "";
-      const days = params.get("days") || "";
-      return { q, scope, feedId, qualityLevel, days };
-    }
 
     async function loadMoreEntries() {
       if (isLoadingMore || allLoaded) return;
@@ -568,7 +961,7 @@
       card.dataset.entryId = String(e.id);
 
       const link = document.createElement("a");
-      link.href = "/article/" + encodeURIComponent(e.id);
+      link.href = _articleUrlForId(e.id);
       link.className = "entry-card-link";
 
       const headerRow = document.createElement("div");
@@ -609,9 +1002,14 @@
       }
       assessmentLabel.textContent = formatAssessmentLabel(e.assessment_label);
 
-      const date = document.createElement("span");
+      const date = document.createElement("time");
       date.className = "entry-date";
-      date.textContent = e.published ? String(e.published).slice(0, 10) : "";
+      date.textContent = _publishedDateText(e.published);
+      if (e.published) {
+        date.setAttribute("data-published", e.published);
+        date.setAttribute("data-published-format", "date");
+        date.dateTime = e.published;
+      }
 
       meta.appendChild(favicon);
       meta.appendChild(tag);
@@ -650,7 +1048,7 @@
       const linkRow = document.createElement("div");
       linkRow.className = "entry-link-row";
       const original = document.createElement("a");
-      original.href = e.link || ("/article/" + encodeURIComponent(e.id));
+      original.href = e.link || _articleUrlForId(e.id);
       original.target = "_blank";
       original.rel = "noopener noreferrer";
       original.textContent = e.link ? "Open original" : "Open article";
@@ -702,8 +1100,27 @@
   const searchInput    = document.getElementById("search-input");
   const searchDropdown = document.getElementById("search-dropdown");
   const searchForm     = document.getElementById("search-form");
+  const searchQueryBase = document.getElementById("search-query-base");
+  const searchTermRemove = document.getElementById("search-term-remove");
   let _searchTimer     = null;
   let _lastQuery       = "";
+
+  function _searchBaseQuery() {
+    return searchQueryBase ? searchQueryBase.value.trim() : "";
+  }
+
+  function _searchDraftQuery() {
+    return searchInput ? searchInput.value.trim() : "";
+  }
+
+  function _composeSearchQuery() {
+    const parts = [];
+    const base = _searchBaseQuery();
+    const draft = _searchDraftQuery();
+    if (base) parts.push(base);
+    if (draft) parts.push(draft);
+    return parts.join(" ").trim();
+  }
 
   function _safeSessionGet(key) {
     try { return sessionStorage.getItem(key) || ""; } catch (_) { return ""; }
@@ -750,6 +1167,32 @@
     if (searchForm) {
       searchForm.addEventListener("submit", () => {
         _rememberFeedUrl();
+        if (searchQueryBase) {
+          searchQueryBase.value = _composeSearchQuery();
+        }
+      });
+    }
+
+    if (searchTermRemove) {
+      const removeSearchTerm = (e) => {
+        if (e) e.preventDefault();
+        const params = new URLSearchParams(window.location.search || "");
+        if (!params.has("q")) return;
+        params.delete("q");
+        if (searchQueryBase) {
+          searchQueryBase.value = "";
+        }
+        searchInput.value = "";
+        _closeDropdown(true);
+        const nextUrl = params.toString() ? "?" + params.toString() : "";
+        window.location.replace(nextUrl || window.location.pathname);
+      };
+
+      searchTermRemove.addEventListener("click", removeSearchTerm);
+      searchTermRemove.addEventListener("keydown", (e) => {
+        if (e.key === "Backspace" || e.key === "Delete") {
+          removeSearchTerm(e);
+        }
       });
     }
 
@@ -768,19 +1211,22 @@
 
     searchInput.addEventListener("input", () => {
       clearTimeout(_searchTimer);
-      const q = searchInput.value.trim();
-      if (!q) {
+      const draft = _searchDraftQuery();
+      if (!draft) {
         _closeDropdown(true);
-        const params = new URLSearchParams(window.location.search || "");
-        if (params.has("q")) {
-          _returnToFeed();
-        }
         return;
       }
-      _searchTimer = setTimeout(() => _doLiveSearch(q), 220);
+      _searchTimer = setTimeout(() => _doLiveSearch(), 220);
     });
 
     searchInput.addEventListener("keydown", (e) => {
+      if (e.key === "Backspace" && !searchInput.value && _searchBaseQuery()) {
+        e.preventDefault();
+        if (searchTermRemove) {
+          searchTermRemove.click();
+        }
+        return;
+      }
       if (e.key === "Escape") { _closeDropdown(); searchInput.blur(); }
     });
 
@@ -802,7 +1248,12 @@
       }
     });
 
-    async function _doLiveSearch(q) {
+    async function _doLiveSearch() {
+      const q = _composeSearchQuery();
+      if (!q) {
+        _closeDropdown(true);
+        return;
+      }
       _lastQuery = q;
       try {
         const params = getCurrentFilters();
@@ -815,7 +1266,7 @@
         if (params.days) searchParams.set("days", params.days);
         const res = await fetch("/api/search?" + searchParams.toString());
         if (!res.ok) return;
-        if (q !== searchInput.value.trim()) return;
+        if (q !== _composeSearchQuery()) return;
         const data = await res.json();
         _renderDropdown(q, data);
       } catch (_) {}
@@ -848,10 +1299,10 @@
       entries.forEach((e) => {
         const a = document.createElement("a");
         a.className = "search-result-item";
-        a.href = e.link || ("/article/" + encodeURIComponent(e.id));
+        a.href = e.link || _articleUrlForId(e.id);
         a.target = "_blank";
         a.rel = "noopener noreferrer";
-        const date = e.published ? e.published.slice(0, 10) : "";
+        const date = _publishedDateText(e.published);
         a.innerHTML =
           '<div class="search-result-title">' + escHtml(e.title || "(no title)") + '</div>' +
           '<div class="search-result-meta">' +
@@ -873,6 +1324,6 @@
       searchInput.value = parts.join(" ") + " ";
       searchInput.focus();
       clearTimeout(_searchTimer);
-      _doLiveSearch(searchInput.value.trim());
+      _doLiveSearch();
     }
   }

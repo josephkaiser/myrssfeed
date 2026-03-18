@@ -127,6 +127,29 @@
 <script>
 const MAX_DEVICES = {{ max_devices }};
 
+// ── Hamburger ──
+const hamburgerBtn  = document.getElementById("hamburger-btn");
+const hamburgerMenu = document.getElementById("hamburger-menu");
+function toggleMenu() {
+  const open = hamburgerMenu.classList.toggle("open");
+  hamburgerBtn.setAttribute("aria-expanded", open);
+}
+document.addEventListener("click", (e) => {
+  if (!hamburgerBtn.contains(e.target) && !hamburgerMenu.contains(e.target)) {
+    hamburgerMenu.classList.remove("open");
+    hamburgerBtn.setAttribute("aria-expanded", "false");
+  }
+});
+
+const headerBrand = document.querySelector(".header-brand");
+if (headerBrand) {
+  headerBrand.addEventListener("click", (e) => {
+    if (window.innerWidth > 640) return;
+    e.preventDefault();
+    toggleMenu();
+  });
+}
+
 function showOS(id, btn) {
   document.querySelectorAll('.os-block').forEach(el => el.classList.remove('visible'));
   document.querySelectorAll('.os-tab').forEach(el => el.classList.remove('active'));

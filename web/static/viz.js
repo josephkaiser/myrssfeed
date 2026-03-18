@@ -54,7 +54,8 @@
   function draw() {
     const dpr = window.devicePixelRatio || 1;
     const W   = canvas.parentElement.clientWidth;
-    const H   = Math.min(W * 0.65, window.innerHeight * 0.72);
+    const narrow = W < 700;
+    const H   = Math.min(W * (narrow ? 0.8 : 0.65), window.innerHeight * (narrow ? 0.75 : 0.72));
     canvas.width  = W * dpr;
     canvas.height = H * dpr;
     canvas.style.width  = W + "px";
@@ -67,7 +68,7 @@
     for (const e of entries) {
       const [cx, cy] = toCanvas(e.viz_x, e.viz_y, W, H);
       ctx.beginPath();
-      ctx.arc(cx, cy, 3.5, 0, Math.PI * 2);
+      ctx.arc(cx, cy, narrow ? 4.5 : 3.5, 0, Math.PI * 2);
       ctx.fillStyle = feedColor(e.feed_id) + "cc";
       ctx.fill();
     }
@@ -75,7 +76,7 @@
     // Theme labels
     const isDark = !document.documentElement.hasAttribute("data-theme") ||
                    document.documentElement.getAttribute("data-theme") === "dark";
-    ctx.font = "bold 11px -apple-system, BlinkMacSystemFont, sans-serif";
+    ctx.font = `bold ${narrow ? 12 : 11}px -apple-system, BlinkMacSystemFont, sans-serif`;
     ctx.textAlign = "center";
     for (const t of themes) {
       const [cx, cy] = toCanvas(t.centroid_x, t.centroid_y, W, H);
@@ -90,9 +91,29 @@
 
   // ── Tooltip ───────────────────────────────────────────────────────
   let _hoveredEntry = null;
+  let _touchCandidate = null;
+  let _suppressNextClick = false;
+
+  function _showTooltip(entry, clientX, clientY) {
+    tooltip.textContent = entry.title || "(no title)";
+    tooltip.style.display = "block";
+    const pad = 12;
+    tooltip.style.left = "0px";
+    tooltip.style.top = "0px";
+    const box = tooltip.getBoundingClientRect();
+    const left = Math.max(pad, Math.min(clientX + 14, window.innerWidth - box.width - pad));
+    const top = Math.max(pad, Math.min(clientY - 10, window.innerHeight - box.height - pad));
+    tooltip.style.left = left + "px";
+    tooltip.style.top = top + "px";
+  }
+
+  function _hideTooltip() {
+    tooltip.style.display = "none";
+    _hoveredEntry = null;
+    _touchCandidate = null;
+  }
 
   function _findNearest(mx, my) {
-    const dpr = window.devicePixelRatio || 1;
     const W = canvas.clientWidth, H = canvas.clientHeight;
     let best = null, bestD = 14 * 14;
     for (const e of entries) {
@@ -111,28 +132,71 @@
     if (e !== _hoveredEntry) {
       _hoveredEntry = e;
       if (e) {
-        tooltip.style.display = "block";
-        tooltip.textContent = e.title || "(no title)";
+        _showTooltip(e, ev.clientX, ev.clientY);
       } else {
-        tooltip.style.display = "none";
+        _hideTooltip();
       }
     }
     if (e) {
-      tooltip.style.left = (ev.clientX + 14) + "px";
-      tooltip.style.top  = (ev.clientY - 10) + "px";
+      _showTooltip(e, ev.clientX, ev.clientY);
     }
   });
 
   canvas.addEventListener("mouseleave", () => {
-    tooltip.style.display = "none";
-    _hoveredEntry = null;
+    _hideTooltip();
   });
 
   canvas.addEventListener("click", (ev) => {
+    if (_suppressNextClick) {
+      _suppressNextClick = false;
+      return;
+    }
     const rect = canvas.getBoundingClientRect();
     const mx = ev.clientX - rect.left;
     const my = ev.clientY - rect.top;
     const e = _findNearest(mx, my);
     if (e && e.link) window.open(e.link, "_blank", "noopener,noreferrer");
+  });
+
+  canvas.addEventListener("touchstart", (ev) => {
+    const touch = ev.touches[0];
+    if (!touch) return;
+    const rect = canvas.getBoundingClientRect();
+    const mx = touch.clientX - rect.left;
+    const my = touch.clientY - rect.top;
+    const e = _findNearest(mx, my);
+    _touchCandidate = e || null;
+    if (e) {
+      _hoveredEntry = e;
+      _showTooltip(e, touch.clientX, touch.clientY);
+    } else {
+      _hideTooltip();
+    }
+    ev.preventDefault();
+  }, { passive: false });
+
+  canvas.addEventListener("touchmove", (ev) => {
+    const touch = ev.touches[0];
+    if (!touch) return;
+    const rect = canvas.getBoundingClientRect();
+    const mx = touch.clientX - rect.left;
+    const my = touch.clientY - rect.top;
+    const e = _findNearest(mx, my);
+    _touchCandidate = e || null;
+    if (e) {
+      _hoveredEntry = e;
+      _showTooltip(e, touch.clientX, touch.clientY);
+    } else {
+      _hideTooltip();
+    }
+    ev.preventDefault();
+  }, { passive: false });
+
+  canvas.addEventListener("touchend", () => {
+    if (_touchCandidate && _touchCandidate.link) {
+      _suppressNextClick = true;
+      window.open(_touchCandidate.link, "_blank", "noopener,noreferrer");
+    }
+    _touchCandidate = null;
   });
 })();

@@ -56,6 +56,15 @@
       hamburgerBtn.setAttribute("aria-expanded", "false");
     }
   });
+
+  const headerBrand = document.querySelector(".header-brand");
+  if (headerBrand) {
+    headerBrand.addEventListener("click", (e) => {
+      if (window.innerWidth > 640) return;
+      e.preventDefault();
+      toggleMenu();
+    });
+  }
 </script>
 </body>
 </html>

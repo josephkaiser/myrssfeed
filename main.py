@@ -3,6 +3,7 @@ import logging.handlers
 import hashlib
 import os
 import json
+import random
 import re
 import sqlite3
 import threading
@@ -16,7 +17,7 @@ from html.parser import HTMLParser
 from typing import Optional
 
 import uvicorn
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -217,6 +218,10 @@ class EntryOut(BaseModel):
     assessment_label_color: Optional[str] = None
 
 
+class EntryVoteUpdate(BaseModel):
+    liked: bool
+
+
 class SettingsUpdate(BaseModel):
     retention_days: Optional[str] = None
     theme: Optional[str] = None
@@ -246,6 +251,77 @@ except Exception:
 
 _STATIC_CATALOG_URLS = {f["url"] for f in _FEED_CATALOG}
 RANDOM_SEED_COOKIE = "myrssfeed_random_seed"
+WALK_STATE_COOKIE = "myrssfeed_walk_state"
+WALK_CANDIDATE_LIMIT = 500
+WALK_INITIAL_STRENGTH = 1.0
+WALK_DECAY_FACTOR = 0.7
+WALK_MIN_STRENGTH = 0.15
+_WALK_TOKEN_RE = re.compile(r"[A-Za-z0-9']+")
+_WALK_STOPWORDS = {
+    "a",
+    "about",
+    "after",
+    "all",
+    "also",
+    "an",
+    "and",
+    "any",
+    "are",
+    "as",
+    "at",
+    "be",
+    "because",
+    "but",
+    "by",
+    "can",
+    "could",
+    "did",
+    "do",
+    "does",
+    "for",
+    "from",
+    "had",
+    "has",
+    "have",
+    "how",
+    "if",
+    "in",
+    "into",
+    "is",
+    "it",
+    "its",
+    "may",
+    "new",
+    "not",
+    "of",
+    "on",
+    "or",
+    "our",
+    "out",
+    "over",
+    "so",
+    "that",
+    "the",
+    "their",
+    "there",
+    "these",
+    "this",
+    "to",
+    "under",
+    "up",
+    "was",
+    "we",
+    "what",
+    "when",
+    "where",
+    "which",
+    "who",
+    "why",
+    "will",
+    "with",
+    "you",
+    "your",
+}
 
 
 def _seed_catalogue_feeds(conn: sqlite3.Connection) -> None:
@@ -323,6 +399,190 @@ def _random_seed_from_request(request: Request) -> Optional[int]:
 
 def _random_enabled_from_request(request: Request) -> bool:
     return _random_seed_from_request(request) is not None
+
+
+def _normalize_walk_direction(value: Optional[int | str]) -> Optional[int]:
+    try:
+        direction = int(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return None
+    if direction > 0:
+        return 1
+    if direction < 0:
+        return -1
+    return None
+
+
+def _normalize_walk_strength(value: Optional[int | float | str]) -> Optional[float]:
+    try:
+        strength = float(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return None
+    if strength != strength:
+        return None
+    return max(0.0, min(1.0, strength))
+
+
+def _parse_int(value: Optional[int | str]) -> Optional[int]:
+    try:
+        return int(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return None
+
+
+def _parse_int_list(value: Optional[str]) -> set[int]:
+    if not value:
+        return set()
+    ids: set[int] = set()
+    for part in re.split(r"[,\s]+", str(value).strip()):
+        if not part:
+            continue
+        try:
+            ids.add(int(part))
+        except (TypeError, ValueError):
+            continue
+    return ids
+
+
+def _walk_tokens(row: dict) -> set[str]:
+    parts = [
+        row.get("title") or "",
+        row.get("summary") or "",
+        row.get("feed_title") or "",
+    ]
+    tokens: set[str] = set()
+    for part in parts:
+        for token in _WALK_TOKEN_RE.findall(str(part).lower()):
+            if len(token) < 3 or token in _WALK_STOPWORDS:
+                continue
+            tokens.add(token)
+    return tokens
+
+
+def _walk_similarity(anchor_tokens: set[str], candidate_tokens: set[str]) -> float:
+    if not anchor_tokens or not candidate_tokens:
+        return 0.0
+    overlap = len(anchor_tokens & candidate_tokens)
+    if not overlap:
+        return 0.0
+    return overlap / max(len(anchor_tokens), 1)
+
+
+def _read_walk_state(
+    request: Request,
+    walk_anchor_id: Optional[int] = None,
+    walk_direction: Optional[int] = None,
+) -> tuple[Optional[int], Optional[int], float]:
+    anchor_id = _parse_int(walk_anchor_id)
+    direction = _normalize_walk_direction(walk_direction)
+    strength = WALK_INITIAL_STRENGTH if anchor_id is not None and direction is not None else 0.0
+
+    if anchor_id is not None and direction is not None:
+        return anchor_id, direction, strength
+
+    raw = request.cookies.get(WALK_STATE_COOKIE, "")
+    if not raw:
+        return anchor_id, direction, strength
+
+    try:
+        data = json.loads(raw)
+    except Exception:
+        return anchor_id, direction, strength
+
+    if anchor_id is None:
+        anchor_id = _parse_int(data.get("anchor_id"))
+    if direction is None:
+        direction = _normalize_walk_direction(data.get("direction"))
+    cookie_strength = _normalize_walk_strength(data.get("strength"))
+    if cookie_strength is not None:
+        strength = cookie_strength
+    elif anchor_id is not None and direction is not None:
+        strength = WALK_INITIAL_STRENGTH
+    return anchor_id, direction, strength
+
+
+def _set_walk_state_cookie(
+    response: Response,
+    anchor_id: int,
+    direction: int,
+    strength: float = WALK_INITIAL_STRENGTH,
+) -> None:
+    normalized_strength = _normalize_walk_strength(strength)
+    if normalized_strength is None:
+        normalized_strength = WALK_INITIAL_STRENGTH
+    if normalized_strength < WALK_MIN_STRENGTH:
+        response.delete_cookie(WALK_STATE_COOKIE, path="/")
+        return
+    response.set_cookie(
+        WALK_STATE_COOKIE,
+        json.dumps(
+            {"anchor_id": int(anchor_id), "direction": int(direction), "strength": normalized_strength},
+            separators=(",", ":"),
+        ),
+        httponly=True,
+        samesite="lax",
+        path="/",
+    )
+
+
+def _pick_walk_candidate(
+    rows: list[dict],
+    anchor_row: dict,
+    direction: int,
+    strength: float,
+) -> Optional[dict]:
+    if not rows or not anchor_row:
+        return None
+
+    anchor_id = int(anchor_row.get("id") or 0)
+    anchor_tokens = _walk_tokens(anchor_row)
+    if not anchor_id or not anchor_tokens:
+        return None
+
+    walk_strength = _normalize_walk_strength(strength) or 0.0
+    if walk_strength < WALK_MIN_STRENGTH:
+        return None
+
+    anchor_feed_id = int(anchor_row.get("feed_id") or 0)
+    ranked: list[tuple[float, float, int, dict]] = []
+    total = len(rows)
+    if total <= 1:
+        return None
+
+    for idx, row in enumerate(rows):
+        row_id = int(row.get("id") or 0)
+        if not row_id or row_id == anchor_id:
+            continue
+
+        candidate_tokens = _walk_tokens(row)
+        similarity = _walk_similarity(anchor_tokens, candidate_tokens)
+        recency_weight = (total - idx) / total
+        score = float(row.get("score") or 0.0)
+        same_feed_bonus = (0.06 + 0.04 * walk_strength) if int(row.get("feed_id") or 0) == anchor_feed_id else 0.0
+        directional_weight = 0.42 + (0.36 * walk_strength)
+        recency_bias = 0.18 + (0.08 * walk_strength)
+        score_bias = 0.12 + (0.08 * walk_strength)
+
+        if direction > 0:
+            blended = (directional_weight * similarity) + (recency_bias * recency_weight) + (score_bias * score) + same_feed_bonus
+        else:
+            blended = (
+                (directional_weight * (1.0 - similarity))
+                + (recency_bias * recency_weight)
+                + (score_bias * (1.0 - score))
+                - same_feed_bonus
+            )
+
+        ranked.append((blended, similarity, -idx, row))
+
+    if not ranked:
+        return None
+
+    ranked.sort(key=lambda item: (item[0], item[1], item[2]), reverse=True)
+    top_n = min(max(6, int(10 * walk_strength) + 4), len(ranked))
+    pool = ranked[:top_n]
+    weights = [top_n - i for i in range(top_n)]
+    return random.choices(pool, weights=weights, k=1)[0][3]
 
 
 def _ranking_expr(
@@ -618,6 +878,109 @@ def _fetch_ranked_entries(
     )
 
 
+def _fetch_random_entry(
+    conn: sqlite3.Connection,
+    q: Optional[str],
+    feed_id: Optional[int],
+    quality_level: Optional[int],
+    days_int: Optional[int],
+    source_scope: str,
+    exclude_id: Optional[int] = None,
+    exclude_ids: Optional[str] = None,
+    walk_anchor_id: Optional[int] = None,
+    walk_direction: Optional[int] = None,
+    walk_strength: Optional[float] = None,
+) -> Optional[dict]:
+    """Pick a uniformly random entry while respecting the current filters."""
+    filters, params = _build_entry_filters(q, feed_id, quality_level, days_int, source_scope)
+    excluded_ids = _parse_int_list(exclude_ids)
+    if exclude_id is not None:
+        excluded_ids.add(int(exclude_id))
+    if excluded_ids:
+        excluded_list = sorted(excluded_ids)
+        placeholders = ", ".join("?" for _ in excluded_list)
+        filters.append(f"e.id NOT IN ({placeholders})")
+        params.extend(excluded_list)
+
+    base_query = "FROM entries e JOIN feeds f ON f.id = e.feed_id"
+    if filters:
+        where_clause = " WHERE " + " AND ".join(filters)
+    else:
+        where_clause = ""
+
+    total = conn.execute(f"SELECT COUNT(*) {base_query}{where_clause}", params).fetchone()[0]
+    if not total:
+        return None
+
+    anchor_id = _parse_int(walk_anchor_id)
+    direction = _normalize_walk_direction(walk_direction)
+    strength = _normalize_walk_strength(walk_strength)
+    if strength is None:
+        strength = WALK_INITIAL_STRENGTH if anchor_id is not None and direction is not None else 0.0
+
+    if anchor_id is not None and direction is not None:
+        anchor_row = conn.execute(
+            """
+            SELECT e.id, e.feed_id, f.title AS feed_title, f.url AS feed_url,
+                   e.title, e.link, e.published, e.summary,
+                   e.thumbnail_url,
+                   COALESCE(e.read, 0) AS read,
+                   COALESCE(e.liked, 0) AS liked,
+                   COALESCE(e.score, 0.0) AS score,
+                   COALESCE(e.quality_score, 0.0) AS quality_score,
+                   e.assessment_label,
+                   e.assessment_label_color
+            FROM entries e
+            JOIN feeds f ON f.id = e.feed_id
+            WHERE e.id = ?
+            """,
+            (anchor_id,),
+        ).fetchone()
+        if anchor_row:
+            walk_rows = conn.execute(
+                f"""
+                SELECT e.id, e.feed_id, f.title AS feed_title, f.url AS feed_url,
+                       e.title, e.link, e.published, e.summary,
+                       e.thumbnail_url,
+                       COALESCE(e.read, 0) AS read,
+                       COALESCE(e.liked, 0) AS liked,
+                       COALESCE(e.score, 0.0) AS score,
+                       COALESCE(e.quality_score, 0.0) AS quality_score,
+                       e.assessment_label,
+                       e.assessment_label_color
+                {base_query}
+                {where_clause}
+                ORDER BY (e.published IS NULL), DATE(e.published) DESC, e.published DESC, e.id DESC
+                LIMIT ?
+                """,
+                params + [WALK_CANDIDATE_LIMIT],
+            ).fetchall()
+            chosen = _pick_walk_candidate([dict(r) for r in walk_rows], dict(anchor_row), direction, strength)
+            if chosen:
+                return chosen
+
+    offset = random.randrange(total)
+    row = conn.execute(
+        f"""
+        SELECT e.id, e.feed_id, f.title AS feed_title, f.url AS feed_url,
+               e.title, e.link, e.published, e.summary,
+               e.thumbnail_url,
+               COALESCE(e.read, 0) AS read,
+               COALESCE(e.liked, 0) AS liked,
+               COALESCE(e.score, 0.0) AS score,
+               COALESCE(e.quality_score, 0.0) AS quality_score,
+               e.assessment_label,
+               e.assessment_label_color
+        {base_query}
+        {where_clause}
+        ORDER BY (e.published IS NULL), DATE(e.published) DESC, e.published DESC, e.id DESC
+        LIMIT 1 OFFSET ?
+        """,
+        params + [offset],
+    ).fetchone()
+    return dict(row) if row else None
+
+
 # ── App ───────────────────────────────────────────────────────────────────────
 
 @asynccontextmanager
@@ -714,8 +1077,8 @@ def index(
     if filters:
         count_query += " WHERE " + " AND ".join(filters)
     total_entries = conn.execute(count_query, params).fetchone()[0]
-    random_seed = _random_seed_from_request(request)
-    random_enabled = random_seed is not None
+    random_seed = None
+    random_enabled = False
 
     try:
         max_entries = int(get_setting("max_entries") or "1000")
@@ -863,6 +1226,16 @@ def article_page(request: Request, entry_id: int):
         conn.close()
         raise HTTPException(status_code=404, detail="Article not found.")
     entry = dict(row)
+    back_url = _build_url_with_query_params(
+        "/",
+        {
+            "q": request.query_params.get("q"),
+            "feed_id": request.query_params.get("feed_id"),
+            "quality_level": request.query_params.get("quality_level"),
+            "days": request.query_params.get("days"),
+            "scope": request.query_params.get("scope"),
+        },
+    )
     feed_row = conn.execute("SELECT id, url, title, color FROM feeds WHERE id = ?", (entry["feed_id"],)).fetchone()
     conn.execute("UPDATE entries SET read = 1 WHERE id = ?", (entry_id,))
     conn.commit()
@@ -872,12 +1245,11 @@ def article_page(request: Request, entry_id: int):
         feed_map = _build_feed_map([dict(feed_row)])
     else:
         feed_map = {entry["feed_id"]: {"title": entry["feed_title"], "domain": "", "color": None}}
-    random_enabled = _random_enabled_from_request(request)
     return templates.TemplateResponse("article.html", {
         "request": request,
         "entry": entry,
         "feed_map": feed_map,
-        "random_enabled": random_enabled,
+        "back_url": back_url,
     })
 
 
@@ -1158,7 +1530,7 @@ def list_entries(
         limit = 100
     if offset < 0:
         offset = 0
-    random_seed = _random_seed_from_request(request)
+    random_seed = None
     source_scope = _normalize_source_scope(scope)
     active_feed_id = feed_id if source_scope == SOURCE_SCOPE_MY else None
     rows = _fetch_ranked_entries(
@@ -1184,7 +1556,7 @@ def mark_read(entry_id: int):
 
 
 @app.post("/api/entries/{entry_id}/like", status_code=200)
-def toggle_like(entry_id: int):
+def toggle_like(entry_id: int, response: Response):
     conn = get_db()
     row = conn.execute("SELECT COALESCE(liked, 0) AS liked FROM entries WHERE id = ?", (entry_id,)).fetchone()
     if not row:
@@ -1194,7 +1566,95 @@ def toggle_like(entry_id: int):
     conn.execute("UPDATE entries SET liked = ? WHERE id = ?", (new_liked, entry_id))
     conn.commit()
     conn.close()
-    return {"liked": bool(new_liked)}
+    direction = 1 if new_liked else -1
+    _set_walk_state_cookie(response, entry_id, direction, WALK_INITIAL_STRENGTH)
+    return {
+        "liked": bool(new_liked),
+        "walk": {"anchor_id": entry_id, "direction": direction, "strength": WALK_INITIAL_STRENGTH},
+    }
+
+
+@app.post("/api/entries/{entry_id}/vote", status_code=200)
+def set_like(entry_id: int, payload: EntryVoteUpdate, response: Response):
+    conn = get_db()
+    row = conn.execute("SELECT id FROM entries WHERE id = ?", (entry_id,)).fetchone()
+    if not row:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Entry not found.")
+    new_liked = 1 if payload.liked else 0
+    conn.execute("UPDATE entries SET liked = ? WHERE id = ?", (new_liked, entry_id))
+    conn.commit()
+    conn.close()
+    direction = 1 if new_liked else -1
+    _set_walk_state_cookie(response, entry_id, direction, WALK_INITIAL_STRENGTH)
+    return {
+        "liked": bool(new_liked),
+        "walk": {"anchor_id": entry_id, "direction": direction, "strength": WALK_INITIAL_STRENGTH},
+    }
+
+
+@app.get("/api/random-article")
+def get_random_article(
+    request: Request,
+    response: Response,
+    q: Optional[str] = None,
+    feed_id: Optional[int] = None,
+    quality_level: Optional[int] = None,
+    days: Optional[str] = None,
+    scope: Optional[str] = None,
+    exclude_id: Optional[int] = None,
+    exclude_ids: Optional[str] = None,
+    walk_anchor_id: Optional[int] = None,
+    walk_direction: Optional[int] = None,
+    walk_strength: Optional[float] = None,
+):
+    conn = get_db()
+    days_int = _parse_days(days)
+    source_scope = _normalize_source_scope(scope)
+    walk_anchor_id, walk_direction, walk_state_strength = _read_walk_state(
+        request,
+        walk_anchor_id=walk_anchor_id,
+        walk_direction=walk_direction,
+    )
+    effective_walk_strength = _normalize_walk_strength(walk_strength)
+    if effective_walk_strength is None:
+        effective_walk_strength = walk_state_strength
+    row = _fetch_random_entry(
+        conn,
+        q,
+        feed_id,
+        quality_level,
+        days_int,
+        source_scope,
+        exclude_id=exclude_id,
+        exclude_ids=exclude_ids,
+        walk_anchor_id=walk_anchor_id,
+        walk_direction=walk_direction,
+        walk_strength=effective_walk_strength,
+    )
+    conn.close()
+    if not row:
+        raise HTTPException(status_code=404, detail="No matching articles found.")
+
+    if walk_anchor_id is not None and walk_direction is not None:
+        next_strength = max(0.0, effective_walk_strength * WALK_DECAY_FACTOR)
+        _set_walk_state_cookie(response, walk_anchor_id, walk_direction, next_strength)
+
+    article_url = _build_url_with_query_params(
+        f"/article/{row['id']}",
+        {
+            "q": q,
+            "feed_id": str(feed_id) if feed_id is not None else None,
+            "quality_level": str(quality_level) if quality_level is not None else None,
+            "days": str(days_int) if days_int is not None else None,
+            "scope": source_scope if source_scope != SOURCE_SCOPE_MY else None,
+        },
+    )
+    return {
+        "id": row["id"],
+        "article_url": article_url,
+        "entry": _finalize_entry_row(row),
+    }
 
 
 # ── Settings API ──────────────────────────────────────────────────────────────

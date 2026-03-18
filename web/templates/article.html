@@ -25,7 +25,7 @@
 <body class="article-page">
 
 <header class="article-header">
-  <a class="back-link" href="/">&larr; Back to feed</a>
+  <a class="back-link" href="{{ back_url }}">&larr; Back to feed</a>
   <a class="header-brand" href="/">myRSSfeed</a>
 
   <div class="header-right">
@@ -76,18 +76,6 @@
         </button>
       </div>
       <div class="header-action">
-        <button
-          class="btn icon-btn{% if random_enabled %} active{% endif %}"
-          id="header-random-btn"
-          type="button"
-          title="Toggle random article order"
-          aria-pressed="{{ 'true' if random_enabled else 'false' }}"
-          onclick="headerToggleRandom()"
-        >
-          &#127922;
-        </button>
-      </div>
-      <div class="header-action">
         <a
           href="/settings"
           class="btn icon-btn header-gear-link"
@@ -101,42 +89,111 @@
   </div>
 </header>
 
-<article class="article-view">
-  <div class="article-meta">
-    {% set feed_info = feed_map.get(entry.feed_id) %}
-    {% if feed_info and feed_info.domain %}
-    <img class="article-favicon" src="https://www.google.com/s2/favicons?domain={{ feed_info.domain }}&sz=32" width="14" height="14" alt="" />
-    {% endif %}
-    <span class="article-source tag entry-source-tag" style="--feed-color: {{ feed_info.color if feed_info else '' }}">{{ entry.feed_title or "Unknown" }}</span>
-    {% if entry.assessment_label %}
-    <span class="tag entry-assessment-tag" style="--assessment-color: {{ entry.assessment_label_color or '' }}">{{ entry.assessment_label | replace('_', ' ') | title }}</span>
-    {% endif %}
-    <span class="article-date">{{ entry.published[:10] if entry.published else "" }}</span>
-  </div>
-  <h1 class="article-title">{{ (entry.og_title or entry.title) or "(no title)" }}</h1>
+<!-- Overlay nav drawer -->
+<div class="nav-overlay" id="nav-overlay" onclick="closeNav()">
+  <nav class="nav-drawer" onclick="event.stopPropagation()">
+    <div class="nav-drawer-header">
+      <span class="nav-drawer-brand">myRSSfeed</span>
+      <button class="nav-drawer-close" onclick="closeNav()">&times;</button>
+    </div>
+    <div class="nav-drawer-links">
+      <a href="/">
+        <span class="nav-icon">&#128196;</span> Articles
+      </a>
+      <a href="/feeds">
+        <span class="nav-icon">&#128218;</span> My Feeds
+      </a>
+      <a href="/discover">
+        <span class="nav-icon">&#128269;</span> Discover
+      </a>
+      <a href="/stats">
+        <span class="nav-icon">&#128201;</span> Statistics
+      </a>
+      <a href="/settings">
+        <span class="nav-icon">&#9881;</span> Settings
+      </a>
+    </div>
+  </nav>
+</div>
 
-  <div class="article-content">
+<article class="article-view">
+  <div class="article-page-body">
     {% set article_image = entry.og_image_url or entry.thumbnail_url %}
+    {% set article_description = entry.og_description or entry.summary %}
+    {% set article_scraped = entry.full_content %}
+
+    <div class="article-actions">
+      <div class="article-nav-controls" aria-label="Related article navigation">
+        <button
+          type="button"
+          class="article-nav-btn article-nav-btn-left"
+          title="Move left to a related article"
+          aria-label="Move left to a related article"
+          onclick="_walkAndOpenArticle(-1)"
+        >
+          <span class="article-nav-symbol" aria-hidden="true">&minus;</span>
+        </button>
+        <button
+          type="button"
+          class="article-nav-btn article-nav-btn-right"
+          title="Move right to a related article"
+          aria-label="Move right to a related article"
+          onclick="_walkAndOpenArticle(1)"
+        >
+          <span class="article-nav-symbol" aria-hidden="true">+</span>
+        </button>
+      </div>
+
+      {% if entry.link %}
+      <a
+        class="btn article-cta"
+        href="{{ entry.link }}"
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label="Read the full article in a new tab"
+      >
+        Read full article
+        <span aria-hidden="true">↗</span>
+      </a>
+      {% else %}
+      <div class="article-cta article-cta-disabled">Full article link unavailable</div>
+      {% endif %}
+    </div>
+
+    <div class="article-meta">
+      {% set feed_info = feed_map.get(entry.feed_id) %}
+      {% if feed_info and feed_info.domain %}
+      <img class="article-favicon" src="https://www.google.com/s2/favicons?domain={{ feed_info.domain }}&sz=32" width="14" height="14" alt="" />
+      {% endif %}
+      <span class="article-source tag entry-source-tag" style="--feed-color: {{ feed_info.color if feed_info else '' }}">{{ entry.feed_title or "Unknown" }}</span>
+      {% if entry.assessment_label %}
+      <span class="tag entry-assessment-tag" style="--assessment-color: {{ entry.assessment_label_color or '' }}">{{ entry.assessment_label | replace('_', ' ') | title }}</span>
+      {% endif %}
+      <time class="article-date" data-published="{{ entry.published }}" data-published-format="datetime" datetime="{{ entry.published }}">{{ entry.published[:10] if entry.published else "" }}</time>
+    </div>
+    <h1 class="article-title">{{ (entry.og_title or entry.title) or "(no title)" }}</h1>
+
+    {% if article_description %}
+    <div class="article-description">
+      {{ article_description | safe }}
+    </div>
+    {% endif %}
+
     {% if article_image %}
     <figure class="article-figure">
       <img class="article-img" src="{{ article_image }}" alt="" loading="eager" />
     </figure>
     {% endif %}
+
+    {% if article_scraped %}
+    <div class="article-scraped-content">
+      {{ article_scraped | safe }}
+    </div>
+    {% elif not article_description %}
     <div class="article-body">
-      {% set body = entry.og_description or entry.full_content or entry.summary %}
-      {% if body %}
-      {{ body | safe }}
-      {% else %}
       <p>No description available for this article.</p>
-      {% endif %}
     </div>
-    <div class="article-original-link">
-      {% if entry.link %}
-      <a href="{{ entry.link }}" target="_blank" rel="noopener noreferrer">Open original article</a>
-      {% else %}
-      <span>Original article link is not available.</span>
-      {% endif %}
-    </div>
+    {% endif %}
   </div>
 </article>
 

@@ -63,7 +63,7 @@
         </button>
         <div class="refresh-status header-refresh-status" aria-live="polite">
           <span class="refresh-status-dot" id="header-refresh-status-dot" aria-hidden="true"></span>
-          <span class="refresh-status-text" id="header-refresh-status-text">No runs yet</span>
+          <span class="refresh-status-text" id="header-refresh-status-text">Ready</span>
         </div>
       </div>
       <div class="header-action">
@@ -78,7 +78,7 @@
         </button>
         <div class="refresh-status header-scrape-status" aria-live="polite">
           <span class="refresh-status-dot" id="header-scrape-status-dot" aria-hidden="true"></span>
-          <span class="refresh-status-text" id="header-scrape-status-text">No runs yet</span>
+          <span class="refresh-status-text" id="header-scrape-status-text">Ready</span>
         </div>
       </div>
       <div class="header-action">
@@ -93,7 +93,7 @@
         </button>
         <div class="refresh-status header-wordrank-status" aria-live="polite">
           <span class="refresh-status-dot" id="header-wordrank-status-dot" aria-hidden="true"></span>
-          <span class="refresh-status-text" id="header-wordrank-status-text">Idle</span>
+          <span class="refresh-status-text" id="header-wordrank-status-text">Ready</span>
         </div>
       </div>
       <div class="header-action">
@@ -106,18 +106,6 @@
           onclick="headerToggleFilter()"
         >
           &#128269;
-        </button>
-      </div>
-      <div class="header-action">
-        <button
-          class="btn icon-btn{% if random_enabled %} active{% endif %}"
-          id="header-random-btn"
-          type="button"
-          title="Toggle random article order"
-          aria-pressed="{{ 'true' if random_enabled else 'false' }}"
-          onclick="headerToggleRandom()"
-        >
-          &#127922;
         </button>
       </div>
       <div class="header-action">
@@ -425,7 +413,7 @@
         <button class="btn" id="wordrank-now-btn" onclick="wordrankNow()">Run WordRank</button>
         <div class="refresh-status" id="wordrank-status" aria-live="polite">
           <span class="refresh-status-dot" id="wordrank-status-dot" aria-hidden="true"></span>
-          <span class="refresh-status-text" id="wordrank-status-text">Idle</span>
+          <span class="refresh-status-text" id="wordrank-status-text">Ready</span>
         </div>
       </div>
     </div>
@@ -453,7 +441,7 @@
         </div>
         <div class="refresh-status" id="pipeline-status" aria-live="polite">
           <span class="refresh-status-dot" id="pipeline-status-dot" aria-hidden="true"></span>
-          <span class="refresh-status-text" id="pipeline-status-text">No runs yet</span>
+          <span class="refresh-status-text" id="pipeline-status-text">Ready</span>
         </div>
       </div>
     </div>

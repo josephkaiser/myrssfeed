@@ -40,8 +40,17 @@
     <input type="hidden" name="quality_level" value="{{ quality_level }}" />
     {% endif %}
     <input type="hidden" name="scope" value="{{ source_scope }}" />
-    <div class="search-input-wrap">
-      <input type="search" name="q" id="search-input" value="{{ q }}" placeholder="Search articles..." autocomplete="off" />
+    <input type="hidden" name="q" id="search-query-base" value="{{ q }}" />
+    <div class="search-input-wrap{% if q %} has-search-term{% endif %}">
+      {% if q %}
+      <div class="search-term-chip" id="search-term-chip">
+        <span class="search-term-chip-text">{{ q }}</span>
+        <button type="button" class="search-term-chip-remove" id="search-term-remove" aria-label="Remove search term">&times;</button>
+      </div>
+      <input type="search" id="search-input" value="" placeholder="Add more terms..." autocomplete="off" />
+      {% else %}
+      <input type="search" id="search-input" value="" placeholder="Search articles..." autocomplete="off" />
+      {% endif %}
       <div class="search-dropdown" id="search-dropdown" style="display:none"></div>
     </div>
     <div class="search-advanced">
@@ -72,7 +81,7 @@
         {% if active_feed_id %} · filtered{% endif %}
         {% if q %} · "{{ q }}"{% endif %}
         {% if date_range %} · last {{ date_range }} days{% endif %}
-        {% if source_scope == 'discover' %} · discover{% else %} · my feed{% endif %}
+        {% if source_scope == 'discover' %} · discover{% else %} · feed{% endif %}
       </span>
     </div>
     <div class="header-actions" aria-label="Quick actions">
@@ -88,7 +97,7 @@
         </button>
         <div class="refresh-status header-refresh-status" aria-live="polite">
           <span class="refresh-status-dot" id="header-refresh-status-dot" aria-hidden="true"></span>
-          <span class="refresh-status-text" id="header-refresh-status-text">No runs yet</span>
+          <span class="refresh-status-text" id="header-refresh-status-text">Ready</span>
         </div>
       </div>
       <div class="header-action">
@@ -103,7 +112,7 @@
         </button>
         <div class="refresh-status header-scrape-status" aria-live="polite">
           <span class="refresh-status-dot" id="header-scrape-status-dot" aria-hidden="true"></span>
-          <span class="refresh-status-text" id="header-scrape-status-text">No runs yet</span>
+          <span class="refresh-status-text" id="header-scrape-status-text">Ready</span>
         </div>
       </div>
       <div class="header-action">
@@ -118,7 +127,7 @@
         </button>
         <div class="refresh-status header-wordrank-status" aria-live="polite">
           <span class="refresh-status-dot" id="header-wordrank-status-dot" aria-hidden="true"></span>
-          <span class="refresh-status-text" id="header-wordrank-status-text">Idle</span>
+          <span class="refresh-status-text" id="header-wordrank-status-text">Ready</span>
         </div>
       </div>
       <div class="header-action">
@@ -131,18 +140,6 @@
           onclick="headerToggleFilter()"
         >
           &#128269;
-        </button>
-      </div>
-      <div class="header-action">
-        <button
-          class="btn icon-btn{% if random_enabled %} active{% endif %}"
-          id="header-random-btn"
-          type="button"
-          title="Toggle random article order"
-          aria-pressed="{{ 'true' if random_enabled else 'false' }}"
-          onclick="headerToggleRandom()"
-        >
-          &#127922;
         </button>
       </div>
       <div class="header-action">
@@ -254,7 +251,7 @@
           role="tab"
           aria-selected="{{ 'true' if source_scope == 'my' else 'false' }}"
         >
-          My feed
+          Feed
         </a>
         <span class="feed-scope-sep" aria-hidden="true">|</span>
         <a
@@ -285,7 +282,7 @@
             {% if entry.assessment_label %}
             <span class="tag entry-assessment-tag" style="--assessment-color: {{ entry.assessment_label_color or '' }}">{{ entry.assessment_label | replace('_', ' ') | title }}</span>
             {% endif %}
-            <span class="entry-date">{{ entry.published[:10] if entry.published else "" }}</span>
+            <time class="entry-date" data-published="{{ entry.published }}" data-published-format="date" datetime="{{ entry.published }}">{{ entry.published[:10] if entry.published else "" }}</time>
           </div>
           <div class="entry-body">
             <div class="entry-content">
@@ -332,7 +329,7 @@
             <img class="sidebar-feed-favicon" src="https://www.google.com/s2/favicons?domain={{ feed_info.domain }}&sz=32" width="14" height="14" alt="" loading="lazy" />
             {% endif %}
             <span class="trending-source">{{ entry.feed_title or "Unknown" }}</span>
-            <span class="trending-date">{{ entry.published[:10] if entry.published else "" }}</span>
+            <time class="trending-date" data-published="{{ entry.published }}" data-published-format="date" datetime="{{ entry.published }}">{{ entry.published[:10] if entry.published else "" }}</time>
           </div>
           <a class="trending-title" href="{{ entry.link or ('/article/' ~ entry.id) }}" target="_blank" rel="noopener noreferrer"{% if entry.link %} onclick="markRead({{ entry.id }}, this)"{% endif %}>
             {{ loop.index }}. {{ entry.title or "(no title)" }}

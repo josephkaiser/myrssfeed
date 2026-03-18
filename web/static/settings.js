@@ -179,7 +179,7 @@
 
     if (state.running) {
       dot.classList.add("running");
-      text.textContent = "Job in progress";
+      text.textContent = "Running";
       return;
     }
 
@@ -188,18 +188,18 @@
         dot.classList.add("success");
         if (typeof state.minutes_since_last_success === "number") {
           const mins = state.minutes_since_last_success;
-          text.textContent = mins === 0 ? "Just now" : `${mins} min ago`;
+          text.textContent = mins === 0 ? "Now" : `${mins}m ago`;
         } else {
-          text.textContent = "Last job completed";
+          text.textContent = "Done";
         }
         break;
       case "error":
         dot.classList.add("error");
-        text.textContent = "Last job failed";
+        text.textContent = "Failed";
         break;
       case "never":
       default:
-        text.textContent = "No runs yet";
+        text.textContent = "Ready";
         break;
     }
   }
@@ -446,22 +446,22 @@
         dot.classList.add("success");
         if (typeof state.minutes_since_last_success === "number") {
           const mins = state.minutes_since_last_success;
-          text.textContent = mins === 0 ? "Last run just now" : `Last run ${mins} min ago`;
+          text.textContent = mins === 0 ? "Now" : `${mins}m ago`;
         } else {
-          text.textContent = "Last automatic run succeeded";
+          text.textContent = "Done";
         }
         break;
       case "error":
         dot.classList.add("error");
-        text.textContent = "Last automatic run had errors";
+        text.textContent = "Failed";
         break;
       case "running":
         dot.classList.add("running");
-        text.textContent = "Pipeline currently running";
+        text.textContent = "Running";
         break;
       case "never":
       default:
-        text.textContent = "No runs yet";
+        text.textContent = "Ready";
         break;
     }
   }
@@ -476,7 +476,7 @@
 
     if (state.running) {
       dot.classList.add("running");
-      text.textContent = "Running WordRank…";
+      text.textContent = "Running";
       return;
     }
 
@@ -485,17 +485,17 @@
         dot.classList.add("success");
         if (typeof state.minutes_since_last_success === "number") {
           const mins = state.minutes_since_last_success;
-          text.textContent = mins === 0 ? "Last run just now" : `Last run ${mins} min ago`;
+          text.textContent = mins === 0 ? "Now" : `${mins}m ago`;
         } else {
-          text.textContent = "Last run completed";
+          text.textContent = "Done";
         }
         break;
       case "error":
         dot.classList.add("error");
-        text.textContent = "Last run failed";
+        text.textContent = "Failed";
         break;
       default:
-        text.textContent = "Idle";
+        text.textContent = "Ready";
         break;
     }
   }
