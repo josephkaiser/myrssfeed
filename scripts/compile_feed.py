@@ -12,7 +12,6 @@ import feedparser
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from utils.helpers import get_db, get_setting  # noqa: E402
-from scripts.scraper import scrape_url  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
@@ -87,12 +86,9 @@ def _process_entry(
     feed_id: int,
     entry,
     source_uid: Optional[str],
-    scrape_enabled: bool,
-    scrape_budget_ref: list,
     new_count_ref: list,
-    scraped_count_ref: list,
 ) -> bool:
-    """Parse, normalize, optionally enrich one entry and insert. Mutates *_ref counters."""
+    """Parse, normalize, and insert one entry. Mutates *_ref counters."""
     link = _normalize_link(getattr(entry, "link", None))
     source_uid = _normalize_text(source_uid or link or "", LINK_MAX_LEN)
     if not source_uid:
@@ -111,18 +107,6 @@ def _process_entry(
     og_description = getattr(entry, "og_description", None)
     og_image_url = getattr(entry, "og_image_url", None)
     full_content = getattr(entry, "full_content", None)
-    if scrape_enabled and scrape_budget_ref[0] > 0 and link:
-        try:
-            scraped_og_title, scraped_og_description, scraped_og_image_url, scraped_full_content = scrape_url(link)
-            if any([scraped_og_title, scraped_og_description, scraped_og_image_url, scraped_full_content]):
-                og_title = og_title or scraped_og_title
-                og_description = og_description or scraped_og_description
-                og_image_url = og_image_url or scraped_og_image_url
-                full_content = full_content or scraped_full_content
-                scraped_count_ref[0] += 1
-                scrape_budget_ref[0] -= 1
-        except Exception as exc:
-            logger.debug("Scrape failed for %s: %s", link, exc)
 
     try:
         cursor.execute(
@@ -166,19 +150,7 @@ def run_compile_feed():
         conn.close()
         return
 
-    try:
-        scrape_enabled = (get_setting("scrape_enabled") or "true").lower() == "true"
-    except Exception:
-        scrape_enabled = True
-
-    try:
-        scrape_budget = int(get_setting("scrape_max_per_run") or "40")
-    except (TypeError, ValueError):
-        scrape_budget = 40
-
     new_count_ref = [0]
-    scraped_count_ref = [0]
-    scrape_budget_ref = [scrape_budget]
 
     for row in feeds:
         feed_id, url, feed_title = row["id"], row["url"], row["title"]
@@ -213,23 +185,18 @@ def run_compile_feed():
                     feed_id=feed_id,
                     entry=entry,
                     source_uid=getattr(entry, "link", None),
-                    scrape_enabled=scrape_enabled,
-                    scrape_budget_ref=scrape_budget_ref,
                     new_count_ref=new_count_ref,
-                    scraped_count_ref=scraped_count_ref,
                 )
             except Exception as exc:
                 logger.debug("Skipping malformed entry in feed %s: %s", url, exc)
                 continue
 
     new_count = new_count_ref[0]
-    scraped_count = scraped_count_ref[0]
     conn.commit()
     conn.close()
     logger.info(
-        "Compile complete. %d new entries stored. %d pages scraped for enrichment.",
+        "Compile complete. %d new entries stored.",
         new_count,
-        scraped_count,
     )
 
     _prune_old_entries()

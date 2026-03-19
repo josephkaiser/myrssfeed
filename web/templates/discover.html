@@ -33,22 +33,41 @@
   <a class="header-brand" href="/">myRSSfeed</a>
 
   <form class="search-bar" method="get" action="/" id="search-form">
-    <div class="search-input-wrap">
-      <input type="search" name="q" id="search-input" value="{{ q }}" placeholder="Search articles..." autocomplete="off" />
+    <input type="hidden" name="q" id="search-query-base" value="{{ q|default('') }}" />
+    <div class="search-input-wrap{% if q %} has-search-term{% endif %}">
+      {% if q %}
+      <div class="search-term-chip" id="search-term-chip">
+        <span class="search-term-chip-text">{{ q }}</span>
+        <button type="button" class="search-term-chip-remove" id="search-term-remove" aria-label="Remove search term">&times;</button>
+      </div>
+      <input type="search" id="search-input" value="" placeholder="Add more terms..." autocomplete="off" />
+      {% else %}
+      <input type="search" id="search-input" value="" placeholder="Search articles..." autocomplete="off" />
+      {% endif %}
       <div class="search-dropdown" id="search-dropdown" style="display:none"></div>
     </div>
+    <div class="search-advanced">
+      <button type="button" class="btn pill search-advanced-btn" id="advanced-toggle" aria-expanded="false" aria-haspopup="true" aria-controls="advanced-dropdown">Advanced</button>
+      <div class="search-advanced-dropdown" id="advanced-dropdown" role="menu" aria-labelledby="advanced-toggle" hidden>
+        <div class="search-advanced-row">
+          <label for="date-range">Date range</label>
+          <select name="days" id="date-range" aria-label="Limit results to last N days">
+            <option value="">All-Time</option>
+            <option value="1" {% if date_range == 1 %}selected{% endif %}>Last 1 day</option>
+            <option value="5" {% if date_range == 5 %}selected{% endif %}>Last 5 days</option>
+            <option value="30" {% if date_range == 30 %}selected{% endif %}>Last 30 days</option>
+            <option value="90" {% if date_range == 90 %}selected{% endif %}>Last 90 days</option>
+          </select>
+        </div>
+      </div>
+    </div>
     <button class="btn pill" type="submit">Go</button>
-    {% if q %}
-    <a href="/" class="btn ghost pill">Clear</a>
+    {% if q or (date_range is defined and date_range) %}
+    <a href="{{ clear_url|default('/') }}" class="btn ghost pill" id="search-clear">Clear</a>
     {% endif %}
   </form>
 
   <div class="header-right">
-    <div class="header-metrics">
-      <span class="header-count">
-        <!-- Count omitted on discover page -->
-      </span>
-    </div>
     <div class="header-actions" aria-label="Quick actions">
       <div class="header-action">
         <button
@@ -64,48 +83,6 @@
           <span class="refresh-status-dot" id="header-refresh-status-dot" aria-hidden="true"></span>
           <span class="refresh-status-text" id="header-refresh-status-text">Ready</span>
         </div>
-      </div>
-      <div class="header-action">
-        <button
-          class="btn icon-btn"
-          id="header-scrape-btn"
-          type="button"
-          title="Enrich articles with metadata"
-          onclick="headerScrapeNow()"
-        >
-          &#8681;
-        </button>
-        <div class="refresh-status header-scrape-status" aria-live="polite">
-          <span class="refresh-status-dot" id="header-scrape-status-dot" aria-hidden="true"></span>
-          <span class="refresh-status-text" id="header-scrape-status-text">Ready</span>
-        </div>
-      </div>
-      <div class="header-action">
-        <button
-          class="btn icon-btn"
-          id="header-wordrank-btn"
-          type="button"
-          title="Recompute personalized scores (WordRank)"
-          onclick="headerWordrankNow()"
-        >
-          WR
-        </button>
-        <div class="refresh-status header-wordrank-status" aria-live="polite">
-          <span class="refresh-status-dot" id="header-wordrank-status-dot" aria-hidden="true"></span>
-          <span class="refresh-status-text" id="header-wordrank-status-text">Ready</span>
-        </div>
-      </div>
-      <div class="header-action">
-        <button
-          class="btn icon-btn"
-          id="header-filter-btn"
-          type="button"
-          title="Filter out low-quality items"
-          aria-pressed="false"
-          onclick="headerToggleFilter()"
-        >
-          &#128269;
-        </button>
       </div>
       <div class="header-action">
         <a
@@ -129,14 +106,14 @@
       <button class="nav-drawer-close" onclick="closeNav()">&times;</button>
     </div>
     <div class="nav-drawer-links">
-      <a href="/">
-        <span class="nav-icon">&#128196;</span> Articles
-      </a>
       <a href="/feeds">
-        <span class="nav-icon">&#128218;</span> My Feeds
+        <span class="nav-icon">&#128220;</span> Subscriptions
       </a>
       <a href="/discover" class="active">
         <span class="nav-icon">&#128269;</span> Discover
+      </a>
+      <a href="/add-feed">
+        <span class="nav-icon">&#10133;</span> Add Feed
       </a>
       <a href="/stats">
         <span class="nav-icon">&#128201;</span> Statistics
@@ -146,7 +123,7 @@
       </a>
       <div class="nav-section">Subscriptions</div>
       <button class="nav-feeds-toggle" id="nav-feeds-toggle" onclick="toggleNavFeeds()">
-        <span class="nav-icon">&#128240;</span> My Feeds
+        <span class="nav-icon">&#128240;</span> Subscriptions
         <span class="chevron">&#9654;</span>
       </button>
       <div class="nav-feeds-list" id="nav-feeds-list">
@@ -159,6 +136,23 @@
           <button type="button" class="nav-feed-remove" onclick="deleteFeed({{ feed.id }}, this)" title="Remove feed" aria-label="Remove feed">&times;</button>
         </div>
         {% endfor %}
+        <div class="nav-add-feed-row">
+          <input
+            type="url"
+            id="nav-add-feed-input"
+            class="detect-input"
+            placeholder="https://example.com or https://example.com/feed.xml"
+            autocomplete="off"
+          />
+          <button
+            class="btn"
+            id="nav-add-feed-btn"
+            type="button"
+            onclick="handleNavbarAddFeed('nav')"
+          >
+            Add
+          </button>
+        </div>
       </div>
     </div>
   </nav>
@@ -169,14 +163,17 @@
     <div class="sidebar-section">
       <div class="sidebar-section-title">Navigation</div>
       <nav class="sidebar-nav">
-        <a href="/">
-          <span class="nav-icon">&#128196;</span> Articles
-        </a>
         <a href="/feeds">
-          <span class="nav-icon">&#128218;</span> My Feeds
+          <span class="nav-icon">&#128220;</span> Subscriptions
         </a>
         <a href="/discover">
           <span class="nav-icon">&#128269;</span> Discover
+        </a>
+        <a href="/add-feed">
+          <span class="nav-icon">&#10133;</span> Add Feed
+        </a>
+        <a href="/stats">
+          <span class="nav-icon">&#128201;</span> Statistics
         </a>
         <a href="/settings">
           <span class="nav-icon">&#9881;</span> Settings
@@ -195,22 +192,30 @@
           <button type="button" class="sidebar-feed-remove" onclick="deleteFeed({{ feed.id }}, this)" title="Remove feed" aria-label="Remove feed">&times;</button>
         </div>
         {% endfor %}
+        <div class="sidebar-add-feed-row">
+          <input
+            type="url"
+            id="sidebar-add-feed-input"
+            class="detect-input"
+            placeholder="https://example.com or https://example.com/feed.xml"
+            autocomplete="off"
+          />
+          <button
+            class="btn"
+            id="sidebar-add-feed-btn"
+            type="button"
+            onclick="handleNavbarAddFeed('sidebar')"
+          >
+            Add
+          </button>
+        </div>
       </div>
     </div>
   </aside>
 
   <div class="discover-wrap">
-
-  <!-- Detect from URL -->
   <div class="discover-section">
-    <div class="discover-section-title">Detect from a website</div>
-    <p class="discover-section-desc">Paste any website URL and we'll find its RSS feed.</p>
-    <div class="detect-row">
-      <input type="url" id="detect-input" class="detect-input"
-        placeholder="https://example.com" autocomplete="off" />
-      <button class="btn" id="detect-btn" onclick="detectFeeds()">Detect</button>
-    </div>
-    <div id="detect-results"></div>
+    <div class="discover-section-title">Discover</div>
   </div>
 
   <!-- Browse catalog -->
@@ -230,6 +235,7 @@
   </div>
 
   </div>
+
 </div>
 
 <div id="toast"></div>
@@ -237,8 +243,10 @@
 <script src="/static/index.js"></script>
 <script>
 // Data passed from server
-const CATALOG = {{ catalog_json | safe }};
+let CATALOG = {{ catalog_json | safe }};
 const SUBSCRIBED = new Set({{ subscribed_json | safe }});
+let SERVICE_FEEDS = {{ service_feeds_json | safe }};
+let SERVICE_BY_URL = new Map(SERVICE_FEEDS.map((f) => [f.url, f]));
 
 // Build category filter buttons
 (function() {
@@ -293,20 +301,25 @@ function renderCatalog() {
   }
 
   grid.innerHTML = filtered.map(feed => {
-    const subscribed = SUBSCRIBED.has(feed.url);
+    const state = SERVICE_BY_URL.get(feed.url) || null;
+    const subscribed = state ? !!state.subscribed : SUBSCRIBED.has(feed.url);
+    const inService = !!state;
     const domain = getDomain(feed.url);
     const favicon = domain ? `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=128` : '';
     return `
       <div class="catalog-card" data-url="${esc(feed.url)}">
+        <button class="catalog-remove-x" type="button" title="Remove from whole app" aria-label="Remove from whole app" onclick="removeFromWholeApp('${esc(feed.url)}', this)">&times;</button>
         ${favicon ? `<img class="catalog-card-img" src="${favicon}" alt="" loading="lazy" />` : '<div class="catalog-card-img catalog-card-img-placeholder"></div>'}
         <span class="catalog-card-name" onclick="toggleDesc(this)">${esc(feed.name)}</span>
         <span class="tag">${esc(feed.category)}</span>
         <p class="catalog-card-desc">${esc(feed.description)}</p>
         <div class="catalog-card-bottom">
-          ${subscribed
-            ? '<span class="catalog-added-badge">&#10003; Added</span>'
-            : `<button class="btn catalog-add-btn" onclick="addFeed('${esc(feed.url)}', '${esc(feed.name)}', this)">+ Add</button>`
+          ${
+            subscribed
+              ? `<button class="btn ghost catalog-subscribe-btn" onclick="toggleSubscription('${esc(feed.url)}', this)">Unsubscribe</button>`
+              : `<button class="btn catalog-subscribe-btn" onclick="toggleSubscription('${esc(feed.url)}', this)">Subscribe</button>`
           }
+          ${inService ? '<span class="catalog-service-chip">In app</span>' : '<span class="catalog-service-chip ghost">Not in app</span>'}
         </div>
       </div>
     `;
@@ -317,123 +330,93 @@ function esc(str) {
   return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 
-async function addFeed(url, name, btn) {
+async function subscribeFeed(url, name) {
+  const state = SERVICE_BY_URL.get(url);
+  if (state && state.id) {
+    const res = await fetch('/api/feeds/' + state.id + '/subscribe', { method: 'POST' });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.detail || 'Could not subscribe.');
+    const next = { ...(SERVICE_BY_URL.get(url) || {}), id: data.id, url: data.url, subscribed: true, entry_count: Number((SERVICE_BY_URL.get(url) || {}).entry_count || 0) };
+    SERVICE_BY_URL.set(url, next);
+    return;
+  }
+  const res = await fetch('/api/feeds', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({url, title: name})
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok && res.status !== 409) throw new Error(data.detail || res.status);
+  const next = {
+    id: data.id,
+    url: data.url || url,
+    subscribed: true,
+    entry_count: 0,
+  };
+  SERVICE_BY_URL.set(url, next);
+}
+
+async function unsubscribeFeedByUrl(url) {
+  const state = SERVICE_BY_URL.get(url);
+  if (!state || !state.id) return;
+  const res = await fetch('/api/feeds/' + state.id, { method: 'DELETE' });
+  if (!res.ok) throw new Error('Could not unsubscribe.');
+  SERVICE_BY_URL.set(url, { ...state, subscribed: false });
+}
+
+async function toggleSubscription(url, btn) {
+  const feed = CATALOG.find((f) => f.url === url) || {};
+  const state = SERVICE_BY_URL.get(url);
+  const subscribed = state ? !!state.subscribed : SUBSCRIBED.has(url);
   btn.disabled = true;
-  btn.textContent = '...';
   try {
-    const res = await fetch('/api/feeds', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({url, title: name})
-    });
-    if (res.ok || res.status === 409) {
-      SUBSCRIBED.add(url);
-      const card = btn.closest('.catalog-card');
-      const bottom = card.querySelector('.catalog-card-bottom');
-      bottom.innerHTML = '<span class="catalog-added-badge">&#10003; Added</span>';
-      showToast(res.status === 409 ? 'Already subscribed' : `Added: ${name}`);
+    if (subscribed) {
+      await unsubscribeFeedByUrl(url);
+      SUBSCRIBED.delete(url);
+      showToast('Unsubscribed.');
     } else {
-      const data = await res.json().catch(() => ({}));
-      showToast('Error: ' + (data.detail || res.status));
-      btn.disabled = false;
-      btn.textContent = '+ Add';
+      await subscribeFeed(url, feed.name || '');
+      SUBSCRIBED.add(url);
+      showToast('Subscribed.');
     }
+    renderCatalog();
   } catch (e) {
-    showToast('Network error');
+    showToast((e && e.message) || 'Network error');
     btn.disabled = false;
-    btn.textContent = '+ Add';
   }
 }
 
-async function detectFeeds() {
-  const input = document.getElementById('detect-input');
-  const resultsEl = document.getElementById('detect-results');
-  const btn = document.getElementById('detect-btn');
-  const url = input.value.trim();
-  if (!url) return;
-
+async function removeFromWholeApp(url, btn) {
+  const state = SERVICE_BY_URL.get(url);
+  const count = Number((state && state.entry_count) || 0);
+  const confirmMsg =
+    'Remove this feed from the whole app?\n\n' +
+    'This will unsubscribe it and purge ' + count.toLocaleString() + ' associated database item' + (count === 1 ? '' : 's') + '.';
+  if (!confirm(confirmMsg)) return;
   btn.disabled = true;
-  btn.textContent = 'Detecting...';
-  resultsEl.innerHTML = '<p class="detect-status">Checking...</p>';
-
   try {
-    const res = await fetch('/api/discover/detect', {
-      method: 'POST',
+    if (state && state.id) {
+      const serviceRes = await fetch('/api/feeds/' + state.id + '/service', { method: 'DELETE' });
+      if (!serviceRes.ok) {
+        const data = await serviceRes.json().catch(() => ({}));
+        throw new Error(data.detail || serviceRes.status);
+      }
+    }
+    await fetch('/api/catalog', {
+      method: 'DELETE',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({url})
     });
-    const data = await res.json();
-
-    if (!res.ok) {
-      resultsEl.innerHTML = `<p class="detect-error">${esc(data.detail || 'Detection failed')}</p>`;
-      return;
-    }
-
-    if (!data.feeds || data.feeds.length === 0) {
-      resultsEl.innerHTML = '<p class="detect-status">No RSS feeds found at that URL. Try a different page, or add the feed URL directly from Settings.</p>';
-      return;
-    }
-
-    resultsEl.innerHTML = `
-      <div class="detect-results-list">
-        ${data.feeds.map(f => {
-          const subscribed = SUBSCRIBED.has(f.url);
-          return `
-            <div class="detect-result-row" data-url="${esc(f.url)}">
-              <div class="detect-result-info">
-                <span class="detect-result-name">${esc(f.name || 'RSS Feed')}</span>
-                <span class="detect-result-url">${esc(f.url)}</span>
-              </div>
-              ${subscribed
-                ? '<span class="catalog-added-badge">&#10003; Added</span>'
-                : `<button class="btn catalog-add-btn" onclick="addDetected('${esc(f.url)}', '${esc(f.name || 'RSS Feed')}', this)">+ Add</button>`
-              }
-            </div>
-          `;
-        }).join('')}
-      </div>
-    `;
-  } catch (e) {
-    resultsEl.innerHTML = '<p class="detect-error">Network error. Is the server reachable?</p>';
-  } finally {
-    btn.disabled = false;
-    btn.textContent = 'Detect';
-  }
-}
-
-async function addDetected(url, name, btn) {
-  btn.disabled = true;
-  btn.textContent = '...';
-  try {
-    const res = await fetch('/api/feeds', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({url, title: name})
-    });
-    if (res.ok || res.status === 409) {
-      SUBSCRIBED.add(url);
-      const row = btn.closest('.detect-result-row');
-      btn.replaceWith(Object.assign(document.createElement('span'), {
-        className: 'catalog-added-badge',
-        innerHTML: '&#10003; Added'
-      }));
-      showToast(res.status === 409 ? 'Already subscribed' : `Added: ${name}`);
-    } else {
-      const data = await res.json().catch(() => ({}));
-      showToast('Error: ' + (data.detail || res.status));
-      btn.disabled = false;
-      btn.textContent = '+ Add';
-    }
-  } catch (e) {
+    SUBSCRIBED.delete(url);
+    SERVICE_BY_URL.delete(url);
+    CATALOG = CATALOG.filter((f) => f.url !== url);
+    renderCatalog();
+    showToast('Removed from whole app.');
+  } catch (_) {
     showToast('Network error');
     btn.disabled = false;
-    btn.textContent = '+ Add';
   }
 }
-
-document.getElementById('detect-input').addEventListener('keydown', function(e) {
-  if (e.key === 'Enter') detectFeeds();
-});
 
 function showToast(msg) {
   const t = document.getElementById('toast');

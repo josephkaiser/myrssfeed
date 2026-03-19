@@ -46,10 +46,10 @@ def _record_pipeline_status(status: str) -> None:
 
 
 def run_pipeline():
-    """Run the full daily pipeline: fetch → rank → visualize → digest.
+    """Run the full daily pipeline: fetch → rank → visualize.
 
     Silently skips if a run is already in progress (prevents OOM from
-    concurrent ollama calls on the Pi).
+    concurrent heavy stage runs on the Pi).
     """
     global _pipeline_running
     if not _pipeline_lock.acquire(blocking=False):
@@ -80,8 +80,7 @@ def _do_pipeline():
     """Actual pipeline logic (called with lock held).
 
     Streamlined for the Pi: just fetch feeds and apply lightweight quality
-    scoring. Heavy stages (WordRank, visualization, digest, newsletters,
-    scraper) are intentionally omitted.
+    scoring. Heavy stages are intentionally omitted.
     """
     logger.info("Pipeline starting (minimal mode).")
     had_error = False
@@ -101,6 +100,14 @@ def _do_pipeline():
         logger.exception("Pipeline stage quality_score failed to load.")
     else:
         had_error = _run_pipeline_stages([("quality_score", run_quality_score)]) or had_error
+
+    try:
+        from scripts.theme_labeling import run_theme_labeling
+    except Exception:
+        had_error = True
+        logger.exception("Pipeline stage theme_labeling failed to load.")
+    else:
+        had_error = _run_pipeline_stages([("theme_labeling", run_theme_labeling)]) or had_error
 
     final_status = "error" if had_error else "success"
     _record_pipeline_status(final_status)

@@ -3,7 +3,7 @@
   const NAV_OPEN_KEY = "nav-open";
   const MOBILE_MAX = 640;
 const ARTICLE_PATH_RE = /^\/article\/(\d+)\/?$/;
-const ARTICLE_CONTEXT_KEYS = ["q", "feed_id", "quality_level", "days", "scope"];
+const ARTICLE_CONTEXT_KEYS = ["q", "feed_id", "quality_level", "days", "scope", "themes", "sort"];
 const RANDOM_HISTORY_KEY = "myrssfeed_random_history";
 const RANDOM_HISTORY_LIMIT = 120;
 const RANDOM_RETRY_WINDOWS = [120, 40, 12, 0];
@@ -20,6 +20,8 @@ function getCurrentFilters() {
     feedId: params.get("feed_id") || "",
     qualityLevel: params.get("quality_level") || "",
     days: params.get("days") || "",
+    themes: params.get("themes") || "",
+    sort: params.get("sort") || "chronological",
   };
 }
 
@@ -230,20 +232,6 @@ async function _walkAndOpenArticle(direction) {
     } catch (_) {}
   })();
 
-  function bindMobileBrandToggle() {
-    const brands = document.querySelectorAll(".header-brand");
-    if (!brands.length) return;
-    brands.forEach((brand) => {
-      brand.addEventListener("click", (e) => {
-        if (!isMobileViewport()) return;
-        if (!navOverlay) return;
-        e.preventDefault();
-        toggleNav();
-      });
-    });
-  }
-  bindMobileBrandToggle();
-
   function buildTabletHeaderControls() {
     const headerRight = document.querySelector("header .header-right");
     if (!headerRight || headerRight.querySelector(".header-actions-compact")) return;
@@ -271,9 +259,6 @@ async function _walkAndOpenArticle(direction) {
           &#8942;
         </button>
         <div class="header-compact-menu" hidden>
-          <button type="button" data-action="scrape">
-            <span class="menu-icon">&#8681;</span><span>Enrich now</span>
-          </button>
           <button type="button" data-action="wordrank">
             <span class="menu-icon">WR</span><span>Run WordRank</span>
           </button>
@@ -330,9 +315,6 @@ async function _walkAndOpenArticle(direction) {
         e.preventDefault();
         closeMenu();
         switch (item.dataset.action) {
-          case "scrape":
-            headerScrapeNow();
-            break;
           case "wordrank":
             headerWordrankNow();
             break;
@@ -412,7 +394,7 @@ async function _walkAndOpenArticle(direction) {
         const mins = typeof state.minutes_since_last_success === "number"
           ? state.minutes_since_last_success
           : null;
-        if (opts.kind === "refresh" || opts.kind === "scrape") {
+        if (opts.kind === "refresh") {
           if (last === "success") {
             if (mins !== null) {
               label = mins === 0 ? "Now" : `${mins}m ago`;
@@ -459,25 +441,6 @@ async function _walkAndOpenArticle(direction) {
     }
   }
 
-  async function _fetchHeaderScrapeStatus() {
-    const dotId = "header-scrape-status-dot";
-    if (!document.getElementById(dotId)) return;
-    try {
-      const res = await fetch("/api/scrape/status");
-      if (!res.ok) return;
-      const data = await res.json().catch(() => ({}));
-      _updateHeaderDot(dotId, {
-        running: !!data.running,
-        last_status: data.last_status || "never",
-        minutes_since_last_success: typeof data.minutes_since_last_success === "number"
-          ? data.minutes_since_last_success
-          : null,
-      }, { kind: "scrape", textId: "header-scrape-status-text" });
-    } catch (_) {
-      // best-effort only
-    }
-  }
-
   let _headerWordrankState = { running: false, last_status: "idle" };
   function _renderHeaderWordrankState() {
     _updateHeaderDot(
@@ -514,34 +477,6 @@ async function _walkAndOpenArticle(direction) {
     }
   }
   window.headerRefreshNow = headerRefreshNow;
-
-  async function headerScrapeNow() {
-    const btn = document.getElementById("header-scrape-btn");
-    if (!btn) return;
-    if (btn.disabled) return;
-    btn.disabled = true;
-    try {
-      const res = await fetch("/api/scrape", { method: "POST" });
-      if (res.ok) {
-        const data = await res.json().catch(() => ({}));
-        toast(data.message || "Scrape started.");
-        _updateHeaderDot(
-          "header-scrape-status-dot",
-          { running: true, last_status: "running" },
-          { kind: "scrape", textId: "header-scrape-status-text" },
-        );
-        setTimeout(_fetchHeaderScrapeStatus, 2000);
-      } else {
-        const data = await res.json().catch(() => ({}));
-        toast(data.detail || "Could not start scrape.", false);
-      }
-    } catch (_) {
-      toast("Network error starting scrape.", false);
-    } finally {
-      btn.disabled = false;
-    }
-  }
-  window.headerScrapeNow = headerScrapeNow;
 
   async function _fetchHeaderWordrankStatus() {
     const dotId = "header-wordrank-status-dot";
@@ -595,10 +530,6 @@ async function _walkAndOpenArticle(direction) {
       _fetchHeaderRefreshStatus();
       setInterval(_fetchHeaderRefreshStatus, 8000);
     }
-    if (document.getElementById("header-scrape-status-dot")) {
-      _fetchHeaderScrapeStatus();
-      setInterval(_fetchHeaderScrapeStatus, 8000);
-    }
     if (document.getElementById("header-wordrank-status-dot")) {
       _fetchHeaderWordrankStatus();
     }
@@ -640,6 +571,140 @@ async function _walkAndOpenArticle(direction) {
       btn.classList.toggle("active", _entryFilterEnabled);
       btn.setAttribute("aria-pressed", _entryFilterEnabled ? "true" : "false");
     }
+  })();
+
+  // ── Theme category filter (checkboxes) ─────────────────────────────
+  const THEME_LABELS = ["Politics", "Technology", "Business", "Stocks", "Spam", "Science", "World News"];
+
+  function _themePanel() {
+    return document.getElementById("theme-filter-panel");
+  }
+
+  function _themeBtn() {
+    return document.getElementById("theme-filter-btn");
+  }
+
+  function _readSelectedThemesFromPanel() {
+    const panel = _themePanel();
+    if (!panel) return new Set();
+    const checked = panel.querySelectorAll(".theme-filter-checkbox:checked");
+    return new Set(Array.from(checked).map((cb) => cb.value));
+  }
+
+  function _setPanelChecked(themesSet) {
+    const panel = _themePanel();
+    if (!panel) return;
+    const checkboxes = panel.querySelectorAll(".theme-filter-checkbox");
+    checkboxes.forEach((cb) => {
+      cb.checked = themesSet.has(cb.value);
+    });
+  }
+
+  function _allThemesSelected() {
+    const selected = _readSelectedThemesFromPanel();
+    return selected.size === THEME_LABELS.length;
+  }
+
+  function toggleThemeFilter() {
+    const panel = _themePanel();
+    const btn = _themeBtn();
+    if (!panel || !btn) return;
+    const isHidden = !!panel.hidden;
+    panel.hidden = !isHidden;
+    btn.setAttribute("aria-expanded", isHidden ? "true" : "false");
+  }
+  window.toggleThemeFilter = toggleThemeFilter;
+
+  function applyThemeFilter() {
+    const panel = _themePanel();
+    if (!panel) return;
+
+    const selected = Array.from(_readSelectedThemesFromPanel());
+    const params = new URLSearchParams(window.location.search || "");
+
+    if (selected.length === THEME_LABELS.length) {
+      params.delete("themes");
+    } else {
+      // Keep stable ordering for deterministic URLs.
+      selected.sort((a, b) => THEME_LABELS.indexOf(a) - THEME_LABELS.indexOf(b));
+      params.set("themes", selected.join(","));
+    }
+
+    window.location.search = params.toString();
+  }
+  window.applyThemeFilter = applyThemeFilter;
+
+  function clearThemeFilter() {
+    const panel = _themePanel();
+    if (!panel) return;
+    _setPanelChecked(new Set(THEME_LABELS));
+    const params = new URLSearchParams(window.location.search || "");
+    params.delete("themes");
+    window.location.search = params.toString();
+  }
+  window.clearThemeFilter = clearThemeFilter;
+
+  (function initThemeFilterFromUrl() {
+    const panel = _themePanel();
+    const btn = _themeBtn();
+    if (!panel || !btn) return;
+
+    const params = new URLSearchParams(window.location.search || "");
+    const raw = params.get("themes");
+
+    let themesSet;
+    if (raw === null) {
+      themesSet = new Set(THEME_LABELS);
+    } else {
+      const parts = raw.split(",").map((s) => (s || "").trim()).filter(Boolean);
+      const allowed = new Set(THEME_LABELS);
+      themesSet = new Set(parts.filter((p) => allowed.has(p)));
+      // If nothing valid is specified, match nothing (leave unchecked).
+    }
+
+    _setPanelChecked(themesSet);
+    btn.classList.toggle("active", !_allThemesSelected());
+  })();
+
+  (function initSortSelect() {
+    const sortSelect = document.getElementById("sort-select");
+    if (!sortSelect) return;
+    sortSelect.addEventListener("change", function () {
+      const value = this.value;
+      const params = new URLSearchParams(window.location.search || "");
+      if (value === "chronological") {
+        params.delete("sort");
+      } else {
+        params.set("sort", value);
+      }
+      window.location.search = params.toString();
+    });
+  })();
+
+  (function initThemeFilterButton() {
+    const btn = _themeBtn();
+    if (!btn) return;
+    btn.addEventListener("click", function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      toggleThemeFilter();
+    });
+  })();
+
+  // Close the panel when clicking outside it.
+  (function initThemeFilterOutsideClick() {
+    const panel = _themePanel();
+    const btn = _themeBtn();
+    if (!panel || !btn) return;
+    document.addEventListener("click", (e) => {
+      const target = e.target;
+      if (!target) return;
+      const clickedInside = panel.contains(target) || btn.contains(target);
+      if (!clickedInside) {
+        panel.hidden = true;
+        btn.setAttribute("aria-expanded", "false");
+      }
+    });
   })();
 
  // ── Image lightbox ──────────────────────────────────────────────
@@ -771,29 +836,77 @@ async function _walkAndOpenArticle(direction) {
     setTimeout(() => el.classList.remove("show"), 2800);
   }
 
-  // ── Feed label colors ────────────────────────────────────────────
-  function _feedColor(feedTitle) {
-    if (!feedTitle) return null;
-    const parts = feedTitle.split(/\s*[|\-]\s*/);
-    const category = (parts[parts.length - 1] || feedTitle).toLowerCase().trim();
-    const source   = (parts[0] || feedTitle).toLowerCase().trim();
-    let catHash = 0;
-    for (const ch of category) catHash = (catHash * 31 + ch.charCodeAt(0)) & 0xfffffff;
-    let srcHash = 0;
-    for (const ch of source) srcHash = (srcHash * 31 + ch.charCodeAt(0)) & 0xfffffff;
-    const hue  = catHash % 360;
-    const sat  = 55 + (srcHash % 25);
-    const lite = 58 + (srcHash % 12);
-    return `hsl(${hue},${sat}%,${lite}%)`;
-  }
+  // ── Navbar "Add Feed" (URL lookup) ──────────────────────────────
+  async function handleNavbarAddFeed(scope) {
+    const inputId = scope === "sidebar" ? "sidebar-add-feed-input" : "nav-add-feed-input";
+    const btnId = scope === "sidebar" ? "sidebar-add-feed-btn" : "nav-add-feed-btn";
 
-  document.querySelectorAll(".tag.entry-source-tag[style]").forEach((tag) => {
-    const feedColor = tag.style.getPropertyValue("--feed-color").trim();
-    const color = feedColor || _feedColor(tag.textContent.trim());
-    if (color) {
-      tag.style.setProperty("--feed-color", color);
+    const input = document.getElementById(inputId);
+    const btn = document.getElementById(btnId);
+    if (!input || !btn) return;
+
+    const raw = String(input.value || "").trim();
+    if (!raw) {
+      toast("Enter a website or feed URL.", false);
+      return;
     }
-  });
+
+    if (btn.disabled) return;
+    const originalText = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = "Adding...";
+
+    try {
+      // Use the same detection logic as the old feeds page, then add every detected feed.
+      const detectRes = await fetch("/api/discover/detect", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: raw }),
+      });
+
+      const detectData = await detectRes.json().catch(() => ({}));
+      if (!detectRes.ok) {
+        toast(detectData.detail || "Could not detect feeds.", false);
+        return;
+      }
+
+      const feeds = Array.isArray(detectData.feeds) ? detectData.feeds : [];
+      if (feeds.length === 0) {
+        toast("No feeds found at that URL.", false);
+        return;
+      }
+
+      let addedAny = false;
+      for (const f of feeds) {
+        const feedUrl = f && f.url ? String(f.url).trim() : "";
+        if (!feedUrl) continue;
+        const title = f && f.name ? String(f.name).trim() : null;
+
+        const addRes = await fetch("/api/feeds", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url: feedUrl, title }),
+        });
+
+        if (addRes.ok || addRes.status === 409) {
+          addedAny = true;
+        }
+      }
+
+      toast(addedAny ? "Feed(s) added." : "No new feeds added.", addedAny);
+      if (addedAny) {
+        // Reload so Discover catalogue/removal buttons reflect updated user_catalog.
+        window.location.reload();
+      }
+    } catch (_) {
+      toast("Network error adding feed.", false);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = originalText;
+      input.value = "";
+    }
+  }
+  window.handleNavbarAddFeed = handleNavbarAddFeed;
 
   // ── Read state ──────────────────────────────────────────────────
   function markRead(entryId, el) {
@@ -892,11 +1005,6 @@ function _publishedDateText(published) {
   return formatLocalDate(published);
 }
 
-  function formatAssessmentLabel(label) {
-    if (!label) return "";
-    return String(label).replace(/_/g, " ").replace(/\b\w/g, (ch) => ch.toUpperCase());
-  }
-
   function stripTags(s) {
     const tmp = document.createElement("div");
     tmp.innerHTML = s;
@@ -925,7 +1033,7 @@ function _publishedDateText(published) {
       }
 
       isLoadingMore = true;
-      const { q, scope, feedId, qualityLevel, days } = getCurrentFilters();
+      const { q, scope, feedId, qualityLevel, days, themes, sort } = getCurrentFilters();
       const params = new URLSearchParams();
       params.set("limit", String(PAGE_SIZE));
       params.set("offset", String(existing));
@@ -934,6 +1042,8 @@ function _publishedDateText(published) {
       if (scope === "my" && feedId) params.set("feed_id", feedId);
       if (qualityLevel) params.set("quality_level", qualityLevel);
       if (days) params.set("days", days);
+      if (themes) params.set("themes", themes);
+      if (sort && sort !== "chronological") params.set("sort", sort);
 
       try {
         const res = await fetch("/api/entries?" + params.toString());
@@ -1000,18 +1110,7 @@ function _publishedDateText(published) {
 
       const tag = document.createElement("span");
       tag.className = "tag entry-source-tag";
-      const sourceColor = feedInfo.color || _feedColor(e.feed_title || "");
-      if (sourceColor) {
-        tag.style.setProperty("--feed-color", sourceColor);
-      }
       tag.textContent = e.feed_title || "Unknown";
-
-      const assessmentLabel = document.createElement("span");
-      assessmentLabel.className = "tag entry-assessment-tag";
-      if (e.assessment_label_color) {
-        assessmentLabel.style.setProperty("--assessment-color", e.assessment_label_color);
-      }
-      assessmentLabel.textContent = formatAssessmentLabel(e.assessment_label);
 
       const date = document.createElement("time");
       date.className = "entry-date";
@@ -1024,9 +1123,6 @@ function _publishedDateText(published) {
 
       meta.appendChild(favicon);
       meta.appendChild(tag);
-      if (e.assessment_label) {
-        meta.appendChild(assessmentLabel);
-      }
       meta.appendChild(date);
 
       const body = document.createElement("div");
@@ -1062,7 +1158,7 @@ function _publishedDateText(published) {
       original.href = e.link || _articleUrlForId(e.id);
       original.target = "_blank";
       original.rel = "noopener noreferrer";
-      original.textContent = e.link ? "Open original" : "Open article";
+      original.textContent = "Read full article";
       if (e.link) {
         original.addEventListener("click", (evt) => {
           try { markRead(e.id, evt.currentTarget); } catch (_) {}

@@ -227,57 +227,6 @@
     }
   }
 
-  function updateScrapeStatusUI(state) {
-    const dot = document.getElementById("scrape-status-dot");
-    const text = document.getElementById("scrape-status-text");
-    if (!dot || !text) return;
-
-    dot.className = "refresh-status-dot";
-
-    if (state.running) {
-      dot.classList.add("running");
-      text.textContent = "Job in progress";
-      return;
-    }
-
-    switch (state.last_status) {
-      case "success":
-        dot.classList.add("success");
-        if (typeof state.minutes_since_last_success === "number") {
-          const mins = state.minutes_since_last_success;
-          text.textContent = mins === 0 ? "Just now" : `${mins} min ago`;
-        } else {
-          text.textContent = "Last job completed";
-        }
-        break;
-      case "error":
-        dot.classList.add("error");
-        text.textContent = "Last job failed";
-        break;
-      case "never":
-      default:
-        text.textContent = "No runs yet";
-        break;
-    }
-  }
-
-  async function fetchScrapeStatus() {
-    try {
-      const res = await fetch("/api/scrape/status");
-      if (!res.ok) return;
-      const data = await res.json().catch(() => ({}));
-      updateScrapeStatusUI({
-        running: !!data.running,
-        last_status: data.last_status || "never",
-        minutes_since_last_success: typeof data.minutes_since_last_success === "number"
-          ? data.minutes_since_last_success
-          : null,
-      });
-    } catch {
-      // Best-effort only.
-    }
-  }
-
   function updateNewsletterStatusUI(state) {
     const dot = document.getElementById("newsletter-status-dot");
     const text = document.getElementById("newsletter-status-text");
@@ -365,48 +314,17 @@
   // Kick off periodic polling for the status lights on settings page load.
   (function () {
     const hasRefresh = document.getElementById("refresh-status-dot");
-    const hasScrape = document.getElementById("scrape-status-dot");
     const hasNewsletter = document.getElementById("newsletter-status-dot");
 
     if (hasRefresh) {
       fetchRefreshStatus();
       setInterval(fetchRefreshStatus, 8000);
     }
-    if (hasScrape) {
-      fetchScrapeStatus();
-      setInterval(fetchScrapeStatus, 8000);
-    }
     if (hasNewsletter) {
       fetchNewsletterStatus();
       setInterval(fetchNewsletterStatus, 8000);
     }
   })();
-
-  // ── Manual scrape/enrichment ────────────────────────────────────
-  async function scrapeNow() {
-    const btn = document.getElementById("scrape-now-btn");
-    if (!btn) return;
-    btn.disabled = true;
-    const originalText = btn.textContent;
-    btn.textContent = "Enriching...";
-    try {
-      const res = await fetch("/api/scrape", { method: "POST" });
-      if (res.ok) {
-        const data = await res.json().catch(() => ({}));
-        toast(data.message || "Scrape started.");
-        updateScrapeStatusUI({ running: true, last_status: "running" });
-      } else {
-        const data = await res.json().catch(() => ({}));
-        toast(data.detail || "Could not start scrape.", false);
-      }
-    } catch (e) {
-      toast("Network error starting scrape.", false);
-    } finally {
-      btn.disabled = false;
-      btn.textContent = originalText;
-      setTimeout(fetchScrapeStatus, 2000);
-    }
-  }
 
   async function newsletterSyncNow() {
     const btn = document.getElementById("newsletter-sync-btn");

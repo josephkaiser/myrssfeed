@@ -19,6 +19,16 @@ VENV_DIR="$APP_DIR/.venv"
 HOSTNAME_MDNS="myrssfeed"
 OS_TYPE="$(uname -s)"
 
+# Optional local overrides (ignored by git via .gitignore)
+if [[ -f "$APP_DIR/.env" ]]; then
+    set -o allexport
+    # shellcheck disable=SC1091
+    source "$APP_DIR/.env"
+    set +o allexport
+fi
+
+SERVER_PORT="${MYRSSFEED_SERVER_PORT:-8080}"
+
 log_step() { printf '\n==> %s\n' "$1"; }
 log_ok()   { printf '    ✓ %s\n' "$1"; }
 log_skip() { printf '    ↷ %s (already OK)\n' "$1"; }
@@ -61,6 +71,7 @@ After=network.target
 Type=simple
 User=$USER
 WorkingDirectory=$APP_DIR
+EnvironmentFile=-$APP_DIR/.env
 ExecStart=$VENV_DIR/bin/python main.py
 Restart=on-failure
 RestartSec=10
@@ -77,7 +88,7 @@ EOF
     fi
 
     if systemctl is-active --quiet "${SERVICE_NAME}.service"; then
-        log_ok "myRSSfeed service is active on port 8080"
+        log_ok "myRSSfeed service is active on port $SERVER_PORT"
     else
         log_fail "myRSSfeed service is not active after (re)install — check \`systemctl status ${SERVICE_NAME}.service\`"
     fi
@@ -147,15 +158,23 @@ echo ""
 echo "=========================================="
 echo " myRSSfeed is ready!"
 echo ""
-if [[ -n "${SERVER_IP:-}" ]]; then
+PRINT_HOST=""
+if [[ -n "${MYRSSFEED_SERVER_HOST:-}" && "${MYRSSFEED_SERVER_HOST:-}" != "0.0.0.0" ]]; then
+    PRINT_HOST="$MYRSSFEED_SERVER_HOST"
+fi
+if [[ -z "${PRINT_HOST:-}" && -n "${SERVER_IP:-}" ]]; then
+    PRINT_HOST="$SERVER_IP"
+fi
+
+if [[ -n "${PRINT_HOST:-}" ]]; then
     echo " Open on any device on this network:"
-    echo "   http://${SERVER_IP}:8080"
+    echo "   http://${PRINT_HOST}:${SERVER_PORT}"
 else
     echo " Open in a browser on this machine at:"
-    echo "   http://localhost:8080"
+    echo "   http://localhost:${SERVER_PORT}"
     echo " (Could not automatically determine LAN IP — no \`hostname\` or \`ip\` helpers found.)"
 fi
 echo ""
 echo " View live logs:"
-echo "   http://${SERVER_IP:-localhost}:8080/api/logs"
+echo "   http://${PRINT_HOST:-localhost}:${SERVER_PORT}/api/logs"
 echo "=========================================="

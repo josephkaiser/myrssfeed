@@ -137,7 +137,7 @@ def run_visualization() -> None:
     conn.close()
 
     # Explicitly free large arrays so memory is returned to the OS before
-    # the next pipeline stage (digest) asks ollama to load the LLM.
+    # the next pipeline stage requests LLM resources.
     del tfidf_matrix, tfidf_dense, svd_coords, tsne_coords, cluster_labels
     gc.collect()
 

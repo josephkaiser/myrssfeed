@@ -225,17 +225,16 @@ class PipelineContinuationTests(unittest.TestCase):
         stages = [
             ("compile_feed", failing_compile),
             ("newsletter_ingest", make_stage("newsletter_ingest")),
-            ("scraper", make_stage("scraper")),
+            ("metadata_enrichment", make_stage("metadata_enrichment")),
             ("wordrank", make_stage("wordrank")),
             ("quality_score", make_stage("quality_score")),
             ("visualization", make_stage("visualization")),
-            ("digest", make_stage("digest")),
         ]
 
         had_error = scheduler._run_pipeline_stages(stages)
 
         self.assertTrue(had_error)
-        self.assertEqual(calls, ["compile_feed", "newsletter_ingest", "scraper", "wordrank", "quality_score", "visualization", "digest"])
+        self.assertEqual(calls, ["compile_feed", "newsletter_ingest", "metadata_enrichment", "wordrank", "quality_score", "visualization"])
 
     def test_pipeline_marks_success_when_all_stages_pass(self):
         calls = []
@@ -249,17 +248,16 @@ class PipelineContinuationTests(unittest.TestCase):
         stages = [
             ("compile_feed", make_stage("compile_feed")),
             ("newsletter_ingest", make_stage("newsletter_ingest")),
-            ("scraper", make_stage("scraper")),
+            ("metadata_enrichment", make_stage("metadata_enrichment")),
             ("wordrank", make_stage("wordrank")),
             ("quality_score", make_stage("quality_score")),
             ("visualization", make_stage("visualization")),
-            ("digest", make_stage("digest")),
         ]
 
         had_error = scheduler._run_pipeline_stages(stages)
 
         self.assertFalse(had_error)
-        self.assertEqual(calls, ["compile_feed", "newsletter_ingest", "scraper", "wordrank", "quality_score", "visualization", "digest"])
+        self.assertEqual(calls, ["compile_feed", "newsletter_ingest", "metadata_enrichment", "wordrank", "quality_score", "visualization"])
 
 
 class PipelineIntervalScheduleTests(unittest.TestCase):

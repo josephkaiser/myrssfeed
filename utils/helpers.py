@@ -7,17 +7,9 @@ DB_FILE = os.path.normpath(DB_FILE)
 DEFAULTS: dict[str, str] = {
     "retention_days": "90",
     "theme": "system",
-    "ollama_url": "http://localhost:11434",
-    "ollama_model": "phi3:mini",
-    "digest_max_articles": "50",
     "max_entries": "1000",
     # Automatic refresh interval for the full pipeline, in minutes.
     "pipeline_refresh_minutes": "15",
-    # Scraper limits
-    "scrape_enabled": "true",
-    "scrape_timeout_seconds": "6",
-    "scrape_max_bytes": str(512 * 1024),
-    "scrape_max_per_run": "40",
     # Pipeline scheduler & status (for manual/automatic refresh jobs)
     # Newsletter mailbox polling
     "newsletter_enabled": "false",
@@ -34,8 +26,6 @@ DEFAULTS: dict[str, str] = {
     # - "error"   : last run encountered at least one error
     # - "running" : currently in progress (transient; also exposed via is_pipeline_running)
     "pipeline_last_status": "never",
-    # Scraper status (for manual enrich jobs)
-    "scrape_last_status": "never",
     # WordRank status (for manual/scheduled recomputes)
     "wordrank_last_status": "never",
     # Newsletter status
@@ -61,7 +51,9 @@ def init_db():
             url   TEXT UNIQUE NOT NULL,
             title TEXT,
             color TEXT,
-            kind  TEXT NOT NULL DEFAULT 'rss'
+            kind  TEXT NOT NULL DEFAULT 'rss',
+            subscribed INTEGER NOT NULL DEFAULT 0,
+            category TEXT
         );
 
         CREATE TABLE IF NOT EXISTS entries (
@@ -98,14 +90,6 @@ def init_db():
             size       INTEGER NOT NULL
         );
 
-        CREATE TABLE IF NOT EXISTS daily_digests (
-            id         INTEGER PRIMARY KEY AUTOINCREMENT,
-            date       TEXT NOT NULL,
-            content    TEXT NOT NULL,
-            model      TEXT NOT NULL,
-            created_at TEXT NOT NULL
-        );
-
         CREATE TABLE IF NOT EXISTS devices (
             id         INTEGER PRIMARY KEY AUTOINCREMENT,
             name       TEXT NOT NULL,
@@ -128,6 +112,9 @@ def _migrate_db(conn: sqlite3.Connection) -> None:
         ("quality_score", "REAL DEFAULT 0.0"),
         ("assessment_label", "TEXT"),
         ("assessment_label_color", "TEXT"),
+        ("theme_label", "TEXT"),
+        ("theme_label_color", "TEXT"),
+        ("theme_confidence", "REAL DEFAULT 0.0"),
         ("viz_x", "REAL"),
         ("viz_y", "REAL"),
         ("og_title", "TEXT"),
@@ -143,6 +130,10 @@ def _migrate_db(conn: sqlite3.Connection) -> None:
         conn.execute("ALTER TABLE feeds ADD COLUMN color TEXT")
     if "kind" not in feed_cols:
         conn.execute("ALTER TABLE feeds ADD COLUMN kind TEXT NOT NULL DEFAULT 'rss'")
+    if "subscribed" not in feed_cols:
+        conn.execute("ALTER TABLE feeds ADD COLUMN subscribed INTEGER NOT NULL DEFAULT 0")
+    if "category" not in feed_cols:
+        conn.execute("ALTER TABLE feeds ADD COLUMN category TEXT")
     entry_cols = {r[1] for r in conn.execute("PRAGMA table_info(entries)").fetchall()}
     if "source_uid" not in entry_cols:
         conn.execute("ALTER TABLE entries ADD COLUMN source_uid TEXT")

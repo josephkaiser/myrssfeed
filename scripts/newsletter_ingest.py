@@ -329,10 +329,7 @@ def _process_message(cursor, feed_id: int, msg: Message) -> bool:
             feed_id=feed_id,
             entry=entry,
             source_uid=source_uid,
-            scrape_enabled=False,
-            scrape_budget_ref=[0],
             new_count_ref=[0],
-            scraped_count_ref=[0],
         )
     )
 

@@ -10,9 +10,6 @@ class FeedCreate(BaseModel):
 class SettingsUpdate(BaseModel):
     retention_days: Optional[str] = None
     theme: Optional[str] = None
-    ollama_url: Optional[str] = None
-    ollama_model: Optional[str] = None
-    digest_max_articles: Optional[str] = None
     max_entries: Optional[str] = None
 
 
@@ -37,13 +34,8 @@ class EntryOut(BaseModel):
     thumbnail_url: Optional[str] = None
     assessment_label: Optional[str] = None
     assessment_label_color: Optional[str] = None
-
-
-class DigestOut(BaseModel):
-    date: str
-    content: str
-    model: str
-    created_at: str
+    theme_label: Optional[str] = None
+    theme_label_color: Optional[str] = None
 
 
 class VizEntryOut(BaseModel):

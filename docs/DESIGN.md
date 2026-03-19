@@ -41,25 +41,15 @@ A simple, self-hosted RSS aggregator for personal home use on a Raspberry Pi, ac
 - Density heatmap overlay (optional, nice-to-have)
 - Recomputed daily with feed fetch; 2D coordinates stored in `entries` table
 
-### AI Digest
-- Daily digest of top articles powered by ollama, scheduled after feed fetch
-- **Model strategy**: start with a small fast model (phi3:mini or gemma2:2b) for development iteration; target llama3.1:8b or equivalent for production quality
-- **Feasibility on Pi 5 CPU**: llama3.1:8b at ~8 tok/s, 1000 articles at ~50 output tokens each ≈ 1.75 hours generation time — within the 4-hour budget
-- **Approach to stay within budget**:
-  1. Extractive pre-filter: extract 2–3 key sentences per article without LLM (NLTK or similar)
-  2. LLM summarizes the extracts, not the full articles — shorter prompts, fewer tokens
-  3. Optionally: only digest top-N articles by WordRank score to focus on what the user cares about
-- Digest output displayed in a dedicated page/panel
-
 ### Manual refresh
-- A "Refresh now" button in the UI triggers the same full pipeline that runs at 06:00: feed fetch → prune → WordRank scoring → visualization recompute → digest
+- A "Refresh now" button in the UI triggers the same full pipeline that runs at 06:00: feed fetch → prune → WordRank scoring → visualization recompute
 - This allows fast iteration during development without waiting a full day
 - The existing `/api/refresh` endpoint triggers the full pipeline, including newsletter ingestion
 
 ### Logging and observability
 - **Server-side**: Python `logging` module with a rotating file handler (`logs/myrssfeed.log`), also emitted to stdout (captured by systemd/journalctl on Pi)
 - **Browser-accessible**: `/api/logs` endpoint returns recent log lines (last N lines from the log file) so the user can inspect live behavior from any device on the LAN without SSH
-- Log levels: INFO for normal operations (fetch started, N entries fetched, digest complete), WARNING for recoverable issues (feed timeout, parse error), ERROR for failures
+- Log levels: INFO for normal operations (fetch started, N entries fetched, pipeline complete), WARNING for recoverable issues (feed timeout, parse error), ERROR for failures
 - Goal: when the Pi misbehaves, the user can open `/api/logs` in the browser and share the output for debugging
 
 ---
@@ -71,7 +61,6 @@ A simple, self-hosted RSS aggregator for personal home use on a Raspberry Pi, ac
        newsletter       — poll IMAP, normalize unseen emails, store newsletter entries
        wordrank         — recompute TF-IDF scores for all entries vs liked articles
        visualization    — recompute 2D layout (fixed seed), store x/y in entries
-       ai_digest        — extractive pre-filter → LLM summarize → store digest
 ```
 
 Each stage logs start/end and item counts. If a stage fails, later stages are skipped and the error is logged.
@@ -92,7 +81,6 @@ Beyond current tables (`feeds`, `entries`, `entries_fts`, `settings`):
 | `feeds.kind` | Distinguish the newsletter mailbox source from normal RSS feeds |
 | `entries.source_uid` | Stable dedupe key for RSS links and newsletter message IDs |
 | `newsletter_*` settings | IMAP host, port, username, password, folder, poll interval, and status |
-| `daily_digests` table | Stores digest text + date |
 
 ---
 
@@ -105,7 +93,5 @@ Beyond current tables (`feeds`, `entries`, `entries_fts`, `settings`):
 | Viz layout stability | Fixed random seed in t-SNE/UMAP call |
 | Viz recompute frequency | Daily with feed fetch |
 | WordRank ML | scikit-learn TF-IDF + cosine similarity; no GPU, no sentence-transformers |
-| AI Digest iteration model | phi3:mini or gemma2:2b (fast, for dev) |
-| AI Digest production model | llama3.1:8b or equivalent (best quality within 4-hour Pi budget) |
 | Logging | Python rotating file handler + stdout; `/api/logs` browser endpoint |
 | Uptime target | 1 month continuous; monthly maintenance window acceptable |

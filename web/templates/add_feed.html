@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Add Feed — myRSSfeed</title>
+  <script>
+    (function() {
+      var host = window.location && window.location.hostname;
+      var suffix = host && host !== "localhost" && host !== "127.0.0.1" ? host : "local";
+      document.title = "myRSSfeed | " + suffix;
+    })();
+  </script>
+  <script>
+    (function() {
+      var t = localStorage.getItem("theme") || "system";
+      var el = document.documentElement;
+      if (t === "light") el.setAttribute("data-theme", "light");
+      else if (t === "dark") el.setAttribute("data-theme", "dark");
+      else el.removeAttribute("data-theme");
+    })();
+  </script>
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+
+<header>
+  <button class="hamburger-btn" type="button" onclick="toggleNav()" aria-label="Open navigation">
+    <span></span>
+    <span></span>
+    <span></span>
+  </button>
+  <a class="header-brand" href="/">myRSSfeed</a>
+
+  <form class="search-bar" method="get" action="/" id="search-form">
+    <input type="hidden" name="q" id="search-query-base" value="{{ q|default('') }}" />
+    <div class="search-input-wrap{% if q %} has-search-term{% endif %}">
+      {% if q %}
+      <div class="search-term-chip" id="search-term-chip">
+        <span class="search-term-chip-text">{{ q }}</span>
+        <button type="button" class="search-term-chip-remove" id="search-term-remove" aria-label="Remove search term">&times;</button>
+      </div>
+      <input type="search" id="search-input" value="" placeholder="Add more terms..." autocomplete="off" />
+      {% else %}
+      <input type="search" id="search-input" value="" placeholder="Search articles..." autocomplete="off" />
+      {% endif %}
+      <div class="search-dropdown" id="search-dropdown" style="display:none"></div>
+    </div>
+    <div class="search-advanced">
+      <button type="button" class="btn pill search-advanced-btn" id="advanced-toggle" aria-expanded="false" aria-haspopup="true" aria-controls="advanced-dropdown">Advanced</button>
+      <div class="search-advanced-dropdown" id="advanced-dropdown" role="menu" aria-labelledby="advanced-toggle" hidden>
+        <div class="search-advanced-row">
+          <label for="date-range">Date range</label>
+          <select name="days" id="date-range" aria-label="Limit results to last N days">
+            <option value="">All-Time</option>
+            <option value="1">Last 1 day</option>
+            <option value="5">Last 5 days</option>
+            <option value="30">Last 30 days</option>
+            <option value="90">Last 90 days</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <button class="btn pill" type="submit">Go</button>
+    {% if q %}
+    <a href="/" class="btn ghost pill" id="search-clear">Clear</a>
+    {% endif %}
+  </form>
+
+  <div class="header-right">
+    <div class="header-actions" aria-label="Quick actions">
+      <div class="header-action">
+        <button
+          class="btn icon-btn"
+          id="header-refresh-btn"
+          type="button"
+          title="Fetch latest from all feeds"
+          onclick="headerRefreshNow()"
+        >
+          &#10227;
+        </button>
+        <div class="refresh-status header-refresh-status" aria-live="polite">
+          <span class="refresh-status-dot" id="header-refresh-status-dot" aria-hidden="true"></span>
+          <span class="refresh-status-text" id="header-refresh-status-text">Ready</span>
+        </div>
+      </div>
+      <div class="header-action">
+        <a href="/settings" class="btn icon-btn header-gear-link" title="Settings" aria-label="Settings">&#9881;</a>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="nav-overlay" id="nav-overlay" onclick="closeNav()">
+  <nav class="nav-drawer" onclick="event.stopPropagation()">
+    <div class="nav-drawer-header">
+      <span class="nav-drawer-brand">myRSSfeed</span>
+      <button class="nav-drawer-close" onclick="closeNav()">&times;</button>
+    </div>
+    <div class="nav-drawer-links">
+      <a href="/feeds"><span class="nav-icon">&#128220;</span> Subscriptions</a>
+      <a href="/discover"><span class="nav-icon">&#128269;</span> Discover</a>
+      <a href="/add-feed" class="active"><span class="nav-icon">&#10133;</span> Add Feed</a>
+      <a href="/stats"><span class="nav-icon">&#128201;</span> Statistics</a>
+      <a href="/settings"><span class="nav-icon">&#9881;</span> Settings</a>
+    </div>
+  </nav>
+</div>
+
+<div class="layout layout-two-col">
+  <aside class="sidebar-left">
+    <div class="sidebar-section">
+      <div class="sidebar-section-title">Navigation</div>
+      <nav class="sidebar-nav">
+        <a href="/feeds"><span class="nav-icon">&#128220;</span> Subscriptions</a>
+        <a href="/discover"><span class="nav-icon">&#128269;</span> Discover</a>
+        <a href="/add-feed" class="active"><span class="nav-icon">&#10133;</span> Add Feed</a>
+        <a href="/stats"><span class="nav-icon">&#128201;</span> Statistics</a>
+        <a href="/settings"><span class="nav-icon">&#9881;</span> Settings</a>
+      </nav>
+    </div>
+  </aside>
+
+  <main class="entries add-feed-page">
+    <div class="discover-section">
+      <div class="discover-section-title">Add feeds from any source</div>
+      <p class="setting-desc">
+        Use the tabbed dialog to add RSS/Atom links, discover feeds from websites, import OPML,
+        create feeds from common source templates, and tune advanced metadata.
+      </p>
+      <div class="setting-control">
+        <button class="btn" type="button" id="open-add-feed-dialog">Open Add Feed Dialog</button>
+      </div>
+    </div>
+
+    <div class="discover-section">
+      <div class="discover-section-title">Recently subscribed</div>
+      <div id="add-feed-recent-list" class="detect-results-list"></div>
+    </div>
+  </main>
+
+</div>
+
+<div class="add-feed-modal-backdrop" id="add-feed-modal-backdrop" hidden>
+  <div class="add-feed-modal" role="dialog" aria-modal="true" aria-labelledby="add-feed-modal-title">
+    <div class="add-feed-modal-header">
+      <h2 id="add-feed-modal-title">Add Feed</h2>
+      <button type="button" class="nav-drawer-close" id="close-add-feed-dialog" aria-label="Close dialog" onclick="var m=document.getElementById('add-feed-modal-backdrop'); if(m){m.classList.remove('open');m.hidden=true;} return false;">&times;</button>
+    </div>
+
+    <div class="add-feed-tabs" role="tablist" aria-label="Feed source tabs">
+      <button class="add-feed-tab active" data-tab="direct" role="tab" aria-selected="true">Direct URL</button>
+      <button class="add-feed-tab" data-tab="discover" role="tab" aria-selected="false">Discover Site</button>
+      <button class="add-feed-tab" data-tab="opml" role="tab" aria-selected="false">OPML Import</button>
+      <button class="add-feed-tab" data-tab="templates" role="tab" aria-selected="false">Source Templates</button>
+      <button class="add-feed-tab" data-tab="newsletter" role="tab" aria-selected="false">Newsletters</button>
+      <button class="add-feed-tab" data-tab="advanced" role="tab" aria-selected="false">Advanced</button>
+    </div>
+
+    <div class="add-feed-tab-panels">
+      <section class="add-feed-panel active" data-panel="direct">
+        <label>Feed URL</label>
+        <input type="url" id="tab-direct-url" placeholder="https://example.com/feed.xml" />
+        <label>Custom title (optional)</label>
+        <input type="text" id="tab-direct-title" placeholder="My custom feed title" />
+        <button class="btn" type="button" id="tab-direct-add">Add Feed</button>
+      </section>
+
+      <section class="add-feed-panel" data-panel="discover">
+        <label>Website URL</label>
+        <input type="url" id="tab-discover-url" placeholder="https://example.com" />
+        <button class="btn" type="button" id="tab-discover-find" onclick="return handleAddFeedDiscoverSite(event)">Find Feeds</button>
+        <div id="tab-discover-results" class="detect-results-list"></div>
+      </section>
+
+      <section class="add-feed-panel" data-panel="opml">
+        <label>Paste OPML XML</label>
+        <textarea id="tab-opml-text" rows="8" placeholder="<opml>...</opml>"></textarea>
+        <button class="btn" type="button" id="tab-opml-import">Import OPML</button>
+      </section>
+
+      <section class="add-feed-panel" data-panel="templates">
+        <label>Template type</label>
+        <select id="tab-template-type">
+          <option value="reddit">Reddit Subreddit</option>
+          <option value="github">GitHub Releases</option>
+          <option value="youtube">YouTube Channel ID</option>
+          <option value="hn">Hacker News via hnrss</option>
+          <option value="medium">Medium User/Publication</option>
+        </select>
+        <label>Input value</label>
+        <input type="text" id="tab-template-value" placeholder="e.g. worldnews or owner/repo" />
+        <label>Custom title (optional)</label>
+        <input type="text" id="tab-template-title" placeholder="Optional custom title" />
+        <button class="btn" type="button" id="tab-template-generate">Generate + Add</button>
+      </section>
+
+      <section class="add-feed-panel" data-panel="newsletter">
+        <label>Newsletter page URL</label>
+        <input type="url" id="tab-news-url" placeholder="https://newsletter.example.com" />
+        <label>Hint provider</label>
+        <select id="tab-news-provider">
+          <option value="auto">Auto</option>
+          <option value="substack">Substack</option>
+          <option value="beehiiv">Beehiiv</option>
+          <option value="convertkit">ConvertKit</option>
+        </select>
+        <button class="btn" type="button" id="tab-news-convert">Convert + Add</button>
+      </section>
+
+      <section class="add-feed-panel" data-panel="advanced">
+        <label>Default title prefix</label>
+        <input type="text" id="tab-adv-prefix" placeholder="Example: Work | " />
+        <label>Authentication username (optional)</label>
+        <input type="text" id="tab-adv-user" placeholder="If source requires basic auth" />
+        <label>Authentication password (optional)</label>
+        <input type="password" id="tab-adv-pass" placeholder="If source requires basic auth" />
+        <label>User-Agent override (optional)</label>
+        <input type="text" id="tab-adv-ua" placeholder="Custom crawler user agent" />
+        <p class="setting-desc">Advanced values are stored in your browser and applied to future additions where possible.</p>
+        <button class="btn" type="button" id="tab-adv-save">Save Advanced Preferences</button>
+      </section>
+    </div>
+
+    <div id="add-feed-modal-status" class="detect-status" aria-live="polite"></div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+  // Fallback: keep Escape close working even if main script fails.
+  document.addEventListener("keydown", function (e) {
+    if (e.key !== "Escape") return;
+    var m = document.getElementById("add-feed-modal-backdrop");
+    if (m && m.classList.contains("open")) {
+      m.classList.remove("open");
+      m.hidden = true;
+    }
+  });
+</script>
+<script>
+  const FEEDS = {{ feeds_json | safe }};
+</script>
+<script src="/static/index.js"></script>
+<script>
+  (function () {
+    const modalBackdrop = document.getElementById("add-feed-modal-backdrop");
+    const openBtn = document.getElementById("open-add-feed-dialog");
+    const closeBtn = document.getElementById("close-add-feed-dialog");
+    const statusEl = document.getElementById("add-feed-modal-status");
+    const tabs = Array.from(document.querySelectorAll(".add-feed-tab"));
+    const panels = Array.from(document.querySelectorAll(".add-feed-panel"));
+    const recentList = document.getElementById("add-feed-recent-list");
+
+    function toast(msg, ok) {
+      const t = document.getElementById("toast");
+      if (!t) return;
+      t.textContent = msg;
+      t.classList.add("show");
+      t.style.borderColor = ok === false ? "#ff6b6b" : "";
+      setTimeout(() => t.classList.remove("show"), 2200);
+    }
+
+    function setStatus(msg) {
+      if (statusEl) statusEl.textContent = msg || "";
+    }
+
+    function renderRecent() {
+      if (!recentList) return;
+      const feeds = FEEDS.slice(-12).reverse();
+      if (!feeds.length) {
+        recentList.innerHTML = "<p class='detect-status'>No subscriptions yet.</p>";
+        return;
+      }
+      recentList.innerHTML = feeds.map((f) => (
+        "<div class='detect-result-row'><div class='detect-result-info'>" +
+        "<span class='detect-result-name'>" + (f.title || f.url) + "</span>" +
+        "<span class='detect-result-url'>" + f.url + "</span>" +
+        "</div></div>"
+      )).join("");
+    }
+
+    function tabTo(name) {
+      tabs.forEach((t) => {
+        const on = t.dataset.tab === name;
+        t.classList.toggle("active", on);
+        t.setAttribute("aria-selected", on ? "true" : "false");
+      });
+      panels.forEach((p) => p.classList.toggle("active", p.dataset.panel === name));
+      setStatus("");
+    }
+
+    async function addFeed(url, title) {
+      const cleanUrl = (url || "").trim();
+      if (!cleanUrl) return false;
+      const payload = { url: cleanUrl };
+      const rawTitle = (title || "").trim();
+      if (rawTitle) payload.title = rawTitle;
+      const res = await fetch("/api/feeds", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        FEEDS.push(data);
+        renderRecent();
+        toast("Feed added.", true);
+        return true;
+      }
+      if (res.status === 409) {
+        toast("Already subscribed.", true);
+        return true;
+      }
+      throw new Error(data.detail || "Could not add feed.");
+    }
+
+    function applyAdvancedTitle(title) {
+      const prefix = localStorage.getItem("addFeed.adv.prefix") || "";
+      return prefix ? (prefix + title) : title;
+    }
+
+    function buildTemplateUrl(type, value) {
+      const v = (value || "").trim();
+      if (!v) return null;
+      if (type === "reddit") return "https://www.reddit.com/r/" + encodeURIComponent(v.replace(/^r\//, "")) + "/.rss";
+      if (type === "github") return "https://github.com/" + v.replace(/^\//, "").replace(/\/$/, "") + "/releases.atom";
+      if (type === "youtube") return "https://www.youtube.com/feeds/videos.xml?channel_id=" + encodeURIComponent(v);
+      if (type === "hn") return "https://hnrss.org/newest?q=" + encodeURIComponent(v);
+      if (type === "medium") return "https://medium.com/feed/" + v.replace(/^@/, "");
+      return null;
+    }
+
+    function convertNewsletter(url, provider) {
+      const u = (url || "").trim();
+      if (!u) return null;
+      if (provider === "substack" || /substack\.com/.test(u)) return u.replace(/\/?$/, "/feed");
+      if (provider === "beehiiv" || /beehiiv\.com/.test(u)) return u.replace(/\/?$/, "/feed");
+      if (provider === "convertkit" || /ck\.page|convertkit/.test(u)) return u.replace(/\/?$/, "/feed");
+      return u.replace(/\/?$/, "/feed");
+    }
+
+    async function detectFromSite(url, targetEl) {
+      const res = await fetch("/api/discover/detect", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.detail || "Detection failed.");
+      const feeds = Array.isArray(data.feeds) ? data.feeds : [];
+      if (!feeds.length) {
+        targetEl.innerHTML = "<p class='detect-status'>No feeds found.</p>";
+        return;
+      }
+      targetEl.innerHTML = feeds.map((f, i) => (
+        "<div class='detect-result-row'>" +
+        "<div class='detect-result-info'><span class='detect-result-name'>" + (f.name || "RSS Feed") + "</span>" +
+        "<span class='detect-result-url'>" + f.url + "</span></div>" +
+        "<button class='btn catalog-add-btn' data-add-index='" + i + "'>+ Add</button></div>"
+      )).join("");
+      targetEl.querySelectorAll("[data-add-index]").forEach((btn) => {
+        btn.addEventListener("click", async () => {
+          const idx = parseInt(btn.getAttribute("data-add-index"), 10);
+          const f = feeds[idx];
+          try {
+            btn.disabled = true;
+            await addFeed(f.url, applyAdvancedTitle(f.name || ""));
+            btn.outerHTML = "<span class='catalog-added-badge'>&#10003; Added</span>";
+          } catch (err) {
+            btn.disabled = false;
+            toast(err.message || "Could not add.", false);
+          }
+        });
+      });
+    }
+
+    function openDialog() {
+      if (!modalBackdrop) return;
+      modalBackdrop.hidden = false;
+      modalBackdrop.classList.add("open");
+      tabTo("direct");
+    }
+
+    function closeDialog() {
+      if (!modalBackdrop) return;
+      modalBackdrop.classList.remove("open");
+      modalBackdrop.hidden = true;
+      setStatus("");
+    }
+
+    async function runDiscoverFind() {
+      const url = document.getElementById("tab-discover-url").value;
+      const resultsEl = document.getElementById("tab-discover-results");
+      if (!resultsEl) return;
+      resultsEl.innerHTML = "<p class='detect-status'>Detecting...</p>";
+      try {
+        await detectFromSite(url, resultsEl);
+      } catch (err) {
+        resultsEl.innerHTML = "<p class='detect-error'>" + (err.message || "Detection failed.") + "</p>";
+      }
+    }
+
+    // Expose explicit handlers so X/Discover Site keep working even if event binding order changes.
+    window.closeAddFeedDialog = function (e) {
+      if (e) e.preventDefault();
+      closeDialog();
+      return false;
+    };
+    window.handleAddFeedDiscoverSite = function (e) {
+      if (e) e.preventDefault();
+      runDiscoverFind();
+      return false;
+    };
+
+    openBtn?.addEventListener("click", openDialog);
+    closeBtn?.addEventListener("click", closeDialog);
+    // Intentionally do not close when clicking outside the dialog.
+    modalBackdrop?.addEventListener("click", () => {});
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && modalBackdrop && modalBackdrop.classList.contains("open")) {
+        closeDialog();
+      }
+    });
+
+    tabs.forEach((t) => t.addEventListener("click", () => tabTo(t.dataset.tab)));
+
+    document.getElementById("tab-direct-add")?.addEventListener("click", async () => {
+      const url = document.getElementById("tab-direct-url").value;
+      const title = document.getElementById("tab-direct-title").value;
+      try {
+        setStatus("Adding feed...");
+        await addFeed(url, applyAdvancedTitle(title));
+        setStatus("Feed added.");
+      } catch (err) {
+        setStatus(err.message || "Could not add feed.");
+      }
+    });
+
+    document.getElementById("tab-discover-find")?.addEventListener("click", runDiscoverFind);
+
+    document.getElementById("tab-opml-import")?.addEventListener("click", async () => {
+      const xml = document.getElementById("tab-opml-text").value;
+      if (!xml.trim()) return;
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(xml, "text/xml");
+      const nodes = Array.from(doc.querySelectorAll("outline[xmlUrl]"));
+      if (!nodes.length) {
+        setStatus("No OPML feed entries found.");
+        return;
+      }
+      let ok = 0;
+      for (const node of nodes) {
+        const url = node.getAttribute("xmlUrl") || "";
+        const title = node.getAttribute("title") || node.getAttribute("text") || "";
+        try {
+          if (await addFeed(url, applyAdvancedTitle(title))) ok += 1;
+        } catch (_) {}
+      }
+      setStatus("Imported " + ok + " feed(s) from OPML.");
+    });
+
+    document.getElementById("tab-template-generate")?.addEventListener("click", async () => {
+      const type = document.getElementById("tab-template-type").value;
+      const value = document.getElementById("tab-template-value").value;
+      const customTitle = document.getElementById("tab-template-title").value;
+      const url = buildTemplateUrl(type, value);
+      if (!url) {
+        setStatus("Could not generate template URL.");
+        return;
+      }
+      try {
+        await addFeed(url, applyAdvancedTitle(customTitle || value));
+        setStatus("Template feed added.");
+      } catch (err) {
+        setStatus(err.message || "Could not add template feed.");
+      }
+    });
+
+    document.getElementById("tab-news-convert")?.addEventListener("click", async () => {
+      const srcUrl = document.getElementById("tab-news-url").value;
+      const provider = document.getElementById("tab-news-provider").value;
+      const feedUrl = convertNewsletter(srcUrl, provider);
+      if (!feedUrl) {
+        setStatus("Could not convert newsletter URL.");
+        return;
+      }
+      try {
+        await addFeed(feedUrl, applyAdvancedTitle("Newsletter"));
+        setStatus("Newsletter feed added.");
+      } catch (err) {
+        setStatus(err.message || "Could not add newsletter feed.");
+      }
+    });
+
+    document.getElementById("tab-adv-save")?.addEventListener("click", () => {
+      localStorage.setItem("addFeed.adv.prefix", document.getElementById("tab-adv-prefix").value || "");
+      localStorage.setItem("addFeed.adv.user", document.getElementById("tab-adv-user").value || "");
+      localStorage.setItem("addFeed.adv.pass", document.getElementById("tab-adv-pass").value || "");
+      localStorage.setItem("addFeed.adv.ua", document.getElementById("tab-adv-ua").value || "");
+      setStatus("Advanced preferences saved in this browser.");
+    });
+
+    document.getElementById("tab-adv-prefix").value = localStorage.getItem("addFeed.adv.prefix") || "";
+    document.getElementById("tab-adv-user").value = localStorage.getItem("addFeed.adv.user") || "";
+    document.getElementById("tab-adv-pass").value = localStorage.getItem("addFeed.adv.pass") || "";
+    document.getElementById("tab-adv-ua").value = localStorage.getItem("addFeed.adv.ua") || "";
+    renderRecent();
+  })();
+</script>
+</body>
+</html>

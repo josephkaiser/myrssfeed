@@ -69,8 +69,8 @@
       </div>
     </div>
     <button class="btn pill" type="submit">Go</button>
-    {% if q or date_range %}
-    <a href="{{ clear_url }}" class="btn ghost pill" id="search-clear">Clear</a>
+    {% if q or (date_range is defined and date_range) %}
+    <a href="{{ clear_url|default('/') }}" class="btn ghost pill" id="search-clear">Clear</a>
     {% endif %}
   </form>
 
@@ -91,7 +91,6 @@
           <span class="refresh-status-text" id="header-refresh-status-text">Ready</span>
         </div>
       </div>
-      <!-- Scrape, WordRank, and quality filter controls removed in minimal mode -->
       <div class="header-action">
         <a
           href="/settings"
@@ -114,14 +113,14 @@
       <button class="nav-drawer-close" onclick="closeNav()">&times;</button>
     </div>
     <div class="nav-drawer-links">
-      <a href="/">
-        <span class="nav-icon">&#128196;</span> Articles
-      </a>
       <a href="/feeds">
-        <span class="nav-icon">&#128218;</span> My Feeds
+        <span class="nav-icon">&#128220;</span> Subscriptions
       </a>
       <a href="/discover">
         <span class="nav-icon">&#128269;</span> Discover
+      </a>
+      <a href="/add-feed">
+        <span class="nav-icon">&#10133;</span> Add Feed
       </a>
       <a href="/stats">
         <span class="nav-icon">&#128201;</span> Statistics
@@ -129,10 +128,9 @@
       <a href="/settings">
         <span class="nav-icon">&#9881;</span> Settings
       </a>
-
       <div class="nav-section">Subscriptions</div>
       <button class="nav-feeds-toggle" id="nav-feeds-toggle" onclick="toggleNavFeeds()">
-        <span class="nav-icon">&#128240;</span> My Feeds
+        <span class="nav-icon">&#128240;</span> My feeds
         <span class="chevron">&#9654;</span>
       </button>
       <div class="nav-feeds-list" id="nav-feeds-list">
@@ -145,24 +143,44 @@
           <button type="button" class="nav-feed-remove" onclick="deleteFeed({{ feed.id }}, this)" title="Remove feed" aria-label="Remove feed">&times;</button>
         </div>
         {% endfor %}
+        <div class="nav-add-feed-row">
+          <input
+            type="url"
+            id="nav-add-feed-input"
+            class="detect-input"
+            placeholder="https://example.com or https://example.com/feed.xml"
+            autocomplete="off"
+          />
+          <button
+            class="btn"
+            id="nav-add-feed-btn"
+            type="button"
+            onclick="handleNavbarAddFeed('nav')"
+          >
+            Add
+          </button>
+        </div>
       </div>
     </div>
   </nav>
 </div>
 
-<div class="layout">
+<div class="layout layout-two-col">
   <aside class="sidebar-left">
     <div class="sidebar-section">
       <div class="sidebar-section-title">Navigation</div>
       <nav class="sidebar-nav">
-        <a href="/">
-          <span class="nav-icon">&#128196;</span> Articles
-        </a>
         <a href="/feeds">
-          <span class="nav-icon">&#128218;</span> My Feeds
+          <span class="nav-icon">&#128220;</span> Subscriptions
         </a>
         <a href="/discover">
           <span class="nav-icon">&#128269;</span> Discover
+        </a>
+        <a href="/add-feed">
+          <span class="nav-icon">&#10133;</span> Add Feed
+        </a>
+        <a href="/stats">
+          <span class="nav-icon">&#128201;</span> Statistics
         </a>
         <a href="/settings">
           <span class="nav-icon">&#9881;</span> Settings
@@ -181,6 +199,23 @@
           <button type="button" class="sidebar-feed-remove" onclick="deleteFeed({{ feed.id }}, this)" title="Remove feed" aria-label="Remove feed">&times;</button>
         </div>
         {% endfor %}
+        <div class="sidebar-add-feed-row">
+          <input
+            type="url"
+            id="sidebar-add-feed-input"
+            class="detect-input"
+            placeholder="https://example.com or https://example.com/feed.xml"
+            autocomplete="off"
+          />
+          <button
+            class="btn"
+            id="sidebar-add-feed-btn"
+            type="button"
+            onclick="handleNavbarAddFeed('sidebar')"
+          >
+            Add
+          </button>
+        </div>
       </div>
     </div>
   </aside>
@@ -210,9 +245,66 @@
           Discover
         </a>
       </div>
-      <div class="entries-header-count" aria-label="Current feed summary">
-        <span class="entries-header-count-value">{{ total_entries_display }}</span>
-        <span class="entries-header-count-copy">article{% if total_entries != 1 %}s{% endif %}</span>
+      <div class="entries-header-right">
+        <div class="entries-header-count" aria-label="Current feed summary">
+          <span class="entries-header-count-value">{{ total_entries_display }}</span>
+          <span class="entries-header-count-copy">article{% if total_entries != 1 %}s{% endif %}</span>
+        </div>
+        <div class="theme-filter">
+          <button
+            id="theme-filter-btn"
+            class="btn ghost pill theme-filter-btn"
+            type="button"
+            aria-expanded="false"
+            aria-controls="theme-filter-panel"
+            title="Filter by category"
+          >
+            Filter
+          </button>
+          <div id="theme-filter-panel" class="theme-filter-panel" hidden>
+            <div class="theme-filter-sort-row">
+              <label for="sort-select" class="theme-filter-panel-title">Sort</label>
+              <select id="sort-select" aria-label="Sort order">
+                <option value="chronological" {% if sort == 'chronological' %}selected{% endif %}>Chronological</option>
+                <option value="quality_desc" {% if sort == 'quality_desc' %}selected{% endif %}>Quality: highest → lowest</option>
+                <option value="quality_asc" {% if sort == 'quality_asc' %}selected{% endif %}>Quality: lowest → highest</option>
+              </select>
+            </div>
+            <div class="theme-filter-panel-title">Categories</div>
+            <label class="theme-filter-item">
+              <input type="checkbox" class="theme-filter-checkbox" value="Politics" />
+              <span>Politics</span>
+            </label>
+            <label class="theme-filter-item">
+              <input type="checkbox" class="theme-filter-checkbox" value="Technology" />
+              <span>Technology</span>
+            </label>
+            <label class="theme-filter-item">
+              <input type="checkbox" class="theme-filter-checkbox" value="Business" />
+              <span>Business</span>
+            </label>
+            <label class="theme-filter-item">
+              <input type="checkbox" class="theme-filter-checkbox" value="Stocks" />
+              <span>Stocks</span>
+            </label>
+            <label class="theme-filter-item">
+              <input type="checkbox" class="theme-filter-checkbox" value="Spam" />
+              <span>Spam</span>
+            </label>
+            <label class="theme-filter-item">
+              <input type="checkbox" class="theme-filter-checkbox" value="Science" />
+              <span>Science</span>
+            </label>
+            <label class="theme-filter-item">
+              <input type="checkbox" class="theme-filter-checkbox" value="World News" />
+              <span>World News</span>
+            </label>
+            <div class="theme-filter-actions">
+              <button class="btn pill theme-filter-apply" type="button" onclick="applyThemeFilter()">Apply</button>
+              <button class="btn ghost pill theme-filter-clear" type="button" onclick="clearThemeFilter()">All</button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -229,10 +321,7 @@
             {% if feed_info and feed_info.domain %}
             <img class="entry-favicon" src="https://www.google.com/s2/favicons?domain={{ feed_info.domain }}&sz=32" width="14" height="14" alt="" loading="lazy" />
             {% endif %}
-            <span class="tag entry-source-tag" style="--feed-color: {{ feed_info.color if feed_info else '' }}">{{ entry.feed_title or "Unknown" }}</span>
-            {% if entry.assessment_label %}
-            <span class="tag entry-assessment-tag" style="--assessment-color: {{ entry.assessment_label_color or '' }}">{{ entry.assessment_label | replace('_', ' ') | title }}</span>
-            {% endif %}
+            <span class="tag entry-source-tag">{{ entry.feed_title or "Unknown" }}</span>
             <time class="entry-date" data-published="{{ entry.published }}" data-published-format="date" datetime="{{ entry.published }}">{{ entry.published[:10] if entry.published else "" }}</time>
           </div>
           <div class="entry-body">
@@ -248,9 +337,9 @@
         </a>
         <div class="entry-link-row">
           {% if entry.link %}
-          <a href="{{ entry.link }}" target="_blank" rel="noopener noreferrer" onclick="markRead({{ entry.id }}, this)">Open original</a>
+          <a href="{{ entry.link }}" target="_blank" rel="noopener noreferrer" onclick="markRead({{ entry.id }}, this)">Read full article</a>
           {% else %}
-          <a href="/article/{{ entry.id }}" target="_blank" rel="noopener noreferrer">Open article</a>
+          <a href="/article/{{ entry.id }}" target="_blank" rel="noopener noreferrer">Read full article</a>
           {% endif %}
         </div>
       </article>
@@ -261,7 +350,7 @@
         {% if source_scope == 'discover' %}
         <p>No discover articles yet. Switch back to <a href="/">My Feed</a> or add more feeds to the catalogue.</p>
         {% else %}
-        <p>No articles yet. Go to <a href="/feeds">My Feeds</a> to add feeds, then switch to <a href="{{ discover_feed_url }}">Discover</a>.</p>
+        <p>No articles yet. Use <a href="/add-feed">Add Feed</a> to add feeds, then switch to <a href="{{ discover_feed_url }}">Discover</a>.</p>
         {% endif %}
       </div>
     {% endif %}

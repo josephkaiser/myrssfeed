@@ -34,22 +34,41 @@
   <a class="header-brand" href="/">myRSSfeed</a>
 
   <form class="search-bar" method="get" action="/" id="search-form">
-    <div class="search-input-wrap">
-      <input type="search" name="q" id="search-input" value="{{ q }}" placeholder="Search articles..." autocomplete="off" />
+    <input type="hidden" name="q" id="search-query-base" value="{{ q|default('') }}" />
+    <div class="search-input-wrap{% if q %} has-search-term{% endif %}">
+      {% if q %}
+      <div class="search-term-chip" id="search-term-chip">
+        <span class="search-term-chip-text">{{ q }}</span>
+        <button type="button" class="search-term-chip-remove" id="search-term-remove" aria-label="Remove search term">&times;</button>
+      </div>
+      <input type="search" id="search-input" value="" placeholder="Add more terms..." autocomplete="off" />
+      {% else %}
+      <input type="search" id="search-input" value="" placeholder="Search articles..." autocomplete="off" />
+      {% endif %}
       <div class="search-dropdown" id="search-dropdown" style="display:none"></div>
     </div>
+    <div class="search-advanced">
+      <button type="button" class="btn pill search-advanced-btn" id="advanced-toggle" aria-expanded="false" aria-haspopup="true" aria-controls="advanced-dropdown">Advanced</button>
+      <div class="search-advanced-dropdown" id="advanced-dropdown" role="menu" aria-labelledby="advanced-toggle" hidden>
+        <div class="search-advanced-row">
+          <label for="date-range">Date range</label>
+          <select name="days" id="date-range" aria-label="Limit results to last N days">
+            <option value="">All-Time</option>
+            <option value="1" {% if date_range == 1 %}selected{% endif %}>Last 1 day</option>
+            <option value="5" {% if date_range == 5 %}selected{% endif %}>Last 5 days</option>
+            <option value="30" {% if date_range == 30 %}selected{% endif %}>Last 30 days</option>
+            <option value="90" {% if date_range == 90 %}selected{% endif %}>Last 90 days</option>
+          </select>
+        </div>
+      </div>
+    </div>
     <button class="btn pill" type="submit">Go</button>
-    {% if q %}
-    <a href="/" class="btn ghost pill">Clear</a>
+    {% if q or (date_range is defined and date_range) %}
+    <a href="{{ clear_url|default('/') }}" class="btn ghost pill" id="search-clear">Clear</a>
     {% endif %}
   </form>
 
   <div class="header-right">
-    <div class="header-metrics">
-      <span class="header-count">
-        <!-- Count omitted on stats page -->
-      </span>
-    </div>
     <div class="header-actions" aria-label="Quick actions">
       <div class="header-action">
         <button
@@ -65,48 +84,6 @@
           <span class="refresh-status-dot" id="header-refresh-status-dot" aria-hidden="true"></span>
           <span class="refresh-status-text" id="header-refresh-status-text">Ready</span>
         </div>
-      </div>
-      <div class="header-action">
-        <button
-          class="btn icon-btn"
-          id="header-scrape-btn"
-          type="button"
-          title="Enrich articles with metadata"
-          onclick="headerScrapeNow()"
-        >
-          &#8681;
-        </button>
-        <div class="refresh-status header-scrape-status" aria-live="polite">
-          <span class="refresh-status-dot" id="header-scrape-status-dot" aria-hidden="true"></span>
-          <span class="refresh-status-text" id="header-scrape-status-text">Ready</span>
-        </div>
-      </div>
-      <div class="header-action">
-        <button
-          class="btn icon-btn"
-          id="header-wordrank-btn"
-          type="button"
-          title="Recompute personalized scores (WordRank)"
-          onclick="headerWordrankNow()"
-        >
-          WR
-        </button>
-        <div class="refresh-status header-wordrank-status" aria-live="polite">
-          <span class="refresh-status-dot" id="header-wordrank-status-dot" aria-hidden="true"></span>
-          <span class="refresh-status-text" id="header-wordrank-status-text">Ready</span>
-        </div>
-      </div>
-      <div class="header-action">
-        <button
-          class="btn icon-btn"
-          id="header-filter-btn"
-          type="button"
-          title="Filter out low-quality items"
-          aria-pressed="false"
-          onclick="headerToggleFilter()"
-        >
-          &#128269;
-        </button>
       </div>
       <div class="header-action">
         <a
@@ -130,14 +107,14 @@
       <button class="nav-drawer-close" onclick="closeNav()">&times;</button>
     </div>
     <div class="nav-drawer-links">
-      <a href="/">
-        <span class="nav-icon">&#128196;</span> Articles
-      </a>
       <a href="/feeds">
-        <span class="nav-icon">&#128218;</span> My Feeds
+        <span class="nav-icon">&#128220;</span> Subscriptions
       </a>
       <a href="/discover">
         <span class="nav-icon">&#128269;</span> Discover
+      </a>
+      <a href="/add-feed">
+        <span class="nav-icon">&#10133;</span> Add Feed
       </a>
       <a href="/stats" class="active">
         <span class="nav-icon">&#128201;</span> Statistics
@@ -154,14 +131,17 @@
     <div class="sidebar-section">
       <div class="sidebar-section-title">Navigation</div>
       <nav class="sidebar-nav">
-        <a href="/">
-          <span class="nav-icon">&#128196;</span> Articles
-        </a>
         <a href="/feeds">
-          <span class="nav-icon">&#128218;</span> My Feeds
+          <span class="nav-icon">&#128220;</span> Subscriptions
         </a>
         <a href="/discover">
           <span class="nav-icon">&#128269;</span> Discover
+        </a>
+        <a href="/add-feed">
+          <span class="nav-icon">&#10133;</span> Add Feed
+        </a>
+        <a href="/stats">
+          <span class="nav-icon">&#128201;</span> Statistics
         </a>
         <a href="/settings">
           <span class="nav-icon">&#9881;</span> Settings
@@ -182,10 +162,10 @@
     {% if total_articles == 0 and total_feeds == 0 %}
     <div class="empty-state">
       <div style="font-size:2.5rem">&#128201;</div>
-      <p>
-        No statistics yet. Go to <a href="/feeds">My Feeds</a> to add feeds, then refresh your
-        library to see this dashboard come to life.
-      </p>
+        <p>
+          No statistics yet. Use <a href="/add-feed">Add Feed</a> (or the navbar) to add feeds, then refresh your
+          library to see this dashboard come to life.
+        </p>
     </div>
     {% else %}
     <div class="stats-grid">

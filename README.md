@@ -50,8 +50,6 @@ sudo journalctl -u myrssfeed -f
 | `GET` | `/api/refresh/status` | Refresh job status |
 | `POST` | `/api/wordrank` | Run WordRank now |
 | `GET` | `/api/wordrank/status` | WordRank status |
-| `POST` | `/api/scrape` | Start scrape/enrichment |
-| `GET` | `/api/scrape/status` | Scrape status |
 | `POST` | `/api/newsletters/sync` | Start newsletter sync |
 | `GET` | `/api/newsletters/status` | Newsletter sync status |
 | `GET` | `/api/search` | Live search and suggestions |

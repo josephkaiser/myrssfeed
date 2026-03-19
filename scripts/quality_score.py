@@ -1,4 +1,4 @@
-# Quality and spam-style scoring from corpus and user signals.
+# Quality and spam-style scoring from title/summary heuristics.
 # Used to surface better content and downrank low-quality / spam-like entries.
 
 import os
@@ -27,6 +27,9 @@ SPAM_PATTERNS = [
     r"\b(act now|limited time|last chance|hurry)\b",
 ]
 SPAM_RE = re.compile("|".join(f"(?:{p})" for p in SPAM_PATTERNS), re.I)
+WORD_RE = re.compile(r"[A-Za-z][A-Za-z0-9'/-]*")
+TITLE_CASE_WORD_RE = re.compile(r"\b[A-Z][a-z]{2,}\b")
+NOISE_RE = re.compile(r"^\s*(read more|continue reading|advertisement|sponsored)\b", re.I)
 
 
 def _ensure_quality_column(conn) -> None:
@@ -46,28 +49,81 @@ def _ensure_label_columns(conn) -> None:
 
 
 def _heuristic_score(title: Optional[str], summary: Optional[str]) -> float:
-    """0–1 score from title/summary length and spam-like patterns."""
+    """
+    0–1 quality proxy from information density + readability + spam checks.
+
+    This is intentionally deterministic and cheap: no model calls, no network.
+    """
     title = (title or "").strip()
     summary = (summary or "").strip()
-    score = 0.5
-    if len(title) >= 80:
-        score += 0.15
-    elif len(title) >= 30:
-        score += 0.1
-    elif len(title) >= MIN_TITLE_LEN:
-        score += 0.05
+    text = (title + " " + summary).strip()
+    score = 0.45
+
+    # Hard failure for mostly empty entries.
+    if len(title) < MIN_TITLE_LEN and len(summary) < MIN_SUMMARY_LEN:
+        return 0.0
+
+    title_words = WORD_RE.findall(title)
+    summary_words = WORD_RE.findall(summary)
+    all_words = title_words + summary_words
+
+    # 1) Information completeness (title + summary presence/shape).
+    if len(title_words) >= 5:
+        score += 0.08
+    elif len(title_words) >= 3:
+        score += 0.03
     else:
-        score -= 0.2
-    if len(summary) >= 200:
-        score += 0.2
-    elif len(summary) >= 80:
+        score -= 0.12
+
+    if len(summary_words) >= 45:
+        score += 0.16
+    elif len(summary_words) >= 20:
         score += 0.1
-    elif len(summary) >= MIN_SUMMARY_LEN:
-        score += 0.05
+    elif len(summary_words) >= 8:
+        score += 0.03
     else:
-        score -= 0.1
-    if SPAM_RE.search(title + " " + summary):
-        score -= 0.3
+        score -= 0.12
+
+    # 2) Readability / structure signal.
+    sentence_count = len(re.findall(r"[.!?]+", summary))
+    if sentence_count >= 2:
+        score += 0.06
+    elif sentence_count == 0 and summary:
+        score -= 0.06
+
+    title_case_hits = len(TITLE_CASE_WORD_RE.findall(title))
+    if title_case_hits >= 1:
+        score += 0.03
+
+    # 3) Redundancy / low-signal penalties.
+    if all_words:
+        unique_ratio = len({w.lower() for w in all_words}) / max(1, len(all_words))
+        if unique_ratio >= 0.65:
+            score += 0.06
+        elif unique_ratio < 0.4:
+            score -= 0.1
+
+    if summary and summary.strip().endswith("..."):
+        score -= 0.04
+    if NOISE_RE.search(summary):
+        score -= 0.12
+
+    upper_chars = sum(1 for ch in text if ch.isupper())
+    alpha_chars = sum(1 for ch in text if ch.isalpha())
+    if alpha_chars > 0:
+        upper_ratio = upper_chars / alpha_chars
+        if upper_ratio > 0.38:
+            score -= 0.12
+
+    # 4) Spam-like patterns are strong negatives.
+    if SPAM_RE.search(text):
+        score -= 0.28
+
+    # Small boost for normal news-like punctuation balance.
+    punct_ratio = sum(1 for ch in text if ch in ",.;:!?") / max(1, len(text))
+    if 0.01 <= punct_ratio <= 0.07:
+        score += 0.03
+
     return max(0.0, min(1.0, score))
 
 
@@ -82,38 +138,23 @@ def _label_from_quality(quality: float) -> tuple[str, str]:
 
 def run_quality_score() -> None:
     """
-    Compute quality_score for all entries using heuristics and feed-level liked ratio.
-    Feeds with higher liked rates get a small boost so the model favours sources the user likes.
+    Compute quality_score for all entries using title/summary heuristics
+    (length and spam-like pattern detection).
     """
     conn = get_db()
     _ensure_quality_column(conn)
     _ensure_label_columns(conn)
 
     rows = conn.execute(
-        "SELECT id, title, summary, feed_id, liked FROM entries"
+        "SELECT id, title, summary FROM entries"
     ).fetchall()
     if not rows:
         conn.close()
         return
 
-    # Feed-level liked ratio (training signal)
-    feed_stats = {}
-    for r in conn.execute(
-        """
-        SELECT feed_id,
-               COUNT(*) AS total,
-               SUM(COALESCE(liked, 0)) AS liked
-        FROM entries GROUP BY feed_id
-        """
-    ).fetchall():
-        total = max(1, r["total"])
-        feed_stats[r["feed_id"]] = (r["liked"] or 0) / total
-
     updates = []
     for r in rows:
-        base = _heuristic_score(r["title"], r["summary"])
-        feed_boost = feed_stats.get(r["feed_id"], 0) * 0.1  # up to +0.1 from feed liked ratio
-        quality = max(0.0, min(1.0, base + feed_boost))
+        quality = _heuristic_score(r["title"], r["summary"])
         label, color = _label_from_quality(quality)
         updates.append((quality, label, color, r["id"]))
 

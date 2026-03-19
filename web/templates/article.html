@@ -24,9 +24,48 @@
 </head>
 <body class="article-page">
 
-<header class="article-header">
-  <a class="back-link" href="{{ back_url }}">&larr; Back to feed</a>
+<header>
+  <button class="hamburger-btn" type="button" onclick="toggleNav()" aria-label="Open navigation">
+    <span></span>
+    <span></span>
+    <span></span>
+  </button>
   <a class="header-brand" href="/">myRSSfeed</a>
+
+  <form class="search-bar" method="get" action="/" id="search-form">
+    <input type="hidden" name="q" id="search-query-base" value="{{ q|default('') }}" />
+    <div class="search-input-wrap{% if q %} has-search-term{% endif %}">
+      {% if q %}
+      <div class="search-term-chip" id="search-term-chip">
+        <span class="search-term-chip-text">{{ q }}</span>
+        <button type="button" class="search-term-chip-remove" id="search-term-remove" aria-label="Remove search term">&times;</button>
+      </div>
+      <input type="search" id="search-input" value="" placeholder="Add more terms..." autocomplete="off" />
+      {% else %}
+      <input type="search" id="search-input" value="" placeholder="Search articles..." autocomplete="off" />
+      {% endif %}
+      <div class="search-dropdown" id="search-dropdown" style="display:none"></div>
+    </div>
+    <div class="search-advanced">
+      <button type="button" class="btn pill search-advanced-btn" id="advanced-toggle" aria-expanded="false" aria-haspopup="true" aria-controls="advanced-dropdown">Advanced</button>
+      <div class="search-advanced-dropdown" id="advanced-dropdown" role="menu" aria-labelledby="advanced-toggle" hidden>
+        <div class="search-advanced-row">
+          <label for="date-range">Date range</label>
+          <select name="days" id="date-range" aria-label="Limit results to last N days">
+            <option value="">All-Time</option>
+            <option value="1" {% if date_range == 1 %}selected{% endif %}>Last 1 day</option>
+            <option value="5" {% if date_range == 5 %}selected{% endif %}>Last 5 days</option>
+            <option value="30" {% if date_range == 30 %}selected{% endif %}>Last 30 days</option>
+            <option value="90" {% if date_range == 90 %}selected{% endif %}>Last 90 days</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <button class="btn pill" type="submit">Go</button>
+    {% if q or (date_range is defined and date_range) %}
+    <a href="{{ clear_url|default('/') }}" class="btn ghost pill" id="search-clear">Clear</a>
+    {% endif %}
+  </form>
 
   <div class="header-right">
     <div class="header-actions" aria-label="Quick actions">
@@ -40,6 +79,10 @@
         >
           &#10227;
         </button>
+        <div class="refresh-status header-refresh-status" aria-live="polite">
+          <span class="refresh-status-dot" id="header-refresh-status-dot" aria-hidden="true"></span>
+          <span class="refresh-status-text" id="header-refresh-status-text">Ready</span>
+        </div>
       </div>
       <div class="header-action">
         <a
@@ -63,14 +106,17 @@
       <button class="nav-drawer-close" onclick="closeNav()">&times;</button>
     </div>
     <div class="nav-drawer-links">
-      <a href="/">
-        <span class="nav-icon">&#128196;</span> Articles
-      </a>
       <a href="/feeds">
-        <span class="nav-icon">&#128218;</span> My Feeds
+        <span class="nav-icon">&#128220;</span> Subscriptions
       </a>
       <a href="/discover">
         <span class="nav-icon">&#128269;</span> Discover
+      </a>
+      <a href="/add-feed">
+        <span class="nav-icon">&#10133;</span> Add Feed
+      </a>
+      <a href="/stats">
+        <span class="nav-icon">&#128201;</span> Statistics
       </a>
       <a href="/settings">
         <span class="nav-icon">&#9881;</span> Settings
@@ -84,6 +130,10 @@
     {% set article_image = entry.og_image_url or entry.thumbnail_url %}
     {% set article_description = entry.og_description or entry.summary %}
     {% set article_scraped = entry.full_content %}
+
+    <div class="article-top-actions">
+      <a class="back-link" href="{{ back_url }}">&larr; Back to feed</a>
+    </div>
 
     <div class="article-actions">
       <div class="article-nav-controls" aria-label="Feed article navigation">
@@ -108,7 +158,37 @@
           <span class="article-nav-symbol" aria-hidden="true">&rarr;</span>
         </button>
       </div>
+    </div>
 
+    <div class="article-meta">
+      {% set feed_info = feed_map.get(entry.feed_id) %}
+      {% if feed_info and feed_info.domain %}
+      <img class="article-favicon" src="https://www.google.com/s2/favicons?domain={{ feed_info.domain }}&sz=32" width="14" height="14" alt="" />
+      {% endif %}
+      <span class="article-source tag entry-source-tag">{{ entry.feed_title or "Unknown" }}</span>
+      <time class="article-date" data-published="{{ entry.published }}" data-published-format="datetime" datetime="{{ entry.published }}">{{ entry.published[:10] if entry.published else "" }}</time>
+    </div>
+    <h1 class="article-title">{{ (entry.og_title or entry.title) or "(no title)" }}</h1>
+
+    {% if article_description %}
+    <div class="article-description">
+      {{ article_description | safe }}
+    </div>
+    {% endif %}
+
+    <div id="article-media-stage" data-primary-image="{{ article_image or '' }}"></div>
+
+    {% if article_scraped %}
+    <div class="article-scraped-content">
+      {{ article_scraped | safe }}
+    </div>
+    {% elif not article_description %}
+    <div class="article-body">
+      <p>No description available for this article.</p>
+    </div>
+    {% endif %}
+
+    <div class="article-actions article-actions-bottom">
       {% if entry.link %}
       <a
         class="btn article-cta"
@@ -124,41 +204,6 @@
       <div class="article-cta article-cta-disabled">Full article link unavailable</div>
       {% endif %}
     </div>
-
-    <div class="article-meta">
-      {% set feed_info = feed_map.get(entry.feed_id) %}
-      {% if feed_info and feed_info.domain %}
-      <img class="article-favicon" src="https://www.google.com/s2/favicons?domain={{ feed_info.domain }}&sz=32" width="14" height="14" alt="" />
-      {% endif %}
-      <span class="article-source tag entry-source-tag" style="--feed-color: {{ feed_info.color if feed_info else '' }}">{{ entry.feed_title or "Unknown" }}</span>
-      {% if entry.assessment_label %}
-      <span class="tag entry-assessment-tag" style="--assessment-color: {{ entry.assessment_label_color or '' }}">{{ entry.assessment_label | replace('_', ' ') | title }}</span>
-      {% endif %}
-      <time class="article-date" data-published="{{ entry.published }}" data-published-format="datetime" datetime="{{ entry.published }}">{{ entry.published[:10] if entry.published else "" }}</time>
-    </div>
-    <h1 class="article-title">{{ (entry.og_title or entry.title) or "(no title)" }}</h1>
-
-    {% if article_description %}
-    <div class="article-description">
-      {{ article_description | safe }}
-    </div>
-    {% endif %}
-
-    {% if article_image %}
-    <figure class="article-figure">
-      <img class="article-img" src="{{ article_image }}" alt="" loading="eager" />
-    </figure>
-    {% endif %}
-
-    {% if article_scraped %}
-    <div class="article-scraped-content">
-      {{ article_scraped | safe }}
-    </div>
-    {% elif not article_description %}
-    <div class="article-body">
-      <p>No description available for this article.</p>
-    </div>
-    {% endif %}
   </div>
 </article>
 
@@ -170,6 +215,95 @@
     prevUrl: {{ prev_article_url | tojson }},
     nextUrl: {{ next_article_url | tojson }},
   };
+</script>
+<script>
+  (function initArticleMediaStage() {
+    const stage = document.getElementById("article-media-stage");
+    if (!stage) return;
+    const scraped = document.querySelector(".article-scraped-content");
+    const srcNodes = [];
+    const primary = (stage.dataset.primaryImage || "").trim();
+    if (primary) srcNodes.push({ src: primary, alt: "" });
+    if (scraped) {
+      scraped.querySelectorAll("img[src]").forEach((img) => {
+        const src = (img.getAttribute("src") || "").trim();
+        if (!src) return;
+        srcNodes.push({ src, alt: img.getAttribute("alt") || "" });
+      });
+    }
+    if (!srcNodes.length) return;
+
+    const keyFor = (url) => {
+      try {
+        const u = new URL(url, window.location.origin);
+        return (u.origin + u.pathname).toLowerCase();
+      } catch (_) {
+        return String(url || "").split("?")[0].split("#")[0].toLowerCase();
+      }
+    };
+
+    const seen = new Set();
+    const images = [];
+    srcNodes.forEach((item) => {
+      const key = keyFor(item.src);
+      if (!key || seen.has(key)) return;
+      seen.add(key);
+      images.push(item);
+    });
+    if (!images.length) return;
+
+    if (scraped) {
+      scraped.querySelectorAll("img").forEach((img) => {
+        const fig = img.closest("figure");
+        if (fig) fig.remove();
+        else img.remove();
+      });
+    }
+
+    let idx = 0;
+    stage.className = "article-media-stage";
+    stage.innerHTML =
+      '<button type="button" class="article-media-nav article-media-nav-left" aria-label="Previous image">&larr;</button>' +
+      '<div class="article-media-viewport"><img class="article-media-img" alt="" loading="eager" /></div>' +
+      '<button type="button" class="article-media-nav article-media-nav-right" aria-label="Next image">&rarr;</button>' +
+      '<div class="article-media-dots" aria-label="Image position"></div>';
+
+    const imgEl = stage.querySelector(".article-media-img");
+    const prevBtn = stage.querySelector(".article-media-nav-left");
+    const nextBtn = stage.querySelector(".article-media-nav-right");
+    const dotsEl = stage.querySelector(".article-media-dots");
+
+    dotsEl.innerHTML = images
+      .map((_, i) => '<button type="button" class="article-media-dot" data-idx="' + i + '" aria-label="Go to image ' + (i + 1) + '"></button>')
+      .join("");
+
+    function render() {
+      const current = images[idx];
+      imgEl.src = current.src;
+      imgEl.alt = current.alt || "";
+      stage.querySelectorAll(".article-media-dot").forEach((dot) => {
+        dot.classList.toggle("active", Number(dot.dataset.idx) === idx);
+      });
+      prevBtn.disabled = images.length <= 1;
+      nextBtn.disabled = images.length <= 1;
+    }
+
+    prevBtn.addEventListener("click", () => {
+      idx = (idx - 1 + images.length) % images.length;
+      render();
+    });
+    nextBtn.addEventListener("click", () => {
+      idx = (idx + 1) % images.length;
+      render();
+    });
+    dotsEl.addEventListener("click", (e) => {
+      const t = e.target;
+      if (!t || !t.classList.contains("article-media-dot")) return;
+      idx = Number(t.dataset.idx) || 0;
+      render();
+    });
+    render();
+  })();
 </script>
 <script src="/static/index.js"></script>
 </body>

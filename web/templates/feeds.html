@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>My Feeds — myRSSfeed</title>
+  <title>Subscriptions — myRSSfeed</title>
   <script>
     (function() {
       var host = window.location && window.location.hostname;
@@ -33,22 +33,41 @@
   <a class="header-brand" href="/">myRSSfeed</a>
 
   <form class="search-bar" method="get" action="/" id="search-form">
-    <div class="search-input-wrap">
-      <input type="search" name="q" id="search-input" value="{{ q }}" placeholder="Search articles..." autocomplete="off" />
+    <input type="hidden" name="q" id="search-query-base" value="{{ q|default('') }}" />
+    <div class="search-input-wrap{% if q %} has-search-term{% endif %}">
+      {% if q %}
+      <div class="search-term-chip" id="search-term-chip">
+        <span class="search-term-chip-text">{{ q }}</span>
+        <button type="button" class="search-term-chip-remove" id="search-term-remove" aria-label="Remove search term">&times;</button>
+      </div>
+      <input type="search" id="search-input" value="" placeholder="Add more terms..." autocomplete="off" />
+      {% else %}
+      <input type="search" id="search-input" value="" placeholder="Search articles..." autocomplete="off" />
+      {% endif %}
       <div class="search-dropdown" id="search-dropdown" style="display:none"></div>
     </div>
+    <div class="search-advanced">
+      <button type="button" class="btn pill search-advanced-btn" id="advanced-toggle" aria-expanded="false" aria-haspopup="true" aria-controls="advanced-dropdown">Advanced</button>
+      <div class="search-advanced-dropdown" id="advanced-dropdown" role="menu" aria-labelledby="advanced-toggle" hidden>
+        <div class="search-advanced-row">
+          <label for="date-range">Date range</label>
+          <select name="days" id="date-range" aria-label="Limit results to last N days">
+            <option value="">All-Time</option>
+            <option value="1" {% if date_range == 1 %}selected{% endif %}>Last 1 day</option>
+            <option value="5" {% if date_range == 5 %}selected{% endif %}>Last 5 days</option>
+            <option value="30" {% if date_range == 30 %}selected{% endif %}>Last 30 days</option>
+            <option value="90" {% if date_range == 90 %}selected{% endif %}>Last 90 days</option>
+          </select>
+        </div>
+      </div>
+    </div>
     <button class="btn pill" type="submit">Go</button>
-    {% if q %}
-    <a href="/" class="btn ghost pill">Clear</a>
+    {% if q or (date_range is defined and date_range) %}
+    <a href="{{ clear_url|default('/') }}" class="btn ghost pill" id="search-clear">Clear</a>
     {% endif %}
   </form>
 
   <div class="header-right">
-    <div class="header-metrics">
-      <span class="header-count">
-        <!-- Count omitted on feeds page -->
-      </span>
-    </div>
     <div class="header-actions" aria-label="Quick actions">
       <div class="header-action">
         <button
@@ -64,48 +83,6 @@
           <span class="refresh-status-dot" id="header-refresh-status-dot" aria-hidden="true"></span>
           <span class="refresh-status-text" id="header-refresh-status-text">Ready</span>
         </div>
-      </div>
-      <div class="header-action">
-        <button
-          class="btn icon-btn"
-          id="header-scrape-btn"
-          type="button"
-          title="Enrich articles with metadata"
-          onclick="headerScrapeNow()"
-        >
-          &#8681;
-        </button>
-        <div class="refresh-status header-scrape-status" aria-live="polite">
-          <span class="refresh-status-dot" id="header-scrape-status-dot" aria-hidden="true"></span>
-          <span class="refresh-status-text" id="header-scrape-status-text">Ready</span>
-        </div>
-      </div>
-      <div class="header-action">
-        <button
-          class="btn icon-btn"
-          id="header-wordrank-btn"
-          type="button"
-          title="Recompute personalized scores (WordRank)"
-          onclick="headerWordrankNow()"
-        >
-          WR
-        </button>
-        <div class="refresh-status header-wordrank-status" aria-live="polite">
-          <span class="refresh-status-dot" id="header-wordrank-status-dot" aria-hidden="true"></span>
-          <span class="refresh-status-text" id="header-wordrank-status-text">Ready</span>
-        </div>
-      </div>
-      <div class="header-action">
-        <button
-          class="btn icon-btn"
-          id="header-filter-btn"
-          type="button"
-          title="Filter out low-quality items"
-          aria-pressed="false"
-          onclick="headerToggleFilter()"
-        >
-          &#128269;
-        </button>
       </div>
       <div class="header-action">
         <a
@@ -129,14 +106,14 @@
       <button class="nav-drawer-close" onclick="closeNav()">&times;</button>
     </div>
     <div class="nav-drawer-links">
-      <a href="/">
-        <span class="nav-icon">&#128196;</span> Articles
-      </a>
       <a href="/feeds" class="active">
-        <span class="nav-icon">&#128218;</span> My Feeds
+        <span class="nav-icon">&#128220;</span> Subscriptions
       </a>
       <a href="/discover">
         <span class="nav-icon">&#128269;</span> Discover
+      </a>
+      <a href="/add-feed">
+        <span class="nav-icon">&#10133;</span> Add Feed
       </a>
       <a href="/stats">
         <span class="nav-icon">&#128201;</span> Statistics
@@ -146,7 +123,7 @@
       </a>
       <div class="nav-section">Subscriptions</div>
       <button class="nav-feeds-toggle" id="nav-feeds-toggle" onclick="toggleNavFeeds()">
-        <span class="nav-icon">&#128240;</span> My Feeds
+        <span class="nav-icon">&#128240;</span> Subscriptions
         <span class="chevron">&#9654;</span>
       </button>
       <div class="nav-feeds-list" id="nav-feeds-list">
@@ -159,24 +136,44 @@
           <button type="button" class="nav-feed-remove" onclick="deleteFeed({{ feed.id }}, this)" title="Remove feed" aria-label="Remove feed">&times;</button>
         </div>
         {% endfor %}
+        <div class="nav-add-feed-row">
+          <input
+            type="url"
+            id="nav-add-feed-input"
+            class="detect-input"
+            placeholder="https://example.com or https://example.com/feed.xml"
+            autocomplete="off"
+          />
+          <button
+            class="btn"
+            id="nav-add-feed-btn"
+            type="button"
+            onclick="handleNavbarAddFeed('nav')"
+          >
+            Add
+          </button>
+        </div>
       </div>
     </div>
   </nav>
 </div>
 
-<div class="layout layout-two-col">
+<div class="layout">
   <aside class="sidebar-left">
     <div class="sidebar-section">
       <div class="sidebar-section-title">Navigation</div>
       <nav class="sidebar-nav">
-        <a href="/">
-          <span class="nav-icon">&#128196;</span> Articles
-        </a>
-        <a href="/feeds">
-          <span class="nav-icon">&#128218;</span> My Feeds
+        <a href="/feeds" class="active">
+          <span class="nav-icon">&#128220;</span> Subscriptions
         </a>
         <a href="/discover">
           <span class="nav-icon">&#128269;</span> Discover
+        </a>
+        <a href="/add-feed">
+          <span class="nav-icon">&#10133;</span> Add Feed
+        </a>
+        <a href="/stats">
+          <span class="nav-icon">&#128201;</span> Statistics
         </a>
         <a href="/settings">
           <span class="nav-icon">&#9881;</span> Settings
@@ -195,370 +192,139 @@
           <button type="button" class="sidebar-feed-remove" onclick="deleteFeed({{ feed.id }}, this)" title="Remove feed" aria-label="Remove feed">&times;</button>
         </div>
         {% endfor %}
+        <div class="sidebar-add-feed-row">
+          <input
+            type="url"
+            id="sidebar-add-feed-input"
+            class="detect-input"
+            placeholder="https://example.com or https://example.com/feed.xml"
+            autocomplete="off"
+          />
+          <button
+            class="btn"
+            id="sidebar-add-feed-btn"
+            type="button"
+            onclick="handleNavbarAddFeed('sidebar')"
+          >
+            Add
+          </button>
+        </div>
       </div>
     </div>
   </aside>
 
   <div class="discover-wrap">
-
-  <!-- Unified add/detect input -->
-  <div class="discover-section">
-    <div class="discover-section-title">Add a feed</div>
-    <p class="discover-section-desc">
-      Paste a website URL to look up its feeds, or paste a direct feed link (like <code>.xml</code>) to subscribe instantly.
-    </p>
-    <div class="detect-row">
-      <input
-        type="url"
-        id="feed-input"
-        class="detect-input"
-        placeholder="https://example.com or https://example.com/feed.xml"
-        autocomplete="off"
-      />
-      <button class="btn" id="feed-btn" onclick="handleFeedInput()">Find feeds</button>
-    </div>
-    <div id="feed-name-box" class="feed-name-box" style="display:none">
-      <label for="feed-name-input" id="feed-name-label">Name this feed</label>
-      <div class="feed-name-row">
-        <input
-          type="text"
-          id="feed-name-input"
-          class="detect-input"
-          autocomplete="off"
-        />
-        <button class="btn" id="feed-name-confirm" onclick="confirmFeedName()">Add</button>
-        <button class="btn ghost" type="button" id="feed-name-cancel" onclick="cancelFeedName()">Cancel</button>
-      </div>
-    </div>
-    <div id="detect-results"></div>
-  </div>
-
-  <!-- Subscribed feeds grid -->
-  <div class="discover-section">
-    <div class="discover-section-title">My subscribed feeds</div>
-
+  <div class="discover-section subscriptions-manage">
+    <div class="discover-section-title">My subscriptions</div>
+    <p class="subscriptions-hint">× removes a feed from your subscription list only. To remove a feed from the device entirely, use Discover → Feeds on this device.</p>
     <div class="catalog-search-row">
       <input type="search" id="feeds-search" class="catalog-search-input"
-        placeholder="Filter my feeds..." oninput="renderFeeds()" autocomplete="off" />
+        placeholder="Filter subscriptions..." oninput="filterSubscriptions()" autocomplete="off" />
     </div>
-
-    <div class="catalog-grid" id="feeds-grid"></div>
+    <ul class="subscriptions-list" id="feeds-list" aria-label="Subscribed feeds">
+      {% for feed in feeds %}
+      <li class="subscriptions-row" data-feed-id="{{ feed.id }}">
+        <a href="/?feed_id={{ feed.id }}" class="subscriptions-link">
+          <img class="subscriptions-favicon" src="https://www.google.com/s2/favicons?domain={{ feed_map[feed.id].domain }}&sz=32" width="16" height="16" alt="" loading="lazy" />
+          <span class="subscriptions-label">{{ feed.title or feed.url }}</span>
+        </a>
+        <button type="button" class="btn ghost subscriptions-rename" onclick="renameFeed({{ feed.id }})" title="Rename">Rename</button>
+        <button type="button" class="subscriptions-remove" onclick="unsubscribeFeed({{ feed.id }}, this)" title="Remove from subscriptions" aria-label="Remove from subscriptions">&times;</button>
+      </li>
+      {% endfor %}
+    </ul>
+    {% if not feeds %}
+    <p class="catalog-empty">No subscriptions yet. <a href="/add-feed">Add a feed</a> or browse <a href="/discover">Discover</a>.</p>
+    {% endif %}
+  </div>
   </div>
 
-  </div>
+  <aside class="sidebar-right">
+    <div class="sidebar-section">
+      <div class="sidebar-section-title">Trending today</div>
+      {% if trending %}
+      <div class="trending-list">
+        {% for entry in trending %}
+        {% set feed_info = feed_map.get(entry.feed_id) %}
+        <article class="trending-item">
+          <div class="trending-meta">
+            {% if feed_info and feed_info.domain %}
+            <img class="sidebar-feed-favicon" src="https://www.google.com/s2/favicons?domain={{ feed_info.domain }}&sz=32" width="14" height="14" alt="" loading="lazy" />
+            {% endif %}
+            <span class="trending-source">{{ entry.feed_title or "Unknown" }}</span>
+            <time class="trending-date" data-published="{{ entry.published }}" data-published-format="date" datetime="{{ entry.published }}">{{ entry.published[:10] if entry.published else "" }}</time>
+          </div>
+          <a class="trending-title" href="{{ entry.link or ('/article/' ~ entry.id) }}" target="_blank" rel="noopener noreferrer"{% if entry.link %} onclick="markRead({{ entry.id }}, this)"{% endif %}>
+            {{ loop.index }}. {{ entry.title or "(no title)" }}
+          </a>
+        </article>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="trending-empty"><p>No trending articles yet.</p></div>
+      {% endif %}
+    </div>
+  </aside>
 </div>
 
 <div id="toast"></div>
 
 <script src="/static/index.js"></script>
 <script>
-const FEEDS = {{ feeds_json | safe }};
-
-function esc(str) {
-  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
-}
-
-function getDomain(url) {
-  try { return new URL(url).hostname; } catch(e) { return ''; }
-}
-
-function suggestFeedName(url, fallback) {
-  try {
-    const u = new URL(url);
-    if (u.hostname === 'rss.nytimes.com' && /\/services\/xml\/rss\/nyt\//i.test(u.pathname)) {
-      const parts = u.pathname.split('/').filter(Boolean);
-      const last = parts[parts.length - 1] || '';
-      const m = last.match(/^(.+)\.xml$/i);
-      if (m) {
-        let section = decodeURIComponent(m[1]).replace(/-/g, ' ');
-        section = section.replace(/\w\S*/g, (w) => w.charAt(0).toUpperCase() + w.slice(1));
-        return `NYT | ${section}`;
-      }
-    } else if (u.hostname === 'feeds.content.dowjones.io' && /\/public\/rss\/RSS/i.test(u.pathname)) {
-      const parts = u.pathname.split('/').filter(Boolean);
-      const last = parts[parts.length - 1] || '';
-      const m = last.match(/^RSS(.+)$/i);
-      if (m) {
-        let section = decodeURIComponent(m[1]).replace(/_/g, ' ').replace(/-/g, ' ');
-        section = section.replace(/\w\S*/g, (w) => w.charAt(0).toUpperCase() + w.slice(1));
-        return `WSJ | ${section}`;
-      }
-    }
-  } catch (e) {
-    // fall through to fallback
-  }
-  return fallback || getDomain(url) || url;
-}
-
-function toggleDesc(el) {
-  el.closest('.catalog-card').classList.toggle('desc-open');
-}
-
 function showToast(msg) {
-  const t = document.getElementById('toast');
+  const t = document.getElementById("toast");
+  if (!t) return;
   t.textContent = msg;
-  t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 2800);
+  t.classList.add("show");
+  setTimeout(() => t.classList.remove("show"), 2800);
 }
 
-let PENDING_FEED_ADD = null;
-
-function openFeedNameBox(url, name, sourceBtn) {
-  const box = document.getElementById('feed-name-box');
-  const input = document.getElementById('feed-name-input');
-  const confirmBtn = document.getElementById('feed-name-confirm');
-  const cancelBtn = document.getElementById('feed-name-cancel');
-  if (!box || !input || !confirmBtn || !cancelBtn) return;
-
-  const suggested = suggestFeedName(url, name);
-  input.value = suggested;
-
-  PENDING_FEED_ADD = { url, sourceBtn };
-
-  confirmBtn.disabled = false;
-  confirmBtn.textContent = 'Add';
-  box.style.display = '';
-  input.focus();
-  input.select();
-}
-
-function cancelFeedName() {
-  const box = document.getElementById('feed-name-box');
-  const input = document.getElementById('feed-name-input');
-  const confirmBtn = document.getElementById('feed-name-confirm');
-  if (box) box.style.display = 'none';
-  if (input) input.value = '';
-  if (confirmBtn) {
-    confirmBtn.disabled = false;
-    confirmBtn.textContent = 'Add';
-  }
-  PENDING_FEED_ADD = null;
-}
-
-async function confirmFeedName() {
-  if (!PENDING_FEED_ADD) return;
-  const { url, sourceBtn } = PENDING_FEED_ADD;
-  const input = document.getElementById('feed-name-input');
-  const box = document.getElementById('feed-name-box');
-  const confirmBtn = document.getElementById('feed-name-confirm');
-  if (!input || !confirmBtn) return;
-
-  const title = (input.value || '').trim() || null;
-  confirmBtn.disabled = true;
-  confirmBtn.textContent = 'Adding...';
-
-  try {
-    const res = await fetch('/api/feeds', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ url, title })
-    });
-    const data = await res.json().catch(() => ({}));
-    if (res.ok || res.status === 409) {
-      if (res.ok && data && typeof data === 'object' && 'id' in data) {
-        FEEDS.push(data);
-        renderFeeds();
-      }
-      if (sourceBtn) {
-        const badge = document.createElement('span');
-        badge.className = 'catalog-added-badge';
-        badge.innerHTML = '&#10003; Added';
-        sourceBtn.replaceWith(badge);
-      }
-      showToast(res.status === 409 ? 'Already subscribed.' : 'Feed added.');
-      if (box) box.style.display = 'none';
-      input.value = '';
-      PENDING_FEED_ADD = null;
-    } else {
-      showToast('Error: ' + (data.detail || res.status));
-      confirmBtn.disabled = false;
-      confirmBtn.textContent = 'Add';
-    }
-  } catch (e) {
-    showToast('Network error');
-    confirmBtn.disabled = false;
-    confirmBtn.textContent = 'Add';
-  }
-}
-
-function renderFeeds() {
-  const q = (document.getElementById('feeds-search').value || '').toLowerCase();
-  const grid = document.getElementById('feeds-grid');
-
-  const filtered = FEEDS.filter(f => {
-    if (q && !(f.title || '').toLowerCase().includes(q) && !f.url.toLowerCase().includes(q)) return false;
-    return true;
+function filterSubscriptions() {
+  const q = (document.getElementById("feeds-search").value || "").trim().toLowerCase();
+  document.querySelectorAll(".subscriptions-row").forEach(function(row) {
+    const label = (row.querySelector(".subscriptions-label") || {}).textContent || "";
+    row.style.display = q && !label.toLowerCase().includes(q) ? "none" : "";
   });
-
-  if (filtered.length === 0) {
-    grid.innerHTML = '<p class="catalog-empty">No subscribed feeds' + (q ? ' match your filter.' : ' yet. Use the options above to add feeds.') + '</p>';
-    return;
-  }
-
-  grid.innerHTML = filtered.map(feed => {
-    const domain = getDomain(feed.url);
-    const favicon = domain ? `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=128` : '';
-    return `
-      <div class="catalog-card" data-id="${feed.id}" data-url="${esc(feed.url)}">
-        ${favicon ? `<img class="catalog-card-img" src="${favicon}" alt="" loading="lazy" />` : '<div class="catalog-card-img catalog-card-img-placeholder"></div>'}
-        <span class="catalog-card-name" onclick="toggleDesc(this)">${esc(feed.title || feed.url)}</span>
-        <p class="catalog-card-desc">${esc(feed.url)}</p>
-        <div class="catalog-card-bottom">
-          <button class="btn ghost catalog-rename-btn" onclick="renameFeed(${feed.id})">Rename</button>
-          <button class="btn danger catalog-add-btn" onclick="removeFeed(${feed.id}, this)">Remove</button>
-        </div>
-      </div>
-    `;
-  }).join('');
-}
-
-async function addFeed(url, title) {
-  if (!url) return;
-  const res = await fetch('/api/feeds', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({url, title: title || null})
-  });
-  if (res.ok) {
-    const data = await res.json();
-    FEEDS.push(data);
-    renderFeeds();
-    showToast('Feed added: ' + (data.title || url));
-  } else if (res.status === 409) {
-    showToast('Already subscribed.');
-  } else {
-    const data = await res.json().catch(() => ({}));
-    showToast('Error: ' + (data.detail || res.status));
-  }
-}
-
-async function removeFeed(id, btn) {
-  if (!confirm('Remove this feed and all its articles?')) return;
-  btn.disabled = true;
-  btn.textContent = '...';
-  const res = await fetch('/api/feeds/' + id, { method: 'DELETE' });
-  if (res.ok) {
-    const idx = FEEDS.findIndex(f => f.id === id);
-    if (idx !== -1) FEEDS.splice(idx, 1);
-    renderFeeds();
-    showToast('Feed removed.');
-  } else {
-    showToast('Could not remove feed.');
-    btn.disabled = false;
-    btn.textContent = 'Remove';
-  }
-}
-
-async function detectFeeds(url) {
-  const input = document.getElementById('feed-input');
-  const resultsEl = document.getElementById('detect-results');
-  const btn = document.getElementById('feed-btn');
-  url = (url || input.value).trim();
-  if (!url) return;
-
-  btn.disabled = true;
-  btn.textContent = 'Detecting...';
-  resultsEl.innerHTML = '<p class="detect-status">Checking...</p>';
-
-  try {
-    const res = await fetch('/api/discover/detect', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({url})
-    });
-    const data = await res.json();
-
-    if (!res.ok) {
-      resultsEl.innerHTML = `<p class="detect-error">${esc(data.detail || 'Detection failed')}</p>`;
-      return;
-    }
-
-    if (!data.feeds || data.feeds.length === 0) {
-      resultsEl.innerHTML = '<p class="detect-status">No RSS feeds found at that URL.</p>';
-      return;
-    }
-
-    const subscribedUrls = new Set(FEEDS.map(f => f.url));
-    resultsEl.innerHTML = `
-      <div class="detect-results-list">
-        ${data.feeds.map(f => {
-          const subscribed = subscribedUrls.has(f.url);
-          return `
-            <div class="detect-result-row" data-url="${esc(f.url)}">
-              <div class="detect-result-info">
-                <span class="detect-result-name">${esc(f.name || 'RSS Feed')}</span>
-                <span class="detect-result-url">${esc(f.url)}</span>
-              </div>
-              ${subscribed
-                ? '<span class="catalog-added-badge">&#10003; Added</span>'
-                : `<button class="btn catalog-add-btn" onclick="addDetected('${esc(f.url)}', '${esc(f.name || 'RSS Feed')}', this)">+ Add</button>`
-              }
-            </div>
-          `;
-        }).join('')}
-      </div>
-    `;
-  } catch (e) {
-    resultsEl.innerHTML = '<p class="detect-error">Network error.</p>';
-  } finally {
-    btn.disabled = false;
-    btn.textContent = 'Find feeds';
-  }
-}
-
-async function addDetected(url, name, btn) {
-  if (!btn) return;
-  openFeedNameBox(url, name || url, btn);
-}
-
-function handleFeedInput() {
-  const input = document.getElementById('feed-input');
-  const value = (input.value || '').trim();
-  if (!value) return;
-  const isProbablyFeedUrl = /^https?:\/\//i.test(value) && /\.xml(\?|#|$)/i.test(value);
-  if (isProbablyFeedUrl) {
-    const suggested = suggestFeedName(value, getDomain(value) || value);
-    openFeedNameBox(value, suggested, null);
-  } else {
-    detectFeeds(value);
-  }
 }
 
 async function renameFeed(id) {
-  const feed = FEEDS.find(f => f.id === id);
-  if (!feed) return;
-  const currentName = feed.title || feed.url;
-  const newName = prompt('Rename feed:', currentName);
+  const row = document.querySelector('.subscriptions-row[data-feed-id="' + id + '"]');
+  const labelEl = row && row.querySelector('.subscriptions-label');
+  const currentName = labelEl ? labelEl.textContent : "";
+  const newName = prompt("Rename feed:", currentName);
   if (newName === null) return;
   const title = newName.trim();
   if (!title || title === currentName) return;
-  try {
-    const res = await fetch('/api/feeds/' + id, {
-      method: 'PATCH',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ title })
-    });
-    const data = await res.json().catch(() => ({}));
-    if (res.ok) {
-      const idx = FEEDS.findIndex(f => f.id === id);
-      if (idx !== -1) FEEDS[idx] = data;
-      renderFeeds();
-      document.querySelectorAll('[data-feed-id="' + id + '"] .nav-feed-label, [data-feed-id="' + id + '"] .sidebar-feed-label')
-        .forEach(el => { el.textContent = data.title || data.url; });
-      showToast('Feed renamed.');
-    } else {
-      showToast('Error: ' + (data.detail || res.status));
-    }
-  } catch (e) {
-    showToast('Network error');
+  const res = await fetch("/api/feeds/" + id, {
+    method: "PATCH",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({ title }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    showToast("Error: " + (data.detail || res.status));
+    return;
   }
+  if (labelEl) labelEl.textContent = data.title || data.url;
+  document.querySelectorAll('[data-feed-id="' + id + '"] .nav-feed-label, [data-feed-id="' + id + '"] .sidebar-feed-label')
+    .forEach((el) => { el.textContent = data.title || data.url; });
+  showToast("Feed renamed.");
 }
 
-document.getElementById('feed-input').addEventListener('keydown', function(e) {
-  if (e.key === 'Enter') handleFeedInput();
-});
-
-renderFeeds();
+async function unsubscribeFeed(id, btn) {
+  if (!confirm("Remove this feed from your subscriptions? It will stay in the service; you can add it again from Discover.")) return;
+  if (btn) btn.disabled = true;
+  const res = await fetch("/api/feeds/" + id, { method: "DELETE" });
+  if (!res.ok) {
+    if (btn) btn.disabled = false;
+    showToast("Could not remove from subscriptions.");
+    return;
+  }
+  const row = document.querySelector('.subscriptions-row[data-feed-id="' + id + '"]');
+  if (row) row.remove();
+  document.querySelectorAll('.sidebar-feeds-row[data-feed-id="' + id + '"], .nav-feeds-row[data-feed-id="' + id + '"]').forEach(function(r) { r.remove(); });
+  showToast("Removed from subscriptions.");
+}
 </script>
 </body>
 </html>

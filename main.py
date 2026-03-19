@@ -14,22 +14,25 @@ from contextlib import asynccontextmanager
 from collections import deque
 from datetime import datetime, timezone, timedelta
 from html.parser import HTMLParser
-from typing import Optional
+from typing import Any, Optional, Union
 
 import uvicorn
-from fastapi import FastAPI, HTTPException, Request, Response
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, HttpUrl
 from scripts.scheduler import create_scheduler, run_pipeline_async, is_pipeline_running, reconfigure_scheduler
+from scripts.newsletter_ingest import is_newsletter_running, run_newsletter_ingest_async
 from utils.helpers import (
     DEFAULTS as CORE_DEFAULTS,
+    DB_FILE as CORE_DB_FILE,
     get_db as core_get_db,
     get_setting as core_get_setting,
     init_db as core_init_db,
     set_setting as core_set_setting,
 )
+import utils.helpers as core_helpers
 
 
 # ── Logging ───────────────────────────────────────────────────────────────────
@@ -56,15 +59,24 @@ logger = logging.getLogger(__name__)
 # Reuse the shared helpers module for DB access and settings so the web app and
 # pipeline scripts always agree on schema and defaults.
 DEFAULTS: dict[str, str] = CORE_DEFAULTS
+DB_FILE: str = CORE_DB_FILE  # exposed for tests/debugging
+
+# Sort options for entry listing (must be defined before _fetch_ranked_entries).
+SORT_CHRONOLOGICAL = "chronological"
+SORT_QUALITY_DESC = "quality_desc"
+SORT_QUALITY_ASC = "quality_asc"
+SORT_OPTIONS = (SORT_CHRONOLOGICAL, SORT_QUALITY_DESC, SORT_QUALITY_ASC)
 
 
 def get_db() -> sqlite3.Connection:
     """Compatibility wrapper for tests and callers that imported main.get_db."""
+    core_helpers.DB_FILE = DB_FILE
     return core_get_db()
 
 
 def init_db() -> None:
     """Initialize the core schema and then seed the local feed catalogue."""
+    core_helpers.DB_FILE = DB_FILE
     core_init_db()
     conn = core_get_db()
     try:
@@ -93,11 +105,14 @@ class FeedOut(BaseModel):
     url: str
     title: Optional[str]
     color: Optional[str] = None
+    subscribed: Optional[bool] = None
+    entry_count: Optional[int] = None
 
 
 class FeedUpdate(BaseModel):
     title: Optional[str] = None
     color: Optional[str] = None
+    subscribed: Optional[bool] = None
 
 
 class EntryOut(BaseModel):
@@ -114,6 +129,8 @@ class EntryOut(BaseModel):
     thumbnail_url: Optional[str] = None
     assessment_label: Optional[str] = None
     assessment_label_color: Optional[str] = None
+    theme_label: Optional[str] = None
+    theme_label_color: Optional[str] = None
 
 
 class EntryVoteUpdate(BaseModel):
@@ -135,6 +152,13 @@ class SettingsUpdate(BaseModel):
 
 
 class DetectRequest(BaseModel):
+    url: str
+
+
+# Used by the Discover "remove from catalogue" button.
+# Removes the feed from the user catalogue (so it disappears from Discover)
+# and unsubscribes it (so it disappears from subscriptions lists).
+class CatalogRemoveRequest(BaseModel):
     url: str
 
 
@@ -274,11 +298,19 @@ def _get_full_catalog() -> list[dict]:
     rows = conn.execute("SELECT url, name, category, description FROM user_catalog").fetchall()
     conn.close()
     static_urls = _STATIC_CATALOG_URLS
+    static_items = [{**item, "removable": False} for item in _FEED_CATALOG]
     extras = [
-        {"url": r["url"], "name": r["name"], "category": r["category"], "description": r["description"]}
-        for r in rows if r["url"] not in static_urls
+        {
+            "url": r["url"],
+            "name": r["name"],
+            "category": r["category"],
+            "description": r["description"],
+            "removable": True,
+        }
+        for r in rows
+        if r["url"] not in static_urls
     ]
-    return _FEED_CATALOG + extras
+    return static_items + extras
 
 
 def _random_seed_from_request(request: Request) -> Optional[int]:
@@ -299,7 +331,7 @@ def _random_enabled_from_request(request: Request) -> bool:
     return _random_seed_from_request(request) is not None
 
 
-def _normalize_walk_direction(value: Optional[int | str]) -> Optional[int]:
+def _normalize_walk_direction(value: Optional[Union[int, str]]) -> Optional[int]:
     try:
         direction = int(value)  # type: ignore[arg-type]
     except (TypeError, ValueError):
@@ -311,7 +343,7 @@ def _normalize_walk_direction(value: Optional[int | str]) -> Optional[int]:
     return None
 
 
-def _normalize_walk_strength(value: Optional[int | float | str]) -> Optional[float]:
+def _normalize_walk_strength(value: Optional[Union[int, float, str]]) -> Optional[float]:
     try:
         strength = float(value)  # type: ignore[arg-type]
     except (TypeError, ValueError):
@@ -321,7 +353,7 @@ def _normalize_walk_strength(value: Optional[int | float | str]) -> Optional[flo
     return max(0.0, min(1.0, strength))
 
 
-def _parse_int(value: Optional[int | str]) -> Optional[int]:
+def _parse_int(value: Optional[Union[int, str]]) -> Optional[int]:
     try:
         return int(value)  # type: ignore[arg-type]
     except (TypeError, ValueError):
@@ -340,6 +372,21 @@ def _parse_int_list(value: Optional[str]) -> set[int]:
         except (TypeError, ValueError):
             continue
     return ids
+
+
+def _minutes_since_iso_timestamp(ts: Optional[str]) -> Optional[int]:
+    """Convert an ISO8601 timestamp string to minutes-since, if parseable."""
+    if not ts:
+        return None
+    try:
+        last_dt = datetime.fromisoformat(ts)
+        now = datetime.now(timezone.utc)
+        if last_dt.tzinfo is None:
+            last_dt = last_dt.replace(tzinfo=timezone.utc)
+        diff = now - last_dt
+        return max(0, int(diff.total_seconds() // 60))
+    except Exception:
+        return None
 
 
 def _walk_tokens(row: dict) -> set[str]:
@@ -400,7 +447,7 @@ def _read_walk_state(
 
 
 def _set_walk_state_cookie(
-    response: Response,
+    response: Any,
     anchor_id: int,
     direction: int,
     strength: float = WALK_INITIAL_STRENGTH,
@@ -509,6 +556,7 @@ def _build_entry_filters(
     quality_level: Optional[int],
     days_int: Optional[int],
     source_scope: str,
+    theme_labels: Optional[set[str]],
 ) -> tuple[list[str], list]:
     filters: list[str] = []
     params: list = []
@@ -552,6 +600,19 @@ def _build_entry_filters(
             ")"
         )
         params.extend([min_title, min_summary])
+
+    # Optional theme filter: restrict results to selected theme labels.
+    # If theme_labels is None -> include all (no filter).
+    if theme_labels is not None:
+        if theme_labels:
+            placeholders = ", ".join("?" for _ in theme_labels)
+            # Treat unlabeled entries as "World News" so the filter doesn't
+            # go completely empty before the first theme labeling run.
+            filters.append(f"COALESCE(e.theme_label, 'World News') IN ({placeholders})")
+            params.extend(list(theme_labels))
+        else:
+            # Explicit empty selection: match nothing.
+            filters.append("1=0")
 
     return filters, params
 
@@ -742,11 +803,9 @@ def _fetch_ranked_entries(
     quality_level: Optional[int],
     days_int: Optional[int],
     source_scope: str,
+    theme_labels: Optional[set[str]],
+    sort: str = SORT_CHRONOLOGICAL,
 ) -> list[dict]:
-    random_enabled = random_seed is not None
-    recency_factor = 0.3 if random_enabled else 0.8
-    rank_factor = 0.2 if random_enabled else 0.2
-    noise_factor = 0.5 if random_enabled else 0.0
     rank_expr = _ranking_expr(None)
     query = f"""
         SELECT e.id, e.feed_id, f.title AS feed_title, f.url AS feed_url,
@@ -758,15 +817,30 @@ def _fetch_ranked_entries(
                COALESCE(e.quality_score, 0.0) AS quality_score,
                e.assessment_label,
                e.assessment_label_color,
+               e.theme_label,
+               e.theme_label_color,
                {rank_expr} AS base_rank
         FROM entries e
         JOIN feeds f ON f.id = e.feed_id
     """
-    filters, params = _build_entry_filters(q, feed_id, quality_level, days_int, source_scope)
+    filters, params = _build_entry_filters(q, feed_id, quality_level, days_int, source_scope, theme_labels)
     if filters:
         query += " WHERE " + " AND ".join(filters)
+    if sort == SORT_QUALITY_DESC:
+        query += " ORDER BY COALESCE(e.quality_score, 0) DESC, (e.published IS NULL), e.published DESC, e.id DESC"
+        rows = conn.execute(query, params).fetchall()
+        return [dict(r) for r in rows]
+    if sort == SORT_QUALITY_ASC:
+        query += " ORDER BY COALESCE(e.quality_score, 0) ASC, (e.published IS NULL), e.published DESC, e.id DESC"
+        rows = conn.execute(query, params).fetchall()
+        return [dict(r) for r in rows]
+    # chronological (default): date + diversity
     query += " ORDER BY (e.published IS NULL), DATE(e.published) DESC, e.published DESC, base_rank DESC"
     rows = conn.execute(query, params).fetchall()
+    random_enabled = random_seed is not None
+    recency_factor = 0.3 if random_enabled else 0.8
+    rank_factor = 0.2 if random_enabled else 0.2
+    noise_factor = 0.5 if random_enabled else 0.0
     return _apply_daily_source_diversity(
         [dict(r) for r in rows],
         random_seed=random_seed,
@@ -784,8 +858,12 @@ def _article_neighbor_urls(
     quality_level: Optional[int],
     days_int: Optional[int],
     source_scope: str,
+    theme_labels: Optional[set[str]],
+    sort: str = SORT_CHRONOLOGICAL,
 ) -> tuple[Optional[str], Optional[str]]:
-    rows = _fetch_ranked_entries(conn, None, q, feed_id, quality_level, days_int, source_scope)
+    rows = _fetch_ranked_entries(
+        conn, None, q, feed_id, quality_level, days_int, source_scope, theme_labels, sort
+    )
     if not rows:
         return None, None
 
@@ -799,6 +877,8 @@ def _article_neighbor_urls(
         "quality_level": str(quality_level) if quality_level is not None else None,
         "days": str(days_int) if days_int is not None else None,
         "scope": source_scope if source_scope != SOURCE_SCOPE_MY else None,
+        "themes": ",".join(sorted(theme_labels)) if theme_labels is not None else None,
+        "sort": sort if sort != SORT_CHRONOLOGICAL else None,
     }
 
     prev_url = None
@@ -817,6 +897,7 @@ def _fetch_random_entry(
     quality_level: Optional[int],
     days_int: Optional[int],
     source_scope: str,
+    theme_labels: Optional[set[str]],
     exclude_id: Optional[int] = None,
     exclude_ids: Optional[str] = None,
     walk_anchor_id: Optional[int] = None,
@@ -824,7 +905,7 @@ def _fetch_random_entry(
     walk_strength: Optional[float] = None,
 ) -> Optional[dict]:
     """Pick a uniformly random entry while respecting the current filters."""
-    filters, params = _build_entry_filters(q, feed_id, quality_level, days_int, source_scope)
+    filters, params = _build_entry_filters(q, feed_id, quality_level, days_int, source_scope, theme_labels)
     excluded_ids = _parse_int_list(exclude_ids)
     if exclude_id is not None:
         excluded_ids.add(int(exclude_id))
@@ -942,6 +1023,15 @@ templates = Jinja2Templates(directory=_templates_dir)
 DATE_RANGE_DAYS = (1, 5, 30, 90)
 SOURCE_SCOPE_MY = "my"
 SOURCE_SCOPE_DISCOVER = "discover"
+THEME_LABELS = (
+    "Politics",
+    "Technology",
+    "Business",
+    "Stocks",
+    "Spam",
+    "Science",
+    "World News",
+)
 
 
 def _parse_days(days_param: Optional[str]) -> Optional[int]:
@@ -955,11 +1045,45 @@ def _parse_days(days_param: Optional[str]) -> Optional[int]:
         return None
 
 
+def _parse_themes_param(themes_param: Optional[str]) -> Optional[set[str]]:
+    """
+    Parse a comma-separated `themes` query param into a validated set of theme labels.
+
+    Returns:
+      - None: no filter (include all)
+      - set(): explicit empty selection (match nothing)
+      - set[str]: selected themes
+    """
+    if themes_param is None:
+        return None
+    raw = str(themes_param).strip()
+    if raw == "":
+        return set()
+    allowed = {t.lower(): t for t in THEME_LABELS}
+    out: set[str] = set()
+    # Split on commas only so multi-word labels like "World News" survive.
+    for part in raw.split(","):
+        p = part.strip()
+        if not p:
+            continue
+        key = p.lower()
+        if key in allowed:
+            out.add(allowed[key])
+    return out
+
+
 def _normalize_source_scope(scope: Optional[str]) -> str:
     raw = (scope or "").strip().lower()
     if raw == SOURCE_SCOPE_DISCOVER:
         return SOURCE_SCOPE_DISCOVER
     return SOURCE_SCOPE_MY
+
+
+def _normalize_sort(sort: Optional[str]) -> str:
+    raw = (sort or "").strip().lower()
+    if raw in SORT_OPTIONS:
+        return raw
+    return SORT_CHRONOLOGICAL
 
 
 def _source_scope_clause(source_scope: str) -> tuple[str, list]:
@@ -968,6 +1092,26 @@ def _source_scope_clause(source_scope: str) -> tuple[str, list]:
         placeholders = ", ".join("?" for _ in urls)
         return f"(COALESCE(f.subscribed, 1) = 1 OR f.url IN ({placeholders}))", urls
     return "(COALESCE(f.subscribed, 1) = 1)", []
+
+
+def _load_trending(conn: sqlite3.Connection) -> list[dict]:
+    """Load a small recency-weighted, source-diverse trending list."""
+    trending_query = """
+        SELECT e.id, e.feed_id, f.title AS feed_title,
+               e.title, e.link, e.published, e.summary,
+               e.thumbnail_url,
+               COALESCE(e.read, 0) AS read,
+               COALESCE(e.liked, 0) AS liked,
+               COALESCE(e.score, 0.0) AS score,
+               e.assessment_label,
+               e.assessment_label_color
+        FROM entries e
+        JOIN feeds f ON f.id = e.feed_id
+        ORDER BY e.published DESC, """
+    trending_query += _ranking_expr(None, 0.7, 0.3, 0.0)
+    trending_query += " DESC\n        LIMIT 200\n    "
+    trending_rows = conn.execute(trending_query).fetchall()
+    return _compute_trending([dict(e) for e in trending_rows])
 
 
 def _build_url_with_query_params(path: str, params: dict[str, Optional[str]]) -> str:
@@ -985,9 +1129,13 @@ def index(
     quality_level: Optional[int] = None,
     days: Optional[str] = None,
     scope: Optional[str] = None,
+    themes: Optional[str] = None,
+    sort: Optional[str] = None,
 ):
     days_int = _parse_days(days)
     source_scope = _normalize_source_scope(scope)
+    theme_labels = _parse_themes_param(themes)
+    sort_val = _normalize_sort(sort)
     active_feed_id = feed_id if source_scope == SOURCE_SCOPE_MY else None
     conn = get_db()
     feeds_rows = conn.execute(
@@ -1004,13 +1152,13 @@ def index(
             "color": f["color"],
         }
 
-    filters, params = _build_entry_filters(q, active_feed_id, quality_level, days_int, source_scope)
+    filters, params = _build_entry_filters(q, active_feed_id, quality_level, days_int, source_scope, theme_labels)
     count_query = "SELECT COUNT(*) FROM entries e JOIN feeds f ON f.id = e.feed_id"
     if filters:
         count_query += " WHERE " + " AND ".join(filters)
     total_entries = conn.execute(count_query, params).fetchone()[0]
-    random_seed = None
-    random_enabled = False
+    random_seed = _random_seed_from_request(request)
+    random_enabled = random_seed is not None
 
     try:
         max_entries = int(get_setting("max_entries") or "1000")
@@ -1023,6 +1171,7 @@ def index(
     # fetched lazily via the `/api/entries` endpoint.
     initial_limit = min(max_entries, 40)
 
+    theme_param = ",".join(sorted(theme_labels)) if theme_labels is not None else None
     entries_list = _fetch_ranked_entries(
         conn,
         random_seed,
@@ -1031,29 +1180,14 @@ def index(
         quality_level,
         days_int,
         source_scope,
+        theme_labels,
+        sort_val,
     )[:initial_limit]
 
     # Compute trending from recent global entries (not filtered),
     # so the sidebar always has something interesting.
-    trending_query = """
-        SELECT e.id, e.feed_id, f.title AS feed_title,
-               e.title, e.link, e.published, e.summary,
-               e.thumbnail_url,
-               COALESCE(e.read, 0) AS read,
-               COALESCE(e.liked, 0) AS liked,
-               COALESCE(e.score, 0.0) AS score,
-               e.assessment_label,
-               e.assessment_label_color
-        FROM entries e
-        JOIN feeds f ON f.id = e.feed_id
-        ORDER BY e.published DESC, """
-    trending_query += _ranking_expr(None, 0.7, 0.3, 0.0)
-    trending_query += " DESC\n        LIMIT 200\n    "
-    trending_rows = conn.execute(trending_query).fetchall()
+    trending = _load_trending(conn)
     conn.close()
-
-    trending_list = [dict(e) for e in trending_rows]
-    trending = _compute_trending(trending_list)
 
     # If we have any trending entries, treat WordRank as having run successfully
     # so the header/settings status lights stay green while recommendations exist.
@@ -1076,23 +1210,30 @@ def index(
         "date_range": days_int if (days_int is not None and days_int in DATE_RANGE_DAYS) else None,
         "quality_level": quality_level,
         "source_scope": source_scope,
+        "sort": sort_val,
         "my_feed_url": _build_url_with_query_params("/", {
             "q": q or None,
             "feed_id": str(active_feed_id) if active_feed_id is not None else None,
             "quality_level": str(quality_level) if quality_level is not None else None,
             "days": str(days_int) if days_int is not None else None,
             "scope": SOURCE_SCOPE_MY,
+            "themes": theme_param,
+            "sort": sort_val if sort_val != SORT_CHRONOLOGICAL else None,
         }),
         "discover_feed_url": _build_url_with_query_params("/", {
             "q": q or None,
             "quality_level": str(quality_level) if quality_level is not None else None,
             "days": str(days_int) if days_int is not None else None,
             "scope": SOURCE_SCOPE_DISCOVER,
+            "themes": theme_param,
+            "sort": sort_val if sort_val != SORT_CHRONOLOGICAL else None,
         }),
         "clear_url": _build_url_with_query_params("/", {
             "feed_id": str(active_feed_id) if active_feed_id is not None else None,
             "quality_level": str(quality_level) if quality_level is not None else None,
             "scope": source_scope,
+            "themes": theme_param,
+            "sort": sort_val if sort_val != SORT_CHRONOLOGICAL else None,
         }),
     })
 
@@ -1163,6 +1304,8 @@ def article_page(request: Request, entry_id: int):
     quality_level = _parse_int(request.query_params.get("quality_level"))
     days_int = _parse_days(request.query_params.get("days"))
     source_scope = _normalize_source_scope(request.query_params.get("scope"))
+    theme_labels = _parse_themes_param(request.query_params.get("themes"))
+    sort_val = _normalize_sort(request.query_params.get("sort"))
     active_feed_id = feed_id if source_scope == SOURCE_SCOPE_MY else None
     back_url = _build_url_with_query_params(
         "/",
@@ -1172,6 +1315,8 @@ def article_page(request: Request, entry_id: int):
             "quality_level": request.query_params.get("quality_level"),
             "days": request.query_params.get("days"),
             "scope": request.query_params.get("scope"),
+            "themes": ",".join(sorted(theme_labels)) if theme_labels is not None else None,
+            "sort": sort_val if sort_val != SORT_CHRONOLOGICAL else None,
         },
     )
     prev_url, next_url = _article_neighbor_urls(
@@ -1182,6 +1327,8 @@ def article_page(request: Request, entry_id: int):
         quality_level,
         days_int,
         source_scope,
+        theme_labels,
+        sort_val,
     )
     feed_row = conn.execute("SELECT id, url, title, color FROM feeds WHERE id = ?", (entry["feed_id"],)).fetchone()
     conn.execute("UPDATE entries SET read = 1 WHERE id = ?", (entry_id,))
@@ -1218,6 +1365,31 @@ def _build_feed_map(feeds: list[dict]) -> dict:
 def feeds_page(request: Request):
     conn = get_db()
     rows = conn.execute(
+        "SELECT id, url, title, color FROM feeds WHERE COALESCE(subscribed, 1) = 1 ORDER BY LOWER(COALESCE(title, url))"
+    ).fetchall()
+    trending = _load_trending(conn)
+    conn.close()
+    feeds = [dict(r) for r in rows]
+    feed_map = _build_feed_map(feeds)
+    random_enabled = _random_enabled_from_request(request)
+    return templates.TemplateResponse(
+        "feeds.html",
+        {
+            "request": request,
+            "feeds": feeds,
+            "feed_map": feed_map,
+            "trending": trending,
+            "q": "",
+            "active_feed_id": None,
+            "random_enabled": random_enabled,
+        },
+    )
+
+
+@app.get("/add-feed", response_class=HTMLResponse)
+def add_feed_page(request: Request):
+    conn = get_db()
+    rows = conn.execute(
         "SELECT id, url, title, color FROM feeds WHERE COALESCE(subscribed, 1) = 1 ORDER BY title"
     ).fetchall()
     conn.close()
@@ -1225,7 +1397,7 @@ def feeds_page(request: Request):
     feed_map = _build_feed_map(feeds)
     random_enabled = _random_enabled_from_request(request)
     return templates.TemplateResponse(
-        "feeds.html",
+        "add_feed.html",
         {
             "request": request,
             "feeds": feeds,
@@ -1244,8 +1416,23 @@ def discover_page(request: Request):
     rows = conn.execute(
         "SELECT id, url, title, color FROM feeds WHERE COALESCE(subscribed, 1) = 1 ORDER BY title"
     ).fetchall()
+    service_rows = conn.execute(
+        """
+        SELECT
+            f.id,
+            f.url,
+            COALESCE(f.subscribed, 1) AS subscribed,
+            (
+                SELECT COUNT(*)
+                FROM entries e
+                WHERE e.feed_id = f.id
+            ) AS entry_count
+        FROM feeds f
+        """
+    ).fetchall()
     conn.close()
     feeds = [dict(r) for r in rows]
+    service_feeds = [dict(r) for r in service_rows]
     feed_map = _build_feed_map(feeds)
     subscribed = [r["url"] for r in rows]
     random_enabled = _random_enabled_from_request(request)
@@ -1257,6 +1444,7 @@ def discover_page(request: Request):
             "feed_map": feed_map,
             "catalog_json": json.dumps(_get_full_catalog()),
             "subscribed_json": json.dumps(subscribed),
+            "service_feeds_json": json.dumps(service_feeds),
             "q": "",
             "active_feed_id": None,
             "random_enabled": random_enabled,
@@ -1383,6 +1571,7 @@ def stats_page(request: Request):
         },
     )
 
+
 # ── Feed API ──────────────────────────────────────────────────────────────────
 
 @app.get("/api/feeds", response_model=list[FeedOut])
@@ -1433,7 +1622,7 @@ def update_feed(feed_id: int, payload: FeedUpdate):
         cols = ", ".join(f"{key} = ?" for key in updates.keys())
         values = list(updates.values()) + [feed_id]
         row = conn.execute(
-            f"UPDATE feeds SET {cols} WHERE id = ? RETURNING id, url, title, color",
+            f"UPDATE feeds SET {cols} WHERE id = ? RETURNING id, url, title, color, COALESCE(subscribed, 1) AS subscribed",
             values,
         ).fetchone()
         conn.commit()
@@ -1453,6 +1642,69 @@ def delete_feed(feed_id: int):
     conn.close()
 
 
+@app.post("/api/feeds/{feed_id}/subscribe", response_model=FeedOut)
+def subscribe_feed(feed_id: int):
+    conn = get_db()
+    try:
+        row = conn.execute(
+            "UPDATE feeds SET subscribed = 1 WHERE id = ? RETURNING id, url, title, color, COALESCE(subscribed, 1) AS subscribed",
+            (feed_id,),
+        ).fetchone()
+        conn.commit()
+    finally:
+        conn.close()
+    if not row:
+        raise HTTPException(status_code=404, detail="Feed not found.")
+    _add_to_user_catalog(row["url"], row["title"] or row["url"])
+    return dict(row)
+
+
+@app.delete("/api/feeds/{feed_id}/service", status_code=204)
+def remove_feed_from_service(feed_id: int):
+    """Completely remove a feed and all of its entries from the service DB."""
+    conn = get_db()
+    try:
+        feed = conn.execute("SELECT id, url FROM feeds WHERE id = ?", (feed_id,)).fetchone()
+        if not feed:
+            conn.close()
+            raise HTTPException(status_code=404, detail="Feed not found.")
+        conn.execute("DELETE FROM entries WHERE feed_id = ?", (feed_id,))
+        conn.execute("DELETE FROM feeds WHERE id = ?", (feed_id,))
+        try:
+            conn.execute("DELETE FROM user_catalog WHERE url = ?", (feed["url"],))
+        except Exception:
+            pass
+        conn.commit()
+    finally:
+        conn.close()
+
+
+# ── Catalogue API ──────────────────────────────────────────────────────────
+
+
+@app.delete("/api/catalog", status_code=204)
+def remove_from_catalog(payload: CatalogRemoveRequest):
+    """
+    Remove a feed from the user catalogue (so it disappears from Discover),
+    and unsubscribe it as well.
+    """
+    url = str(payload.url)
+    conn = get_db()
+    try:
+        # Best-effort: the table should exist, but don't break if an older DB
+        # lacks it (in which case "remove" is a no-op for catalogue).
+        try:
+            conn.execute("DELETE FROM user_catalog WHERE url = ?", (url,))
+        except Exception:
+            pass
+
+        # Always unsubscribe: Discover removals should clean up subscriptions.
+        conn.execute("UPDATE feeds SET subscribed = 0 WHERE url = ?", (url,))
+        conn.commit()
+    finally:
+        conn.close()
+
+
 # ── Entries API ───────────────────────────────────────────────────────────────
 
 @app.get("/api/entries", response_model=list[EntryOut])
@@ -1465,23 +1717,25 @@ def list_entries(
     quality_level: Optional[int] = None,
     days: Optional[str] = None,
     scope: Optional[str] = None,
+    themes: Optional[str] = None,
+    sort: Optional[str] = None,
 ):
     """
-    List entries ordered by recency, with simple pagination.
-
+    List entries with optional sort (chronological, quality_desc, quality_asc).
     The `limit` and `offset` parameters are used by the UI to implement
-    lazy-loading on the main articles page so we do not have to render
-    every article at once.
+    lazy-loading on the main articles page.
     """
     days_int = _parse_days(days)
+    sort_val = _normalize_sort(sort)
     conn = get_db()
     if limit <= 0:
         limit = 100
     if offset < 0:
         offset = 0
-    random_seed = None
+    random_seed = _random_seed_from_request(request)
     source_scope = _normalize_source_scope(scope)
     active_feed_id = feed_id if source_scope == SOURCE_SCOPE_MY else None
+    theme_labels = _parse_themes_param(themes)
     rows = _fetch_ranked_entries(
         conn,
         random_seed,
@@ -1490,6 +1744,8 @@ def list_entries(
         quality_level,
         days_int,
         source_scope,
+        theme_labels,
+        sort_val,
     )
     conn.close()
     return rows[offset : offset + limit]
@@ -1505,7 +1761,7 @@ def mark_read(entry_id: int):
 
 
 @app.post("/api/entries/{entry_id}/like", status_code=200)
-def toggle_like(entry_id: int, response: Response):
+def toggle_like(entry_id: int, response: Any):
     conn = get_db()
     row = conn.execute("SELECT COALESCE(liked, 0) AS liked FROM entries WHERE id = ?", (entry_id,)).fetchone()
     if not row:
@@ -1524,7 +1780,7 @@ def toggle_like(entry_id: int, response: Response):
 
 
 @app.post("/api/entries/{entry_id}/vote", status_code=200)
-def set_like(entry_id: int, payload: EntryVoteUpdate, response: Response):
+def set_like(entry_id: int, payload: EntryVoteUpdate, response: Any):
     conn = get_db()
     row = conn.execute("SELECT id FROM entries WHERE id = ?", (entry_id,)).fetchone()
     if not row:
@@ -1545,12 +1801,13 @@ def set_like(entry_id: int, payload: EntryVoteUpdate, response: Response):
 @app.get("/api/random-article")
 def get_random_article(
     request: Request,
-    response: Response,
+    response: Any,
     q: Optional[str] = None,
     feed_id: Optional[int] = None,
     quality_level: Optional[int] = None,
     days: Optional[str] = None,
     scope: Optional[str] = None,
+    themes: Optional[str] = None,
     exclude_id: Optional[int] = None,
     exclude_ids: Optional[str] = None,
     walk_anchor_id: Optional[int] = None,
@@ -1560,6 +1817,7 @@ def get_random_article(
     conn = get_db()
     days_int = _parse_days(days)
     source_scope = _normalize_source_scope(scope)
+    theme_labels = _parse_themes_param(themes)
     walk_anchor_id, walk_direction, walk_state_strength = _read_walk_state(
         request,
         walk_anchor_id=walk_anchor_id,
@@ -1575,6 +1833,7 @@ def get_random_article(
         quality_level,
         days_int,
         source_scope,
+        theme_labels,
         exclude_id=exclude_id,
         exclude_ids=exclude_ids,
         walk_anchor_id=walk_anchor_id,
@@ -1597,6 +1856,7 @@ def get_random_article(
             "quality_level": str(quality_level) if quality_level is not None else None,
             "days": str(days_int) if days_int is not None else None,
             "scope": source_scope if source_scope != SOURCE_SCOPE_MY else None,
+            "themes": ",".join(sorted(theme_labels)) if theme_labels is not None else None,
         },
     )
     return {
@@ -1675,7 +1935,7 @@ def live_search(
     days_int = _parse_days(days)
     source_scope = _normalize_source_scope(scope)
     active_feed_id = feed_id if source_scope == SOURCE_SCOPE_MY else None
-    filters, params = _build_entry_filters(q, active_feed_id, quality_level, days_int, source_scope)
+    filters, params = _build_entry_filters(q, active_feed_id, quality_level, days_int, source_scope, None)
     query = """
         SELECT e.id, e.feed_id, f.title AS feed_title,
                e.title, e.link, e.published,
@@ -1699,6 +1959,7 @@ def live_search(
             quality_level,
             days_int,
             source_scope,
+            None,
         )
         title_query = """
             SELECT e.title
@@ -1805,6 +2066,57 @@ def detect_feeds(payload: DetectRequest):
     return {"feeds": feeds[:8]}
 
 
+# ── Newsletter / WordRank API ────────────────────────────────────────────
+
+@app.post("/api/newsletters/sync", status_code=202)
+def trigger_newsletter_sync():
+    started = run_newsletter_ingest_async(require_enabled=True)
+    if not started:
+        return {"status": "running", "message": "Newsletter sync already in progress."}
+    return {"status": "started", "message": "Newsletter sync started in background."}
+
+
+@app.get("/api/newsletters/status")
+def get_newsletter_status():
+    running = is_newsletter_running()
+    newsletter_enabled = (get_setting("newsletter_enabled") or "false").lower() == "true"
+
+    last_status = get_setting("newsletter_last_status") or "never"
+    if not newsletter_enabled and not running:
+        last_status = "disabled"
+
+    return {
+        "running": running,
+        "last_status": last_status,
+        "minutes_since_last_success": _minutes_since_iso_timestamp(get_setting("newsletter_last_success_ts")),
+        "last_error": get_setting("newsletter_last_error") or "",
+    }
+
+
+@app.post("/api/wordrank", status_code=200)
+def run_wordrank_now():
+    # Keep this request synchronous: the frontend expects the POST call to
+    # complete WordRank and return `{"status":"success"}` on completion.
+    from scripts.wordrank import run_wordrank
+
+    run_wordrank()
+    final_status = get_setting("wordrank_last_status") or "never"
+    if final_status == "success":
+        return {"status": "success", "message": "WordRank completed."}
+    return {"status": "error", "message": "WordRank failed."}
+
+
+@app.get("/api/wordrank/status")
+def get_wordrank_status():
+    last_status = get_setting("wordrank_last_status") or "never"
+    running = last_status == "running"
+    return {
+        "running": running,
+        "last_status": last_status,
+        "minutes_since_last_success": _minutes_since_iso_timestamp(get_setting("wordrank_last_success_ts")),
+    }
+
+
 # ── Logs API ──────────────────────────────────────────────────────────────────
 
 @app.get("/api/logs")
@@ -1821,4 +2133,10 @@ def get_logs(lines: int = 100):
 
 
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="0.0.0.0", port=8080, reload=False)
+    host = os.environ.get("MYRSSFEED_SERVER_HOST", "0.0.0.0")
+    port_raw = os.environ.get("MYRSSFEED_SERVER_PORT", "8080")
+    try:
+        port = int(port_raw)
+    except (TypeError, ValueError):
+        port = 8080
+    uvicorn.run("main:app", host=host, port=port, reload=False)
