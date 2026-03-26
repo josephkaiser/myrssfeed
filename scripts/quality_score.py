@@ -5,10 +5,12 @@ import os
 import re
 import logging
 import sys
+import urllib.parse
+import math
 from typing import Optional
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-from utils.helpers import get_db  # noqa: E402
+from utils.helpers import get_db, get_setting  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +32,104 @@ SPAM_RE = re.compile("|".join(f"(?:{p})" for p in SPAM_PATTERNS), re.I)
 WORD_RE = re.compile(r"[A-Za-z][A-Za-z0-9'/-]*")
 TITLE_CASE_WORD_RE = re.compile(r"\b[A-Z][a-z]{2,}\b")
 NOISE_RE = re.compile(r"^\s*(read more|continue reading|advertisement|sponsored)\b", re.I)
+TRACKING_RE = re.compile(
+    r"(utm_[a-z]+|gclid|fbclid|msclkid|clickid=|affiliate=|aff(_|iliate)?=|ref=|partner=)",
+    re.I,
+)
+
+DEFAULT_MAJOR_PUBLICATION_DOMAINS: set[str] = {"wsj.com", "nytimes.com"}
+MAJOR_PUBLICATION_DOMAINS_SETTING_KEY = "major_publication_domains"
+MAJOR_PUBLICATION_BOOST_SETTING_KEY = "major_publication_quality_boost"
+DEFAULT_MAJOR_PUBLICATION_BOOST = 0.08
+
+MAJOR_PUBLICATION_SIMILARITY_WEIGHT_SETTING_KEY = "major_publication_similarity_weight"
+DEFAULT_MAJOR_PUBLICATION_SIMILARITY_WEIGHT = 0.08
+DEFAULT_MAJOR_PUBLICATION_MAJOR_MULTIPLIER = 0.6
+
+SIMILARITY_SIGNATURE_TOP_TOKENS = 500
+
+# Small stopword set so similarity weights don't get dominated by boilerplate.
+_SIMILARITY_STOPWORDS: set[str] = {
+    "the",
+    "a",
+    "an",
+    "and",
+    "or",
+    "to",
+    "of",
+    "in",
+    "for",
+    "on",
+    "with",
+    "at",
+    "by",
+    "from",
+    "is",
+    "are",
+    "was",
+    "were",
+    "be",
+    "as",
+    "it",
+    "this",
+    "that",
+    "these",
+    "those",
+    "you",
+    "we",
+    "they",
+    "i",
+    "he",
+    "she",
+    "their",
+    "our",
+    "your",
+}
+
+
+def _feed_host(feed_url: Optional[str]) -> str:
+    parsed = urllib.parse.urlparse(feed_url or "")
+    if parsed.scheme and parsed.scheme not in {"http", "https"}:
+        return ""
+    host = (parsed.hostname or parsed.netloc or "").lower()
+    if host.startswith("www."):
+        host = host[4:]
+    return host
+
+
+def _major_domains() -> set[str]:
+    raw = get_setting(MAJOR_PUBLICATION_DOMAINS_SETTING_KEY)
+    extra: set[str] = set()
+    if raw:
+        for part in str(raw).split(","):
+            d = part.strip().lower()
+            if not d:
+                continue
+            if d.startswith("www."):
+                d = d[4:]
+            extra.add(d)
+    return DEFAULT_MAJOR_PUBLICATION_DOMAINS | extra
+
+
+def _parse_float_setting(key: str, default: float) -> float:
+    raw = get_setting(key)
+    if not raw:
+        return default
+    try:
+        val = float(raw)
+    except (TypeError, ValueError):
+        return default
+    if val != val:  # NaN
+        return default
+    return max(0.0, min(0.25, val))
+
+
+def _is_major_publication(host: str, major_domains: set[str]) -> bool:
+    if not host:
+        return False
+    if host in major_domains:
+        return True
+    return any(host.endswith("." + d) for d in major_domains)
 
 
 def _ensure_quality_column(conn) -> None:
@@ -48,7 +148,14 @@ def _ensure_label_columns(conn) -> None:
     conn.commit()
 
 
-def _heuristic_score(title: Optional[str], summary: Optional[str]) -> float:
+def _heuristic_score(
+    title: Optional[str],
+    summary: Optional[str],
+    link: Optional[str] = None,
+    *,
+    is_major_publication: bool = False,
+    major_publication_boost: float = DEFAULT_MAJOR_PUBLICATION_BOOST,
+) -> float:
     """
     0–1 quality proxy from information density + readability + spam checks.
 
@@ -56,6 +163,7 @@ def _heuristic_score(title: Optional[str], summary: Optional[str]) -> float:
     """
     title = (title or "").strip()
     summary = (summary or "").strip()
+    link = (link or "").strip()
     text = (title + " " + summary).strip()
     score = 0.45
 
@@ -116,13 +224,28 @@ def _heuristic_score(title: Optional[str], summary: Optional[str]) -> float:
             score -= 0.12
 
     # 4) Spam-like patterns are strong negatives.
-    if SPAM_RE.search(text):
+    spam_text = bool(SPAM_RE.search(text))
+    if spam_text:
         score -= 0.28
+
+    # 5) Spammy tracking / affiliate-style URLs.
+    # Cheap safety check: many low-quality feeds wrap promos in tracked links.
+    # Kept intentionally mild to avoid penalizing benign UTM usage too hard.
+    if link and TRACKING_RE.search(link[:512]):
+        score -= 0.08
+        if spam_text:
+            score -= 0.08
 
     # Small boost for normal news-like punctuation balance.
     punct_ratio = sum(1 for ch in text if ch in ",.;:!?") / max(1, len(text))
     if 0.01 <= punct_ratio <= 0.07:
         score += 0.03
+
+    # 6) Mild prior: known major publications.
+    # This helps ranking when heuristics over/under-estimate specific feeds.
+    # Keep it small and only apply when the content isn't already very low.
+    if is_major_publication and score >= 0.2:
+        score += major_publication_boost
 
     return max(0.0, min(1.0, score))
 
@@ -139,24 +262,116 @@ def _label_from_quality(quality: float) -> tuple[str, str]:
 def run_quality_score() -> None:
     """
     Compute quality_score for all entries using title/summary heuristics
-    (length and spam-like pattern detection).
+    (length and spam-like pattern detection), plus a light publisher prior.
     """
     conn = get_db()
     _ensure_quality_column(conn)
     _ensure_label_columns(conn)
 
+    major_domains = _major_domains()
+    major_boost = _parse_float_setting(MAJOR_PUBLICATION_BOOST_SETTING_KEY, DEFAULT_MAJOR_PUBLICATION_BOOST)
+    similarity_weight = _parse_float_setting(
+        MAJOR_PUBLICATION_SIMILARITY_WEIGHT_SETTING_KEY,
+        DEFAULT_MAJOR_PUBLICATION_SIMILARITY_WEIGHT,
+    )
+
     rows = conn.execute(
-        "SELECT id, title, summary FROM entries"
+        """
+        SELECT e.id, e.title, e.summary, e.link, f.url AS feed_url
+        FROM entries e
+        JOIN feeds f ON f.id = e.feed_id
+        """
     ).fetchall()
     if not rows:
         conn.close()
         return
 
+    # Build a "NYT/WSJ signature" word model:
+    # token weights are proportional to how much more common a token is in
+    # major-publisher entries than in the rest of your library.
+    #
+    # This is intentionally cheap: simple token counts + log-ratio, no ML.
+    token_weights: dict[str, float] = {}
+    if similarity_weight > 0:
+        major_total_tokens = 0
+        total_tokens = 0
+        major_token_counts: dict[str, int] = {}
+        total_token_counts: dict[str, int] = {}
+
+        for r in rows:
+            host = _feed_host(r["feed_url"])
+            is_major = _is_major_publication(host, major_domains)
+
+            title = r["title"] or ""
+            summary = r["summary"] or ""
+            tokens = [t.lower() for t in WORD_RE.findall(f"{title} {summary}") if len(t) >= 3]
+
+            # We also need per-token frequencies; rebuild a small per-entry
+            # counter (cheap for our token volumes).
+            per_entry: dict[str, int] = {}
+            for tok in tokens:
+                if tok in _SIMILARITY_STOPWORDS:
+                    continue
+                per_entry[tok] = per_entry.get(tok, 0) + 1
+
+            for tok, cnt in per_entry.items():
+                total_token_counts[tok] = total_token_counts.get(tok, 0) + cnt
+                total_tokens += cnt
+                if is_major:
+                    major_token_counts[tok] = major_token_counts.get(tok, 0) + cnt
+                    major_total_tokens += cnt
+
+        if major_total_tokens > 0 and total_tokens > 0:
+            eps = 1e-12
+            weighted: list[tuple[str, float]] = []
+            for tok, major_cnt in major_token_counts.items():
+                overall_cnt = total_token_counts.get(tok, 0)
+                major_ratio = major_cnt / max(1, major_total_tokens)
+                overall_ratio = overall_cnt / max(1, total_tokens)
+                # Log odds-ish ratio; we clamp at 0 so only "major-leaning"
+                # words can contribute.
+                w = math.log((major_ratio + eps) / (overall_ratio + eps))
+                if w > 0:
+                    weighted.append((tok, w))
+
+            weighted.sort(key=lambda x: x[1], reverse=True)
+            for tok, w in weighted[:SIMILARITY_SIGNATURE_TOP_TOKENS]:
+                token_weights[tok] = w
+
+    # Now compute quality scores, including the publisher prior and similarity.
     updates = []
     for r in rows:
-        quality = _heuristic_score(r["title"], r["summary"])
+        entry_id = int(r["id"])
+        host = _feed_host(r["feed_url"])
+        is_major = _is_major_publication(host, major_domains)
+
+        base_quality = _heuristic_score(
+            r["title"],
+            r["summary"],
+            r["link"],
+            is_major_publication=is_major,
+            major_publication_boost=major_boost,
+        )
+
+        # Similarity boost against the major-publisher word signature.
+        similarity_boost = 0.0
+        if similarity_weight > 0 and token_weights:
+            # Use set-of-tokens for stability: don't over-boost long summaries.
+            title = r["title"] or ""
+            summary = r["summary"] or ""
+            tokens = [t.lower() for t in WORD_RE.findall(f"{title} {summary}") if len(t) >= 3]
+            token_set = {t for t in tokens if t not in _SIMILARITY_STOPWORDS}
+            raw = 0.0
+            for tok in token_set:
+                raw += token_weights.get(tok, 0.0)
+            # Map raw >=0 to ~[0,1)
+            similarity_score = 1.0 - math.exp(-raw)
+            multiplier = DEFAULT_MAJOR_PUBLICATION_MAJOR_MULTIPLIER if is_major else 1.0
+            similarity_boost = similarity_weight * similarity_score * multiplier
+
+        quality = max(0.0, min(1.0, base_quality + similarity_boost))
         label, color = _label_from_quality(quality)
-        updates.append((quality, label, color, r["id"]))
+        updates.append((quality, label, color, entry_id))
 
     conn.executemany(
         "UPDATE entries SET quality_score = ?, assessment_label = ?, assessment_label_color = ? WHERE id = ?",

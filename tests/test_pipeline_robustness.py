@@ -845,6 +845,275 @@ class QualityScoreLabelTests(unittest.TestCase):
         self.assertEqual(rows[1]["assessment_label_color"], "#c92a2a")
         self.assertLess(rows[1]["quality_score"], 0.45)
 
+    def test_run_quality_score_penalizes_tracked_links(self):
+        conn = main.get_db()
+        feed_id = conn.execute(
+            "INSERT INTO feeds (url, title, subscribed) VALUES (?, ?, 1)",
+            ("https://example.com/rss", "Example"),
+        ).lastrowid
+
+        # Keep content identical; only the link differs.
+        title = "Morning briefing: technology updates"
+        summary = (
+            "Device logs describe the new release plans for teams. "
+            "Cloud engineers discuss deployment and APIs."
+        )
+
+        clean_link = "https://example.com/article"
+        tracked_link = (
+            "https://example.com/article?utm_source=promo&utm_medium=email&ref=abc&affiliate=999"
+        )
+
+        conn.executemany(
+            """
+            INSERT INTO entries (
+                feed_id, title, link, published, summary
+            ) VALUES (?, ?, ?, ?, ?)
+            """,
+            [
+                (feed_id, title, clean_link, "2026-03-17T12:00:00+00:00", summary),
+                (feed_id, title, tracked_link, "2026-03-17T11:00:00+00:00", summary),
+            ],
+        )
+        conn.commit()
+        conn.close()
+
+        quality_score.run_quality_score()
+
+        conn = main.get_db()
+        rows = conn.execute(
+            "SELECT link, quality_score FROM entries ORDER BY id ASC"
+        ).fetchall()
+        conn.close()
+
+        clean_row = next(r for r in rows if r["link"] == clean_link)
+        tracked_row = next(r for r in rows if r["link"] == tracked_link)
+
+        self.assertLess(tracked_row["quality_score"], clean_row["quality_score"])
+        self.assertLess(
+            tracked_row["quality_score"],
+            clean_row["quality_score"] - 0.05,
+        )
+
+
+class QualityFilterUsesQualityScoreTests(unittest.TestCase):
+    def setUp(self):
+        self._orig_main_db_file = main.DB_FILE
+        self._orig_helpers_db_file = helpers.DB_FILE
+        self._tmpdir = TemporaryDirectory()
+        db_path = str(Path(self._tmpdir.name) / "rss.db")
+        main.DB_FILE = db_path
+        helpers.DB_FILE = db_path
+        main.init_db()
+        self.request = SimpleNamespace(cookies={})
+
+    def tearDown(self):
+        main.DB_FILE = self._orig_main_db_file
+        helpers.DB_FILE = self._orig_helpers_db_file
+        self._tmpdir.cleanup()
+
+    def test_quality_level_filters_using_quality_score(self):
+        conn = main.get_db()
+        feed_id = conn.execute(
+            "INSERT INTO feeds (url, title, subscribed) VALUES (?, ?, 1)",
+            ("https://example.com/rss", "Example"),
+        ).lastrowid
+
+        # Both entries have very short title/summary so they fail the old
+        # length-based filter; only quality_score differentiates them.
+        base_published = datetime(2026, 3, 17, 12, 0, tzinfo=timezone.utc)
+        conn.executemany(
+            """
+            INSERT INTO entries (
+                feed_id, title, link, published, summary, score, quality_score
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            [
+                (
+                    feed_id,
+                    "Bad",
+                    "https://example.com/bad",
+                    (base_published).isoformat(),
+                    "No",
+                    0.5,
+                    0.1,
+                ),
+                (
+                    feed_id,
+                    "Good",
+                    "https://example.com/good",
+                    (base_published - timedelta(minutes=1)).isoformat(),
+                    "Ok",
+                    0.5,
+                    0.9,
+                ),
+            ],
+        )
+        conn.commit()
+        conn.close()
+
+        rows = main.list_entries(self.request, limit=10, offset=0, quality_level=1)
+        self.assertEqual(len(rows), 1)
+        self.assertGreaterEqual(rows[0]["quality_score"], 0.35)
+
+
+class QualityScoreMajorPublicationBiasTests(unittest.TestCase):
+    def setUp(self):
+        self._orig_main_db_file = main.DB_FILE
+        self._orig_helpers_db_file = helpers.DB_FILE
+        self._tmpdir = TemporaryDirectory()
+        db_path = str(Path(self._tmpdir.name) / "rss.db")
+        main.DB_FILE = db_path
+        helpers.DB_FILE = db_path
+        main.init_db()
+
+    def tearDown(self):
+        main.DB_FILE = self._orig_main_db_file
+        helpers.DB_FILE = self._orig_helpers_db_file
+        self._tmpdir.cleanup()
+
+    def test_major_publication_boosts_quality_score(self):
+        conn = main.get_db()
+
+        wsj_id = conn.execute(
+            "INSERT INTO feeds (url, title, subscribed) VALUES (?, ?, 1)",
+            ("https://www.wsj.com/rss", "WSJ"),
+        ).lastrowid
+        other_id = conn.execute(
+            "INSERT INTO feeds (url, title, subscribed) VALUES (?, ?, 1)",
+            ("https://example.com/rss", "Example"),
+        ).lastrowid
+
+        # Identical content: only domain prior differs.
+        title = "Daily market briefing analysis"
+        summary = (
+            "This short report covers market policy and trading activity. "
+            "A second note summarizes key economic movements and coverage decisions."
+        )
+        link_a = "https://example.com/article-a"
+        link_b = "https://example.com/article-b"
+        published = datetime(2026, 3, 17, 12, 0, tzinfo=timezone.utc)
+
+        conn.executemany(
+            """
+            INSERT INTO entries (
+                feed_id, title, link, published, summary
+            ) VALUES (?, ?, ?, ?, ?)
+            """,
+            [
+                (wsj_id, title, link_a, published.isoformat(), summary),
+                (other_id, title, link_b, (published - timedelta(minutes=1)).isoformat(), summary),
+            ],
+        )
+        conn.commit()
+        conn.close()
+
+        quality_score.run_quality_score()
+
+        conn = main.get_db()
+        wsj_quality = conn.execute(
+            "SELECT quality_score FROM entries WHERE feed_id = ? ORDER BY id DESC LIMIT 1",
+            (wsj_id,),
+        ).fetchone()["quality_score"]
+        other_quality = conn.execute(
+            "SELECT quality_score FROM entries WHERE feed_id = ? ORDER BY id DESC LIMIT 1",
+            (other_id,),
+        ).fetchone()["quality_score"]
+        conn.close()
+
+        self.assertGreater(wsj_quality, other_quality)
+        self.assertGreaterEqual(wsj_quality - other_quality, 0.04)
+
+
+class QualityScoreMajorSimilarityTests(unittest.TestCase):
+    def setUp(self):
+        self._orig_main_db_file = main.DB_FILE
+        self._orig_helpers_db_file = helpers.DB_FILE
+        self._tmpdir = TemporaryDirectory()
+        db_path = str(Path(self._tmpdir.name) / "rss.db")
+        main.DB_FILE = db_path
+        helpers.DB_FILE = db_path
+        main.init_db()
+        self.request = SimpleNamespace(cookies={})
+
+    def tearDown(self):
+        main.DB_FILE = self._orig_main_db_file
+        helpers.DB_FILE = self._orig_helpers_db_file
+        self._tmpdir.cleanup()
+
+    def test_similarity_signature_promotes_similar_content(self):
+        conn = main.get_db()
+
+        # Two non-major entries: one "NYT-like" (contains NYT signature token),
+        # and one "not like it" (different signature token).
+        wsj_id = conn.execute(
+            "INSERT INTO feeds (url, title, subscribed) VALUES (?, ?, 1)",
+            ("https://www.wsj.com/rss", "WSJ"),
+        ).lastrowid
+        other_id = conn.execute(
+            "INSERT INTO feeds (url, title, subscribed) VALUES (?, ?, 1)",
+            ("https://example.com/rss", "Example"),
+        ).lastrowid
+
+        signature_a = "nytsignaturetoken"
+        signature_b = "othersignaturetoken"
+
+        title_common = "breaking market policy analysis"
+        summary_common = (
+            "This editorial covers market policy and trading activity. "
+            "A second note summarizes key economic movements and coverage decisions."
+        )
+        link_a = "https://example.com/article-a"
+        link_b = "https://example.com/article-b"
+        published = datetime(2026, 3, 17, 12, 0, tzinfo=timezone.utc)
+
+        conn.executemany(
+            """
+            INSERT INTO entries (
+                feed_id, title, link, published, summary
+            ) VALUES (?, ?, ?, ?, ?)
+            """,
+            [
+                # Major source entry establishes the signature words.
+                (wsj_id, f"{signature_a} {title_common}", link_a, published.isoformat(), summary_common),
+                # Similar content: contains signature_a.
+                (other_id, f"{signature_a} {title_common}", link_a, (published - timedelta(minutes=1)).isoformat(), summary_common),
+                # Dissimilar content: contains signature_b.
+                (other_id, f"{signature_b} {title_common}", link_b, (published - timedelta(minutes=2)).isoformat(), summary_common),
+            ],
+        )
+        conn.commit()
+        conn.close()
+
+        quality_score.run_quality_score()
+
+        conn = main.get_db()
+        sim_quality = conn.execute(
+            """
+            SELECT quality_score
+            FROM entries
+            WHERE feed_id = ?
+              AND title LIKE ?
+            ORDER BY id DESC
+            LIMIT 1
+            """,
+            (other_id, f"%{signature_a}%"),
+        ).fetchone()["quality_score"]
+        dissim_quality = conn.execute(
+            """
+            SELECT quality_score
+            FROM entries
+            WHERE feed_id = ?
+              AND title LIKE ?
+            ORDER BY id DESC
+            LIMIT 1
+            """,
+            (other_id, f"%{signature_b}%"),
+        ).fetchone()["quality_score"]
+        conn.close()
+
+        self.assertGreater(sim_quality, dissim_quality)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -565,8 +565,25 @@ async function _walkAndOpenArticle(direction) {
 
   (function initHeaderFilterFromUrl() {
     const params = new URLSearchParams(window.location.search || "");
-    _entryFilterEnabled = params.has("quality_level");
     const btn = document.getElementById("header-filter-btn");
+
+    const enabled = params.has("quality_level");
+    // Keep the main feed filter in sync with the settings-page slider.
+    // The server uses `quality_level` from the URL, while the slider only
+    // writes to `localStorage.filter_aggressiveness`.
+    if (enabled) {
+      const desiredLevel = _getFilterAggressiveness();
+      const rawCurrent = params.get("quality_level") ?? "";
+      const parsedCurrent = parseInt(rawCurrent, 10);
+      const currentLevel = Number.isNaN(parsedCurrent) ? 1 : Math.min(3, Math.max(0, parsedCurrent));
+      if (String(currentLevel) !== String(desiredLevel)) {
+        params.set("quality_level", String(desiredLevel));
+        window.location.search = params.toString();
+        return;
+      }
+    }
+
+    _entryFilterEnabled = enabled;
     if (btn) {
       btn.classList.toggle("active", _entryFilterEnabled);
       btn.setAttribute("aria-pressed", _entryFilterEnabled ? "true" : "false");

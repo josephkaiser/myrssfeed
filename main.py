@@ -22,7 +22,13 @@ from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, HttpUrl
-from scripts.scheduler import create_scheduler, run_pipeline_async, is_pipeline_running, reconfigure_scheduler
+from scripts.scheduler import (
+    create_scheduler,
+    run_pipeline_async,
+    is_pipeline_running,
+    reconfigure_scheduler,
+    trigger_pipeline_refresh_if_due_on_startup,
+)
 from scripts.newsletter_ingest import is_newsletter_running, run_newsletter_ingest_async
 from utils.helpers import (
     DEFAULTS as CORE_DEFAULTS,
@@ -591,15 +597,21 @@ def _build_entry_filters(
             min_title, min_summary = 20, 80
         else:
             min_title, min_summary = 30, 120
+
+        # Map UI aggressiveness levels to quality_score cutoffs.
+        # We keep a length-based fallback for safety when a DB hasn't been
+        # scored yet (quality_score may still be the default 0.0).
+        quality_threshold = {0: 0.25, 1: 0.35, 2: 0.5, 3: 0.65}.get(lvl, 0.35)
         filters.append(
             "("
             "e.link IS NOT NULL AND TRIM(e.link) != '' AND ("
+            "COALESCE(e.quality_score, 0) >= ? OR "
             "LENGTH(COALESCE(e.title, '')) >= ? OR "
             "LENGTH(COALESCE(e.summary, '')) >= ?"
             ")"
             ")"
         )
-        params.extend([min_title, min_summary])
+        params.extend([quality_threshold, min_title, min_summary])
 
     # Optional theme filter: restrict results to selected theme labels.
     # If theme_labels is None -> include all (no filter).
@@ -1001,6 +1013,12 @@ async def lifespan(app: FastAPI):
     init_db()
     scheduler = create_scheduler()
     scheduler.start()
+    try:
+        if trigger_pipeline_refresh_if_due_on_startup():
+            logger.info("Startup: pipeline refresh was due (refresh window exceeded).")
+    except Exception:
+        # Best-effort only; never fail app startup because of refresh scheduling.
+        logger.exception("Startup: refresh due-check failed.")
     logger.info("myRSSfeed started.")
     yield
     scheduler.shutdown(wait=False)

@@ -123,6 +123,49 @@ def _get_persisted_setting(key: str) -> Optional[str]:
     return row["value"] if row else None
 
 
+def _minutes_since_iso_timestamp(ts: Optional[str]) -> Optional[int]:
+    """Convert an ISO8601 timestamp string to minutes-since, if parseable."""
+    if not ts:
+        return None
+    try:
+        last_dt = datetime.fromisoformat(ts)
+        now = datetime.now(timezone.utc)
+        if last_dt.tzinfo is None:
+            last_dt = last_dt.replace(tzinfo=timezone.utc)
+        diff = now - last_dt
+        return max(0, int(diff.total_seconds() // 60))
+    except Exception:
+        return None
+
+
+def pipeline_refresh_due_on_startup() -> bool:
+    """Whether the pipeline should run immediately after service startup.
+
+    We use the persisted `pipeline_last_success_ts` as the "last refresh" time
+    indicator. If it's missing/unparseable or older than the configured refresh
+    interval, we consider the refresh due.
+    """
+    minutes = _parse_pipeline_refresh_minutes()
+    if minutes <= 0:
+        return False
+
+    minutes_since_last_success = _minutes_since_iso_timestamp(
+        _get_persisted_setting("pipeline_last_success_ts")
+    )
+    if minutes_since_last_success is None:
+        return True
+    return minutes_since_last_success >= minutes
+
+
+def trigger_pipeline_refresh_if_due_on_startup() -> bool:
+    """Start the pipeline if the refresh interval has been exceeded."""
+    if is_pipeline_running():
+        return False
+    if not pipeline_refresh_due_on_startup():
+        return False
+    return run_pipeline_async()
+
+
 def _parse_pipeline_refresh_minutes() -> int:
     """Return the automatic refresh interval in minutes.
 

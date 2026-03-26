@@ -2104,6 +2104,20 @@ header {
   white-space: nowrap;
 }
 
+/* Prevent quality aggressiveness label from shifting layout */
+#filter_aggressiveness_label {
+  min-width: 12ch;
+  display: inline-block;
+  text-align: center;
+}
+
+/* Keep the range slider width stable to reduce layout jitter */
+#filter_aggressiveness {
+  flex: 0 0 180px;
+  min-width: 180px;
+  max-width: 100%;
+}
+
 /* ── Theme pill toggle ── */
 .theme-toggle {
   display: flex;
