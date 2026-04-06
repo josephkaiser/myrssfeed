@@ -1,23 +1,13 @@
-from fastapi import FastAPI, Query
-import sqlite3
+from pathlib import Path
+import sys
 
-app = FastAPI()
-DB_FILE = "feeds/rss.db"
 
-@app.get("/search")
-def search_entries(q: str = "", sort_by: str = "published", limit: int = 50):
-    conn = sqlite3.connect(DB_FILE)
-    cursor = conn.cursor()
+ROOT_DIR = Path(__file__).resolve().parents[1]
+SRC_DIR = ROOT_DIR / "src"
+if str(SRC_DIR) not in sys.path:
+    sys.path.insert(0, str(SRC_DIR))
 
-    # Simple search
-    cursor.execute(f"""
-        SELECT title, link, published FROM entries
-        WHERE title LIKE ? OR summary LIKE ?
-        ORDER BY {sort_by} DESC
-        LIMIT ?
-    """, (f"%{q}%", f"%{q}%", limit))
+from myrssfeed.scripts import search_sort as _impl
 
-    results = cursor.fetchall()
-    conn.close()
-    return {"results": results}
 
+sys.modules[__name__] = _impl

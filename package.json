@@ -1,0 +1,10 @@
+{
+  "private": true,
+  "scripts": {
+    "build:frontend": "tsc -p tsconfig.frontend.json",
+    "typecheck:frontend": "tsc -p tsconfig.frontend.json --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^6.0.2"
+  }
+}

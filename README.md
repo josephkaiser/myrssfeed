@@ -4,14 +4,26 @@ myRSSfeed is a self-hosted RSS reader built with FastAPI + SQLite, designed to r
 
 ## Current capabilities
 
-- Subscribe/unsubscribe feeds and manage feed metadata (title, color).
-- Discover feeds from a curated catalog and detect RSS/Atom links from a URL.
-- Read entries with filters (query, date range, quality level, scope, themes, sort).
-- Mark articles read, like/unlike entries, and open article detail pages.
-- Trigger background refreshes and check refresh status.
-- Run WordRank and view WordRank status.
-- Optional newsletter ingestion via IMAP (toggle in settings).
-- View service logs through the built-in logs endpoint.
+- Subscribe, unsubscribe, rename, and browse feeds from a local web UI.
+- Discover feeds from a curated catalog and detect RSS/Atom links from a pasted URL.
+- Read entries with filters for search query, date range, quality level, feed scope, themes, and sort order.
+- Mark articles read, like/unlike entries, open article detail pages, and jump to random matching articles.
+- Run a lightweight background pipeline that fetches feeds, prunes old entries, scores entry quality, and applies heuristic theme labels.
+- Trigger refreshes manually, check refresh status, and view recent service logs from the browser.
+- Optionally ingest newsletter emails over IMAP, with manual sync and scheduled polling when enabled.
+- Run WordRank manually to recompute recommendation scores from liked articles.
+
+## Core offering
+
+myRSSfeed is currently optimized around a small, Pi-friendly feature set:
+
+- Reliable local RSS aggregation
+- Fast browsing and filtering
+- Lightweight quality ranking
+- Heuristic theme labeling
+- Optional newsletter ingest
+
+Older experimental features such as visualization maps, full-page article scraping, and LLM-heavy enrichment are not part of the current core product.
 
 ## Install
 
@@ -41,12 +53,16 @@ cd myrssfeed
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-python main.py
+PYTHONPATH=src python -m myrssfeed
 ```
 
 Default app URL:
 
 - `http://localhost:8080`
+
+Compatibility note:
+
+- `python main.py` still works from the repo root.
 
 ## Service management (Linux/systemd)
 
@@ -77,10 +93,13 @@ sudo journalctl -u myrssfeed -f
 - `POST /api/entries/{entry_id}/read` mark read
 - `POST /api/entries/{entry_id}/like` toggle like
 - `GET /api/random-article` open a random matching article
+- `GET /api/search` live article search suggestions
 - `POST /api/refresh` trigger background refresh
 - `GET /api/refresh/status` check refresh status
 - `GET /api/settings` and `POST /api/settings` read/update settings
 - `POST /api/discover/detect` detect RSS/Atom from a URL
+- `POST /api/newsletters/sync` and `GET /api/newsletters/status` manage newsletter ingest
+- `POST /api/wordrank` and `GET /api/wordrank/status` manage WordRank
 - `GET /api/logs` view recent logs
 
-For implementation details, see `main.py` for the full route list.
+For implementation details, see `src/myrssfeed/app.py`, `src/myrssfeed/scripts/scheduler.py`, and `src/myrssfeed/utils/helpers.py`.

@@ -23,6 +23,7 @@ certs/*.pem
 # Build / packaging artifacts
 *.deb
 dist/
+node_modules/
 
 # OS
 .DS_Store

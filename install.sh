@@ -72,7 +72,8 @@ Type=simple
 User=$USER
 WorkingDirectory=$APP_DIR
 EnvironmentFile=-$APP_DIR/.env
-ExecStart=$VENV_DIR/bin/python main.py
+Environment=PYTHONPATH=$APP_DIR/src
+ExecStart=$VENV_DIR/bin/python -m myrssfeed
 Restart=on-failure
 RestartSec=10
 MemoryHigh=400M
@@ -125,7 +126,7 @@ else
     log_step "Non-Linux or non-systemd host detected."
     log_skip "Skipping systemd service and mDNS (intended for Raspberry Pi / Debian)"
     echo "You can run myRSSfeed manually with:"
-    echo "  $VENV_DIR/bin/python main.py"
+    echo "  PYTHONPATH=$APP_DIR/src $VENV_DIR/bin/python -m myrssfeed"
 fi
 
 # ── Done ─────────────────────────────────────────────────────────────────────

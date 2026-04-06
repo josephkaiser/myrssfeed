@@ -1,473 +1,499 @@
-  // ── Theme toggle ────────────────────────────────────────────────
-  function applyTheme(t) {
-    const el = document.documentElement;
-    if (t === "light")       el.setAttribute("data-theme", "light");
-    else if (t === "dark")   el.setAttribute("data-theme", "dark");
-    else                     el.removeAttribute("data-theme");
-  }
-
-  function refreshToggleUI(t) {
-    document.querySelectorAll("#theme-toggle button").forEach((btn) => {
-      btn.classList.toggle("active", btn.dataset.themeVal === t);
-    });
-  }
-
-  function setTheme(t) {
-    localStorage.setItem("theme", t);
-    applyTheme(t);
-    refreshToggleUI(t);
-  }
-
-  // Initialise toggle to match current localStorage value
-  (function() {
-    const t = localStorage.getItem("theme") || "system";
-    refreshToggleUI(t);
-  })();
-
-  // ── Quality filter aggressiveness slider ─────────────────────────
-  function getFilterAggressiveness() {
-    const raw = localStorage.getItem("filter_aggressiveness");
-    const level = parseInt(raw ?? "1", 10);
-    if (Number.isNaN(level)) return 1;
-    return Math.min(3, Math.max(0, level));
-  }
-
-  function describeAggressiveness(level) {
-    switch (level) {
-      case 0: return "Very gentle";
-      case 1: return "Balanced";
-      case 2: return "Firm";
-      case 3: return "Aggressive";
-      default: return "Balanced";
+"use strict";
+function getElement(id) {
+    return document.getElementById(id);
+}
+function requireInput(id) {
+    const element = getElement(id);
+    if (!element) {
+        throw new Error(`Missing required input #${id}`);
     }
-  }
-
-  (function initFilterAggressiveness() {
-    const slider = document.getElementById("filter_aggressiveness");
-    const label = document.getElementById("filter_aggressiveness_label");
-    if (!slider || !label) return;
-
+    return element;
+}
+function requireSelect(id) {
+    const element = getElement(id);
+    if (!element) {
+        throw new Error(`Missing required select #${id}`);
+    }
+    return element;
+}
+function clampInt(rawValue, fallback, min, max) {
+    const parsed = Number.parseInt(rawValue ?? "", 10);
+    if (Number.isNaN(parsed)) {
+        return fallback;
+    }
+    return Math.min(max, Math.max(min, parsed));
+}
+function readStoredTheme() {
+    const stored = localStorage.getItem("theme");
+    return stored === "dark" || stored === "light" || stored === "system" ? stored : "system";
+}
+function applyTheme(theme) {
+    const root = document.documentElement;
+    if (theme === "light") {
+        root.setAttribute("data-theme", "light");
+    }
+    else if (theme === "dark") {
+        root.setAttribute("data-theme", "dark");
+    }
+    else {
+        root.removeAttribute("data-theme");
+    }
+}
+function refreshToggleUI(theme) {
+    document.querySelectorAll("#theme-toggle button").forEach((button) => {
+        button.classList.toggle("active", button.dataset.themeVal === theme);
+    });
+}
+function setTheme(theme) {
+    localStorage.setItem("theme", theme);
+    applyTheme(theme);
+    refreshToggleUI(theme);
+}
+(function initThemeToggle() {
+    refreshToggleUI(readStoredTheme());
+})();
+function getFilterAggressiveness() {
+    return clampInt(localStorage.getItem("filter_aggressiveness"), 1, 0, 3);
+}
+function describeAggressiveness(level) {
+    switch (level) {
+        case 0:
+            return "Very gentle";
+        case 1:
+            return "Balanced";
+        case 2:
+            return "Firm";
+        case 3:
+            return "Aggressive";
+        default:
+            return "Balanced";
+    }
+}
+(function initFilterAggressiveness() {
+    const slider = getElement("filter_aggressiveness");
+    const label = getElement("filter_aggressiveness_label");
+    if (!slider || !label) {
+        return;
+    }
     const level = getFilterAggressiveness();
     slider.value = String(level);
     label.textContent = describeAggressiveness(level);
-
     slider.addEventListener("input", () => {
-      const val = parseInt(slider.value, 10);
-      const level = Number.isNaN(val) ? 1 : Math.min(3, Math.max(0, val));
-      localStorage.setItem("filter_aggressiveness", String(level));
-      label.textContent = describeAggressiveness(level);
+        const nextLevel = clampInt(slider.value, 1, 0, 3);
+        localStorage.setItem("filter_aggressiveness", String(nextLevel));
+        label.textContent = describeAggressiveness(nextLevel);
     });
-  })();
-
-  // ── Toast ───────────────────────────────────────────────────────
-  function toast(msg, ok = true) {
-    const el = document.getElementById("toast");
-    el.textContent = msg;
-    el.style.borderColor = ok ? "var(--accent)" : "var(--danger)";
-    el.classList.add("show");
-    setTimeout(() => el.classList.remove("show"), 2800);
-  }
-
-  // ── Save settings ───────────────────────────────────────────────
-  function getPipelineRefreshMinutes() {
-    const input = document.getElementById("pipeline_refresh_minutes");
-    const raw = input ? parseInt(input.value, 10) : 15;
-    if (isNaN(raw)) return 15;
-    return Math.min(240, Math.max(5, raw));
-  }
-
-  function describePipelineRefreshMinutes(minutes) {
+})();
+function toast(message, ok = true) {
+    const element = getElement("toast");
+    if (!element) {
+        return;
+    }
+    element.textContent = message;
+    element.style.borderColor = ok ? "var(--accent)" : "var(--danger)";
+    element.classList.add("show");
+    window.setTimeout(() => {
+        element.classList.remove("show");
+    }, 2800);
+}
+function getPipelineRefreshMinutes() {
+    const input = getElement("pipeline_refresh_minutes");
+    return clampInt(input?.value, 15, 5, 240);
+}
+function describePipelineRefreshMinutes(minutes) {
     const value = Math.min(240, Math.max(5, minutes));
     return `${value} min`;
-  }
-
-  function updatePipelineRefreshDial() {
-    const input = document.getElementById("pipeline_refresh_minutes");
-    const label = document.getElementById("pipeline_refresh_minutes_value");
-    if (!input || !label) return;
+}
+function updatePipelineRefreshDial() {
+    const input = getElement("pipeline_refresh_minutes");
+    const label = getElement("pipeline_refresh_minutes_value");
+    if (!input || !label) {
+        return;
+    }
     const minutes = getPipelineRefreshMinutes();
     input.value = String(minutes);
     label.textContent = describePipelineRefreshMinutes(minutes);
-  }
-
-  async function saveSettings() {
-    const retentionInput = document.getElementById("retention_days");
-    const days = parseInt(retentionInput.value, 10);
-
-    if (isNaN(days) || days < 0 || days > 3650) {
-      toast("Retention must be 0–3650 days.", false);
-      retentionInput.focus();
-      return;
+}
+async function readJson(response) {
+    return (await response.json().catch(() => ({})));
+}
+async function saveSettings() {
+    const retentionInput = requireInput("retention_days");
+    const days = Number.parseInt(retentionInput.value, 10);
+    if (Number.isNaN(days) || days < 0 || days > 3650) {
+        toast("Retention must be 0–3650 days.", false);
+        retentionInput.focus();
+        return;
     }
-
-    const maxEntriesInput = document.getElementById("max_entries");
-    const maxEntriesVal = parseInt(maxEntriesInput.value, 10);
-    if (isNaN(maxEntriesVal) || maxEntriesVal < 50 || maxEntriesVal > 20000) {
-      toast("Maximum articles must be between 50 and 20000.", false);
-      maxEntriesInput.focus();
-      return;
+    const maxEntriesInput = requireInput("max_entries");
+    const maxEntriesValue = Number.parseInt(maxEntriesInput.value, 10);
+    if (Number.isNaN(maxEntriesValue) || maxEntriesValue < 50 || maxEntriesValue > 20000) {
+        toast("Maximum articles must be between 50 and 20000.", false);
+        maxEntriesInput.focus();
+        return;
     }
-
-    const newsletterEnabledSelect = document.getElementById("newsletter_enabled");
-    const newsletterHostInput = document.getElementById("newsletter_imap_host");
-    const newsletterPortInput = document.getElementById("newsletter_imap_port");
-    const newsletterUserInput = document.getElementById("newsletter_imap_username");
-    const newsletterPassInput = document.getElementById("newsletter_imap_password");
-    const newsletterFolderInput = document.getElementById("newsletter_imap_folder");
-    const newsletterPollInput = document.getElementById("newsletter_poll_minutes");
-
-    const newsletterEnabled = newsletterEnabledSelect ? newsletterEnabledSelect.value : "false";
-    const newsletterPortVal = parseInt(newsletterPortInput.value, 10);
-    if (isNaN(newsletterPortVal) || newsletterPortVal < 1 || newsletterPortVal > 65535) {
-      toast("Newsletter IMAP port must be between 1 and 65535.", false);
-      newsletterPortInput.focus();
-      return;
+    const newsletterEnabledSelect = requireSelect("newsletter_enabled");
+    const newsletterHostInput = requireInput("newsletter_imap_host");
+    const newsletterPortInput = requireInput("newsletter_imap_port");
+    const newsletterUserInput = requireInput("newsletter_imap_username");
+    const newsletterPassInput = requireInput("newsletter_imap_password");
+    const newsletterFolderInput = requireInput("newsletter_imap_folder");
+    const newsletterPollInput = requireInput("newsletter_poll_minutes");
+    const newsletterPortValue = Number.parseInt(newsletterPortInput.value, 10);
+    if (Number.isNaN(newsletterPortValue) || newsletterPortValue < 1 || newsletterPortValue > 65535) {
+        toast("Newsletter IMAP port must be between 1 and 65535.", false);
+        newsletterPortInput.focus();
+        return;
     }
-
-    const newsletterPollVal = parseInt(newsletterPollInput.value, 10);
-    if (isNaN(newsletterPollVal) || newsletterPollVal < 5 || newsletterPollVal > 1440) {
-      toast("Newsletter poll interval must be between 5 and 1440 minutes.", false);
-      newsletterPollInput.focus();
-      return;
+    const newsletterPollValue = Number.parseInt(newsletterPollInput.value, 10);
+    if (Number.isNaN(newsletterPollValue) || newsletterPollValue < 5 || newsletterPollValue > 1440) {
+        toast("Newsletter poll interval must be between 5 and 1440 minutes.", false);
+        newsletterPollInput.focus();
+        return;
     }
-
-    if (maxEntriesVal > 5000) {
-      toast("Large article lists may be slow on lower-end devices. Make sure this machine has enough disk space and a fast drive.", true);
+    if (maxEntriesValue > 5000) {
+        toast("Large article lists may be slow on lower-end devices. Make sure this machine has enough disk space and a fast drive.", true);
     }
-
-    const theme = localStorage.getItem("theme") || "system";
-    const refreshMinutes = getPipelineRefreshMinutes();
-
     const payload = {
-      retention_days: String(days),
-      theme,
-      max_entries: String(maxEntriesVal),
-      pipeline_refresh_minutes: String(refreshMinutes),
-      newsletter_enabled: newsletterEnabled,
-      newsletter_imap_host: newsletterHostInput.value.trim(),
-      newsletter_imap_port: String(newsletterPortVal),
-      newsletter_imap_username: newsletterUserInput.value.trim(),
-      newsletter_imap_password: newsletterPassInput.value,
-      newsletter_imap_folder: newsletterFolderInput.value.trim() || "INBOX",
-      newsletter_poll_minutes: String(newsletterPollVal),
+        retention_days: String(days),
+        theme: readStoredTheme(),
+        max_entries: String(maxEntriesValue),
+        pipeline_refresh_minutes: String(getPipelineRefreshMinutes()),
+        newsletter_enabled: newsletterEnabledSelect.value,
+        newsletter_imap_host: newsletterHostInput.value.trim(),
+        newsletter_imap_port: String(newsletterPortValue),
+        newsletter_imap_username: newsletterUserInput.value.trim(),
+        newsletter_imap_password: newsletterPassInput.value,
+        newsletter_imap_folder: newsletterFolderInput.value.trim() || "INBOX",
+        newsletter_poll_minutes: String(newsletterPollValue),
     };
-
-    const res = await fetch("/api/settings", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
+    const response = await fetch("/api/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
     });
-
-    if (res.ok) {
-      const statusEl = document.getElementById("save-status");
-      statusEl.classList.add("show");
-      setTimeout(() => statusEl.classList.remove("show"), 2500);
-      setTimeout(fetchNewsletterStatus, 1000);
-    } else {
-      const data = await res.json().catch(() => ({}));
-      toast(data.detail || "Could not save settings.", false);
+    if (response.ok) {
+        const statusElement = getElement("save-status");
+        if (statusElement) {
+            statusElement.classList.add("show");
+            window.setTimeout(() => {
+                statusElement.classList.remove("show");
+            }, 2500);
+        }
+        window.setTimeout(() => {
+            void fetchNewsletterStatus();
+        }, 1000);
+        return;
     }
-  }
-
-  // ── Manual refresh ──────────────────────────────────────────────
-  function updateRefreshStatusUI(state) {
-    const dot = document.getElementById("refresh-status-dot");
-    const text = document.getElementById("refresh-status-text");
-    if (!dot || !text) return;
-
+    const data = await readJson(response);
+    toast(data.detail || "Could not save settings.", false);
+}
+function updateRefreshStatusUI(state) {
+    const dot = getElement("refresh-status-dot");
+    const text = getElement("refresh-status-text");
+    if (!dot || !text) {
+        return;
+    }
     dot.className = "refresh-status-dot";
-
     if (state.running) {
-      dot.classList.add("running");
-      text.textContent = "Running";
-      return;
-    }
-
-    switch (state.last_status) {
-      case "success":
-        dot.classList.add("success");
-        if (typeof state.minutes_since_last_success === "number") {
-          const mins = state.minutes_since_last_success;
-          text.textContent = mins === 0 ? "Now" : `${mins}m ago`;
-        } else {
-          text.textContent = "Done";
-        }
-        break;
-      case "error":
-        dot.classList.add("error");
-        text.textContent = "Failed";
-        break;
-      case "never":
-      default:
-        text.textContent = "Ready";
-        break;
-    }
-  }
-
-  async function fetchRefreshStatus() {
-    try {
-      const res = await fetch("/api/refresh/status");
-      if (!res.ok) return;
-      const data = await res.json().catch(() => ({}));
-      updateRefreshStatusUI({
-        running: !!data.running,
-        last_status: data.last_status || "never",
-        minutes_since_last_success: typeof data.minutes_since_last_success === "number"
-          ? data.minutes_since_last_success
-          : null,
-      });
-      updatePipelineStatusUI({
-        last_status: data.last_status || "never",
-        minutes_since_last_success: typeof data.minutes_since_last_success === "number"
-          ? data.minutes_since_last_success
-          : null,
-      });
-    } catch {
-      // Silently ignore; status light is best-effort only.
-    }
-  }
-
-  function updateNewsletterStatusUI(state) {
-    const dot = document.getElementById("newsletter-status-dot");
-    const text = document.getElementById("newsletter-status-text");
-    if (!dot || !text) return;
-
-    dot.className = "refresh-status-dot";
-    text.title = "";
-
-    if (state.running) {
-      dot.classList.add("running");
-      text.textContent = "Sync in progress";
-      return;
-    }
-
-    switch (state.last_status) {
-      case "success":
-        dot.classList.add("success");
-        if (typeof state.minutes_since_last_success === "number") {
-          const mins = state.minutes_since_last_success;
-          text.textContent = mins === 0 ? "Just now" : `${mins} min ago`;
-        } else {
-          text.textContent = "Last sync completed";
-        }
-        break;
-      case "error":
-        dot.classList.add("error");
-        text.textContent = "Last sync failed";
-        if (state.last_error) text.title = state.last_error;
-        break;
-      case "disabled":
-        text.textContent = "Disabled";
-        break;
-      case "never":
-      default:
-        text.textContent = "No runs yet";
-        break;
-    }
-  }
-
-  async function fetchNewsletterStatus() {
-    try {
-      const res = await fetch("/api/newsletters/status");
-      if (!res.ok) return;
-      const data = await res.json().catch(() => ({}));
-      updateNewsletterStatusUI({
-        running: !!data.running,
-        last_status: data.last_status || "never",
-        minutes_since_last_success: typeof data.minutes_since_last_success === "number"
-          ? data.minutes_since_last_success
-          : null,
-        last_error: data.last_error || "",
-      });
-    } catch {
-      // Best-effort only.
-    }
-  }
-
-  async function refreshNow() {
-    const btn = document.getElementById("refresh-now-btn");
-    if (!btn) return;
-    btn.disabled = true;
-    const originalText = btn.textContent;
-    btn.textContent = "Refreshing...";
-    try {
-      const res = await fetch("/api/refresh", { method: "POST" });
-      if (res.ok) {
-        const data = await res.json().catch(() => ({}));
-        toast(data.message || "Refresh started.");
-        // Immediately reflect state in the status light
-        updateRefreshStatusUI({ running: true, last_status: "running" });
-      } else {
-        const data = await res.json().catch(() => ({}));
-        toast(data.detail || "Could not start refresh.", false);
-      }
-    } catch (e) {
-      toast("Network error starting refresh.", false);
-    } finally {
-      btn.disabled = false;
-      btn.textContent = originalText;
-      // Re-sync with server state shortly after triggering
-      setTimeout(fetchRefreshStatus, 2000);
-    }
-  }
-
-  // Kick off periodic polling for the status lights on settings page load.
-  (function () {
-    const hasRefresh = document.getElementById("refresh-status-dot");
-    const hasNewsletter = document.getElementById("newsletter-status-dot");
-
-    if (hasRefresh) {
-      fetchRefreshStatus();
-      setInterval(fetchRefreshStatus, 8000);
-    }
-    if (hasNewsletter) {
-      fetchNewsletterStatus();
-      setInterval(fetchNewsletterStatus, 8000);
-    }
-  })();
-
-  async function newsletterSyncNow() {
-    const btn = document.getElementById("newsletter-sync-btn");
-    if (!btn) return;
-    btn.disabled = true;
-    const originalText = btn.textContent;
-    btn.textContent = "Syncing...";
-    try {
-      const res = await fetch("/api/newsletters/sync", { method: "POST" });
-      if (res.ok) {
-        const data = await res.json().catch(() => ({}));
-        toast(data.message || "Newsletter sync started.");
-        updateNewsletterStatusUI({ running: true, last_status: "running" });
-      } else {
-        const data = await res.json().catch(() => ({}));
-        toast(data.detail || "Could not start newsletter sync.", false);
-      }
-    } catch (e) {
-      toast("Network error starting newsletter sync.", false);
-    } finally {
-      btn.disabled = false;
-      btn.textContent = originalText;
-      setTimeout(fetchNewsletterStatus, 2000);
-    }
-  }
-
-  // ── Pipeline status light (last run) ────────────────────────────
-  function updatePipelineStatusUI(state) {
-    const dot = document.getElementById("pipeline-status-dot");
-    const text = document.getElementById("pipeline-status-text");
-    if (!dot || !text) return;
-
-    dot.className = "refresh-status-dot";
-
-    switch (state.last_status) {
-      case "success":
-        dot.classList.add("success");
-        if (typeof state.minutes_since_last_success === "number") {
-          const mins = state.minutes_since_last_success;
-          text.textContent = mins === 0 ? "Now" : `${mins}m ago`;
-        } else {
-          text.textContent = "Done";
-        }
-        break;
-      case "error":
-        dot.classList.add("error");
-        text.textContent = "Failed";
-        break;
-      case "running":
         dot.classList.add("running");
         text.textContent = "Running";
-        break;
-      case "never":
-      default:
-        text.textContent = "Ready";
-        break;
+        return;
     }
-  }
-
-  // ── Manual WordRank recompute ────────────────────────────────────
-  function updateWordrankStatusUI(state) {
-    const dot = document.getElementById("wordrank-status-dot");
-    const text = document.getElementById("wordrank-status-text");
-    if (!dot || !text) return;
-
-    dot.className = "refresh-status-dot";
-
-    if (state.running) {
-      dot.classList.add("running");
-      text.textContent = "Running";
-      return;
-    }
-
     switch (state.last_status) {
-      case "success":
-        dot.classList.add("success");
-        if (typeof state.minutes_since_last_success === "number") {
-          const mins = state.minutes_since_last_success;
-          text.textContent = mins === 0 ? "Now" : `${mins}m ago`;
-        } else {
-          text.textContent = "Done";
-        }
-        break;
-      case "error":
-        dot.classList.add("error");
-        text.textContent = "Failed";
-        break;
-      default:
-        text.textContent = "Ready";
-        break;
+        case "success":
+            dot.classList.add("success");
+            if (typeof state.minutes_since_last_success === "number") {
+                const minutes = state.minutes_since_last_success;
+                text.textContent = minutes === 0 ? "Now" : `${minutes}m ago`;
+            }
+            else {
+                text.textContent = "Done";
+            }
+            break;
+        case "error":
+            dot.classList.add("error");
+            text.textContent = "Failed";
+            break;
+        case "never":
+        default:
+            text.textContent = "Ready";
+            break;
     }
-  }
-
-  async function fetchWordrankStatus() {
+}
+async function fetchRefreshStatus() {
     try {
-      const res = await fetch("/api/wordrank/status");
-      if (!res.ok) return;
-      const data = await res.json().catch(() => ({}));
-      updateWordrankStatusUI({
-        running: false,
-        last_status: data.last_status || "never",
-      });
-    } catch {
-      // best-effort only
+        const response = await fetch("/api/refresh/status");
+        if (!response.ok) {
+            return;
+        }
+        const data = await readJson(response);
+        const state = {
+            running: Boolean(data.running),
+            last_status: data.last_status || "never",
+            minutes_since_last_success: typeof data.minutes_since_last_success === "number" ? data.minutes_since_last_success : null,
+        };
+        updateRefreshStatusUI(state);
+        updatePipelineStatusUI(state);
     }
-  }
-
-  async function wordrankNow() {
-    const btn = document.getElementById("wordrank-now-btn");
-    if (!btn) return;
-    btn.disabled = true;
-    const originalText = btn.textContent;
-    btn.textContent = "Running…";
+    catch {
+        // Silently ignore; status light is best-effort only.
+    }
+}
+function updateNewsletterStatusUI(state) {
+    const dot = getElement("newsletter-status-dot");
+    const text = getElement("newsletter-status-text");
+    if (!dot || !text) {
+        return;
+    }
+    dot.className = "refresh-status-dot";
+    text.title = "";
+    if (state.running) {
+        dot.classList.add("running");
+        text.textContent = "Sync in progress";
+        return;
+    }
+    switch (state.last_status) {
+        case "success":
+            dot.classList.add("success");
+            if (typeof state.minutes_since_last_success === "number") {
+                const minutes = state.minutes_since_last_success;
+                text.textContent = minutes === 0 ? "Just now" : `${minutes} min ago`;
+            }
+            else {
+                text.textContent = "Last sync completed";
+            }
+            break;
+        case "error":
+            dot.classList.add("error");
+            text.textContent = "Last sync failed";
+            if (state.last_error) {
+                text.title = state.last_error;
+            }
+            break;
+        case "disabled":
+            text.textContent = "Disabled";
+            break;
+        case "never":
+        default:
+            text.textContent = "No runs yet";
+            break;
+    }
+}
+async function fetchNewsletterStatus() {
+    try {
+        const response = await fetch("/api/newsletters/status");
+        if (!response.ok) {
+            return;
+        }
+        const data = await readJson(response);
+        updateNewsletterStatusUI({
+            running: Boolean(data.running),
+            last_status: data.last_status || "never",
+            minutes_since_last_success: typeof data.minutes_since_last_success === "number" ? data.minutes_since_last_success : null,
+            last_error: data.last_error || "",
+        });
+    }
+    catch {
+        // Best-effort only.
+    }
+}
+async function refreshNow() {
+    const button = getElement("refresh-now-btn");
+    if (!button) {
+        return;
+    }
+    button.disabled = true;
+    const originalText = button.textContent;
+    button.textContent = "Refreshing...";
+    try {
+        const response = await fetch("/api/refresh", { method: "POST" });
+        const data = await readJson(response);
+        if (response.ok) {
+            toast(data.message || "Refresh started.");
+            updateRefreshStatusUI({ running: true, last_status: "running" });
+        }
+        else {
+            toast(data.detail || "Could not start refresh.", false);
+        }
+    }
+    catch {
+        toast("Network error starting refresh.", false);
+    }
+    finally {
+        button.disabled = false;
+        button.textContent = originalText;
+        window.setTimeout(() => {
+            void fetchRefreshStatus();
+        }, 2000);
+    }
+}
+(function initStatusPolling() {
+    if (getElement("refresh-status-dot")) {
+        void fetchRefreshStatus();
+        window.setInterval(() => {
+            void fetchRefreshStatus();
+        }, 8000);
+    }
+    if (getElement("newsletter-status-dot")) {
+        void fetchNewsletterStatus();
+        window.setInterval(() => {
+            void fetchNewsletterStatus();
+        }, 8000);
+    }
+})();
+async function newsletterSyncNow() {
+    const button = getElement("newsletter-sync-btn");
+    if (!button) {
+        return;
+    }
+    button.disabled = true;
+    const originalText = button.textContent;
+    button.textContent = "Syncing...";
+    try {
+        const response = await fetch("/api/newsletters/sync", { method: "POST" });
+        const data = await readJson(response);
+        if (response.ok) {
+            toast(data.message || "Newsletter sync started.");
+            updateNewsletterStatusUI({ running: true, last_status: "running" });
+        }
+        else {
+            toast(data.detail || "Could not start newsletter sync.", false);
+        }
+    }
+    catch {
+        toast("Network error starting newsletter sync.", false);
+    }
+    finally {
+        button.disabled = false;
+        button.textContent = originalText;
+        window.setTimeout(() => {
+            void fetchNewsletterStatus();
+        }, 2000);
+    }
+}
+function updatePipelineStatusUI(state) {
+    const dot = getElement("pipeline-status-dot");
+    const text = getElement("pipeline-status-text");
+    if (!dot || !text) {
+        return;
+    }
+    dot.className = "refresh-status-dot";
+    switch (state.last_status) {
+        case "success":
+            dot.classList.add("success");
+            if (typeof state.minutes_since_last_success === "number") {
+                const minutes = state.minutes_since_last_success;
+                text.textContent = minutes === 0 ? "Now" : `${minutes}m ago`;
+            }
+            else {
+                text.textContent = "Done";
+            }
+            break;
+        case "error":
+            dot.classList.add("error");
+            text.textContent = "Failed";
+            break;
+        case "running":
+            dot.classList.add("running");
+            text.textContent = "Running";
+            break;
+        case "never":
+        default:
+            text.textContent = "Ready";
+            break;
+    }
+}
+function updateWordrankStatusUI(state) {
+    const dot = getElement("wordrank-status-dot");
+    const text = getElement("wordrank-status-text");
+    if (!dot || !text) {
+        return;
+    }
+    dot.className = "refresh-status-dot";
+    if (state.running) {
+        dot.classList.add("running");
+        text.textContent = "Running";
+        return;
+    }
+    switch (state.last_status) {
+        case "success":
+            dot.classList.add("success");
+            if (typeof state.minutes_since_last_success === "number") {
+                const minutes = state.minutes_since_last_success;
+                text.textContent = minutes === 0 ? "Now" : `${minutes}m ago`;
+            }
+            else {
+                text.textContent = "Done";
+            }
+            break;
+        case "error":
+            dot.classList.add("error");
+            text.textContent = "Failed";
+            break;
+        default:
+            text.textContent = "Ready";
+            break;
+    }
+}
+async function fetchWordrankStatus() {
+    try {
+        const response = await fetch("/api/wordrank/status");
+        if (!response.ok) {
+            return;
+        }
+        const data = await readJson(response);
+        updateWordrankStatusUI({
+            running: false,
+            last_status: data.last_status || "never",
+        });
+    }
+    catch {
+        // best-effort only
+    }
+}
+async function wordrankNow() {
+    const button = getElement("wordrank-now-btn");
+    if (!button) {
+        return;
+    }
+    button.disabled = true;
+    const originalText = button.textContent;
+    button.textContent = "Running...";
     updateWordrankStatusUI({ running: true, last_status: "running" });
     try {
-      const res = await fetch("/api/wordrank", { method: "POST" });
-      const data = await res.json().catch(() => ({}));
-      if (res.ok && data.status === "success") {
-        toast(data.message || "WordRank completed.");
-        updateWordrankStatusUI({ running: false, last_status: "success" });
-      } else {
-        toast(data.message || data.detail || "WordRank failed.", false);
+        const response = await fetch("/api/wordrank", { method: "POST" });
+        const data = await readJson(response);
+        if (response.ok && data.status === "success") {
+            toast(data.message || "WordRank completed.");
+            updateWordrankStatusUI({ running: false, last_status: "success" });
+        }
+        else {
+            toast(data.message || data.detail || "WordRank failed.", false);
+            updateWordrankStatusUI({ running: false, last_status: "error" });
+        }
+    }
+    catch {
+        toast("Network error running WordRank.", false);
         updateWordrankStatusUI({ running: false, last_status: "error" });
-      }
-    } catch (e) {
-      toast("Network error running WordRank.", false);
-      updateWordrankStatusUI({ running: false, last_status: "error" });
-    } finally {
-      btn.disabled = false;
-      btn.textContent = originalText;
     }
-  }
-
-  // Initialise dynamic schedule time field on settings page load
-  (function () {
-    const refreshInput = document.getElementById("pipeline_refresh_minutes");
+    finally {
+        button.disabled = false;
+        button.textContent = originalText;
+    }
+}
+(function initPipelineControls() {
+    const refreshInput = getElement("pipeline_refresh_minutes");
     if (refreshInput) {
-      refreshInput.addEventListener("input", updatePipelineRefreshDial);
-      updatePipelineRefreshDial();
+        refreshInput.addEventListener("input", updatePipelineRefreshDial);
+        updatePipelineRefreshDial();
     }
-
-    const wordrankDot = document.getElementById("wordrank-status-dot");
-    if (wordrankDot) {
-      fetchWordrankStatus();
+    if (getElement("wordrank-status-dot")) {
+        void fetchWordrankStatus();
     }
-  })();
+})();
+window.setTheme = setTheme;
+window.saveSettings = saveSettings;
+window.refreshNow = refreshNow;
+window.newsletterSyncNow = newsletterSyncNow;
+window.wordrankNow = wordrankNow;

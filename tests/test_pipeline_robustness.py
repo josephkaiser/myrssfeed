@@ -10,8 +10,9 @@ from types import SimpleNamespace
 
 
 ROOT = Path(__file__).resolve().parents[1]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
+SRC = ROOT / "src"
+if str(SRC) not in sys.path:
+    sys.path.insert(0, str(SRC))
 
 
 def _ensure_module(name: str) -> types.ModuleType:
@@ -170,12 +171,12 @@ _install_apscheduler_stubs()
 _install_uvicorn_stub()
 _install_fastapi_stub()
 
-compile_feed = importlib.import_module("scripts.compile_feed")
-scheduler = importlib.import_module("scripts.scheduler")
-main = importlib.import_module("main")
-helpers = importlib.import_module("utils.helpers")
-quality_score = importlib.import_module("scripts.quality_score")
-newsletter_ingest = importlib.import_module("scripts.newsletter_ingest")
+compile_feed = importlib.import_module("myrssfeed.scripts.compile_feed")
+scheduler = importlib.import_module("myrssfeed.scripts.scheduler")
+main = importlib.import_module("myrssfeed.app")
+helpers = importlib.import_module("myrssfeed.utils.helpers")
+quality_score = importlib.import_module("myrssfeed.scripts.quality_score")
+newsletter_ingest = importlib.import_module("myrssfeed.scripts.newsletter_ingest")
 
 
 class CompileFeedHelperTests(unittest.TestCase):
@@ -224,17 +225,14 @@ class PipelineContinuationTests(unittest.TestCase):
 
         stages = [
             ("compile_feed", failing_compile),
-            ("newsletter_ingest", make_stage("newsletter_ingest")),
-            ("metadata_enrichment", make_stage("metadata_enrichment")),
-            ("wordrank", make_stage("wordrank")),
             ("quality_score", make_stage("quality_score")),
-            ("visualization", make_stage("visualization")),
+            ("theme_labeling", make_stage("theme_labeling")),
         ]
 
         had_error = scheduler._run_pipeline_stages(stages)
 
         self.assertTrue(had_error)
-        self.assertEqual(calls, ["compile_feed", "newsletter_ingest", "metadata_enrichment", "wordrank", "quality_score", "visualization"])
+        self.assertEqual(calls, ["compile_feed", "quality_score", "theme_labeling"])
 
     def test_pipeline_marks_success_when_all_stages_pass(self):
         calls = []
@@ -247,17 +245,14 @@ class PipelineContinuationTests(unittest.TestCase):
 
         stages = [
             ("compile_feed", make_stage("compile_feed")),
-            ("newsletter_ingest", make_stage("newsletter_ingest")),
-            ("metadata_enrichment", make_stage("metadata_enrichment")),
-            ("wordrank", make_stage("wordrank")),
             ("quality_score", make_stage("quality_score")),
-            ("visualization", make_stage("visualization")),
+            ("theme_labeling", make_stage("theme_labeling")),
         ]
 
         had_error = scheduler._run_pipeline_stages(stages)
 
         self.assertFalse(had_error)
-        self.assertEqual(calls, ["compile_feed", "newsletter_ingest", "metadata_enrichment", "wordrank", "quality_score", "visualization"])
+        self.assertEqual(calls, ["compile_feed", "quality_score", "theme_labeling"])
 
 
 class PipelineIntervalScheduleTests(unittest.TestCase):
@@ -289,6 +284,69 @@ class PipelineIntervalScheduleTests(unittest.TestCase):
         helpers.set_setting("pipeline_refresh_minutes", "45")
 
         self.assertEqual(scheduler._parse_pipeline_refresh_minutes(), 45)
+
+    def test_create_scheduler_adds_newsletter_job_when_enabled(self):
+        helpers.set_setting("newsletter_enabled", "true")
+        helpers.set_setting("newsletter_poll_minutes", "20")
+
+        sched = scheduler.create_scheduler()
+        job_ids = [kwargs.get("id") for _, kwargs in getattr(sched, "jobs", [])]
+
+        self.assertIn("pipeline_refresh", job_ids)
+        self.assertIn("newsletter_poll", job_ids)
+
+
+class SchemaInitializationTests(unittest.TestCase):
+    def setUp(self):
+        self._orig_main_db_file = main.DB_FILE
+        self._orig_helpers_db_file = helpers.DB_FILE
+        self._tmpdir = TemporaryDirectory()
+        db_path = str(Path(self._tmpdir.name) / "rss.db")
+        main.DB_FILE = db_path
+        helpers.DB_FILE = db_path
+        main.init_db()
+
+    def tearDown(self):
+        main.DB_FILE = self._orig_main_db_file
+        helpers.DB_FILE = self._orig_helpers_db_file
+        self._tmpdir.cleanup()
+
+    def test_init_db_creates_user_catalog_table(self):
+        conn = helpers.get_db()
+        try:
+            tables = {
+                row["name"]
+                for row in conn.execute(
+                    "SELECT name FROM sqlite_master WHERE type = 'table'"
+                ).fetchall()
+            }
+            self.assertIn("user_catalog", tables)
+
+            conn.execute(
+                """
+                INSERT INTO user_catalog (url, name, category, description)
+                VALUES (?, ?, ?, ?)
+                """,
+                (
+                    "https://example.com/feed.xml",
+                    "Example Feed",
+                    "Tech",
+                    "Test feed",
+                ),
+            )
+            conn.commit()
+
+            row = conn.execute(
+                "SELECT url, name, category, description FROM user_catalog WHERE url = ?",
+                ("https://example.com/feed.xml",),
+            ).fetchone()
+        finally:
+            conn.close()
+
+        self.assertIsNotNone(row)
+        self.assertEqual(row["name"], "Example Feed")
+        self.assertEqual(row["category"], "Tech")
+        self.assertEqual(row["description"], "Test feed")
 
 
 class FeedDiversityRankingTests(unittest.TestCase):

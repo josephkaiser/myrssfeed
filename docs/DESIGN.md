@@ -1,97 +1,92 @@
-# myRSSfeed Design Document
+# myRSSfeed Design Notes
 
-A simple, self-hosted RSS aggregator for personal home use on a Raspberry Pi, accessible across the local network.
+myRSSfeed is a self-hosted RSS reader for a Raspberry Pi on a local network.
 
+## Core offering
 
----
+- Aggregate RSS/Atom feeds into one local library.
+- Keep the browsing experience fast on low-power hardware.
+- Prefer cheap, deterministic enrichment over heavyweight ML/LLM pipelines.
+- Let the user stay in control: browse chronologically, filter aggressively, or use lightweight recommendations.
 
-## Core principles
+## Current product shape
 
-- Chronological feed by default, with personalized ranking layered on top
-- No accounts, no algorithms forced on the user — just feeds, sorted for you
-- All processing runs on-device; scheduled jobs can take hours if needed
-- Goal: 1 month continuous uptime without reboot or crash; monthly maintenance (log rotation, cache clear) is acceptable
+### In scope
 
----
+- Feed subscription management
+- Catalog-based feed discovery
+- Feed autodetection from pasted URLs
+- Entry search and filtering
+- Read and like state
+- Quality scoring from local heuristics
+- Theme labeling from local heuristics
+- Manual WordRank recompute
+- Optional IMAP newsletter ingest
+- Browser-accessible logs and refresh status
 
-## Features
+### Out of scope
 
-### Feed presentation
-- Clicking an article opens it in a new tab; the article row changes color (read state) when returned to
-- Inline images from article content where available (media:content, enclosures, og:image via feedparser)
-- Feed favicons shown inline per article row using `https://www.google.com/s2/favicons?domain={domain}&sz=32`
-- **Colored feed labels**: auto-assigned by hashing the category portion of the feed title (e.g. "US News" in "WSJ | US News") to a hue. Same category across sources → same hue, varied by source name for lightness/saturation. User can override per-feed color via a color picker in settings (stored in `feeds.color` column).
+- LLM summarization
+- Topic-map visualization pages
+- Full-page article scraping as a normal reading path
+- Cloud-only dependencies for normal operation
 
-### Newsletter ingestion
-- A dedicated IMAP mailbox can be configured in Settings and polled automatically
-- Each unseen message is normalized into one `entries` row using a stable source UID, so repeat polls stay idempotent
-- Newsletter bodies are sanitized before storage/rendering, and the article page prefers the cleaned full body when available
+## Runtime architecture
 
-### Personalization (WordRank)
-- Like button per article captures user preference
-- WordRank model: TF-IDF vectors for all articles, cosine similarity to centroid of liked articles → score stored in `entries.score`
-- Feed sorted by a blend of recency + score
-- Recomputed during daily fetch (scikit-learn, no GPU needed — fast on Pi)
+### Web app
 
-### Visualization
-- A topic landscape view showing major themes across all feeds ("information diet" view)
-- **Implementation**: TF-IDF on titles + summaries → truncated SVD (LSA, 50 dims) → t-SNE to 2D, fixed random seed for layout stability across days
-- KMeans on the 50-dim space extracts top keywords per region to label major themes (e.g. "AI & LLMs", "Markets", "Ukraine")
-- Each article is a dot, colored by feed; hover shows title; click opens article
-- Density heatmap overlay (optional, nice-to-have)
-- Recomputed daily with feed fetch; 2D coordinates stored in `entries` table
+- FastAPI serves the UI, JSON endpoints, static assets, and templates.
+- SQLite stores feeds, entries, settings, and user-added catalog rows.
+- The app is designed to run as a long-lived local service on port `8080`.
 
-### Manual refresh
-- A "Refresh now" button in the UI triggers the same full pipeline that runs at 06:00: feed fetch → prune → WordRank scoring → visualization recompute
-- This allows fast iteration during development without waiting a full day
-- The existing `/api/refresh` endpoint triggers the full pipeline, including newsletter ingestion
+### Background pipeline
 
-### Logging and observability
-- **Server-side**: Python `logging` module with a rotating file handler (`logs/myrssfeed.log`), also emitted to stdout (captured by systemd/journalctl on Pi)
-- **Browser-accessible**: `/api/logs` endpoint returns recent log lines (last N lines from the log file) so the user can inspect live behavior from any device on the LAN without SSH
-- Log levels: INFO for normal operations (fetch started, N entries fetched, pipeline complete), WARNING for recoverable issues (feed timeout, parse error), ERROR for failures
-- Goal: when the Pi misbehaves, the user can open `/api/logs` in the browser and share the output for debugging
+The automatic refresh pipeline is intentionally small:
 
----
+1. `compile_feed`
+2. `quality_score`
+3. `theme_labeling`
 
-## Scheduling (daily pipeline at 06:00)
+This keeps the default refresh cheap enough for Raspberry Pi hardware.
 
-```
-06:00  compile_feed     — fetch all feeds, upsert entries, prune old entries
-       newsletter       — poll IMAP, normalize unseen emails, store newsletter entries
-       wordrank         — recompute TF-IDF scores for all entries vs liked articles
-       visualization    — recompute 2D layout (fixed seed), store x/y in entries
-```
+### Optional side flows
 
-Each stage logs start/end and item counts. If a stage fails, later stages are skipped and the error is logged.
+- Newsletter ingest polls IMAP and stores newsletter messages as entries.
+- WordRank can be run manually to recompute recommendation scores from liked entries.
 
----
+## Data model highlights
 
-## Database additions (planned, not yet implemented)
+### feeds
 
-Beyond current tables (`feeds`, `entries`, `entries_fts`, `settings`):
+- Feed URL and title
+- Subscription state
+- Feed kind (`rss` or `newsletter`)
+- Optional category/color metadata
 
-| Column / Table | Purpose |
-|----------------|---------|
-| `entries.read` | Boolean, set when user clicks article |
-| `entries.liked` | Boolean, set via like button |
-| `entries.score` | Float, WordRank cosine similarity score |
-| `entries.viz_x`, `entries.viz_y` | Float, 2D coordinates for visualization |
-| `feeds.color` | Optional hex color override |
-| `feeds.kind` | Distinguish the newsletter mailbox source from normal RSS feeds |
-| `entries.source_uid` | Stable dedupe key for RSS links and newsletter message IDs |
-| `newsletter_*` settings | IMAP host, port, username, password, folder, poll interval, and status |
+### entries
 
----
+- Stable source identity (`source_uid`)
+- Title, link, published timestamp, summary
+- Thumbnail and optional feed-provided Open Graph metadata
+- Read and liked state
+- Recommendation score
+- Quality score and label
+- Theme label and confidence
+- Optional full newsletter body HTML
 
-## Tech decisions
+### settings
 
-| Concern | Decision |
-|---------|----------|
-| Favicons | Google favicon service (`s2/favicons`) — no local caching needed |
-| Feed label colors | Auto-assign from category hash; user override via color picker |
-| Viz layout stability | Fixed random seed in t-SNE/UMAP call |
-| Viz recompute frequency | Daily with feed fetch |
-| WordRank ML | scikit-learn TF-IDF + cosine similarity; no GPU, no sentence-transformers |
-| Logging | Python rotating file handler + stdout; `/api/logs` browser endpoint |
-| Uptime target | 1 month continuous; monthly maintenance window acceptable |
+- Retention and refresh intervals
+- UI theme preference
+- Newsletter IMAP configuration
+- Pipeline / WordRank / newsletter status timestamps
+
+### user_catalog
+
+- User-added feeds that should remain visible in Discover even when they are not part of the bundled catalog
+
+## Product guidance
+
+- Add features only if they improve the day-to-day feed reading experience.
+- Prefer simple heuristics and predictable behavior over cleverness.
+- Keep the codebase honest: if a feature is not in the core offering, remove or clearly isolate its leftovers.
