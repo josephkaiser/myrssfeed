@@ -53,9 +53,11 @@ log_step "Ensuring Python dependencies are installed…"
 if [[ "$OS_TYPE" == "Linux" ]] && command -v systemctl >/dev/null 2>&1; then
     log_step "Checking systemd service ${SERVICE_NAME}.service…"
     SERVICE_ACTIVE=0
+    SHOULD_RESTART=0
     if systemctl is-active --quiet "${SERVICE_NAME}.service" 2>/dev/null && \
        systemctl is-enabled --quiet "${SERVICE_NAME}.service" 2>/dev/null; then
         SERVICE_ACTIVE=1
+        SHOULD_RESTART=1
     fi
 
     if [[ "$SERVICE_ACTIVE" -eq 1 ]]; then
@@ -86,6 +88,11 @@ EOF
 
         sudo systemctl daemon-reload
         sudo systemctl enable --now ${SERVICE_NAME}.service
+    fi
+
+    if [[ "$SHOULD_RESTART" -eq 1 ]]; then
+        log_step "Restarting ${SERVICE_NAME}.service to pick up updated code…"
+        sudo systemctl restart ${SERVICE_NAME}.service
     fi
 
     if systemctl is-active --quiet "${SERVICE_NAME}.service"; then

@@ -35,6 +35,7 @@ class EntryOut(BaseModel):
     read: int = 0
     liked: int = 0
     thumbnail_url: Optional[str] = None
+    og_image_url: Optional[str] = None
     assessment_label: Optional[str] = None
     assessment_label_color: Optional[str] = None
     theme_label: Optional[str] = None

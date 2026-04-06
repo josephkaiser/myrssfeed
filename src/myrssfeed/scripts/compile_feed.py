@@ -5,7 +5,7 @@ import logging
 import calendar
 from datetime import datetime, timezone, timedelta
 from email.utils import parsedate_to_datetime
-from typing import Optional
+from typing import Callable, Optional
 
 import feedparser
 
@@ -17,6 +17,8 @@ logger = logging.getLogger(__name__)
 TITLE_MAX_LEN = 2000
 SUMMARY_MAX_LEN = 50_000
 LINK_MAX_LEN = 2048
+
+ProgressCallback = Callable[[str, dict], None]
 
 
 def _extract_thumbnail(entry) -> Optional[str]:
@@ -136,7 +138,7 @@ def _process_entry(
         return False
 
 
-def run_compile_feed():
+def run_compile_feed(progress_cb: Optional[ProgressCallback] = None) -> dict:
     conn = get_db()
     cursor = conn.cursor()
 
@@ -146,17 +148,86 @@ def run_compile_feed():
     if not feeds:
         logger.info("No feeds configured — nothing to fetch.")
         conn.close()
-        return
+        summary = {
+            "total_feeds": 0,
+            "completed_feeds": 0,
+            "total_items_seen": 0,
+            "total_new_entries": 0,
+            "results": [],
+            "pruned_entries": 0,
+        }
+        if progress_cb:
+            progress_cb("start", summary)
+            progress_cb("done", summary)
+        return summary
 
     new_count_ref = [0]
+    total_feeds = len(feeds)
+    completed_feeds = 0
+    total_items_seen = 0
+    results: list[dict] = []
+
+    if progress_cb:
+        progress_cb(
+            "start",
+            {
+                "total_feeds": total_feeds,
+                "completed_feeds": 0,
+                "total_items_seen": 0,
+                "total_new_entries": 0,
+                "results": [],
+            },
+        )
 
     for row in feeds:
         feed_id, url, feed_title = row["id"], row["url"], row["title"]
         logger.info("Fetching %s", url)
+        feed_result = {
+            "feed_id": int(feed_id),
+            "title": feed_title or url,
+            "url": url,
+            "items_seen": 0,
+            "new_entries": 0,
+            "status": "success",
+            "warning": "",
+            "error": "",
+            "completed_at": "",
+        }
+        if progress_cb:
+            progress_cb(
+                "feed_started",
+                {
+                    "feed": {
+                        "feed_id": int(feed_id),
+                        "title": feed_title or url,
+                        "url": url,
+                    },
+                    "completed_feeds": completed_feeds,
+                    "total_feeds": total_feeds,
+                    "total_items_seen": total_items_seen,
+                    "total_new_entries": new_count_ref[0],
+                },
+            )
         try:
             d = feedparser.parse(url, agent="myRSSfeed/1.0")
         except Exception as exc:
             logger.warning("Failed to fetch/parse feed %s: %s", url, exc)
+            feed_result["status"] = "error"
+            feed_result["error"] = str(exc)
+            feed_result["completed_at"] = datetime.now(timezone.utc).isoformat()
+            completed_feeds += 1
+            results.append(feed_result)
+            if progress_cb:
+                progress_cb(
+                    "feed_finished",
+                    {
+                        "feed": feed_result,
+                        "completed_feeds": completed_feeds,
+                        "total_feeds": total_feeds,
+                        "total_items_seen": total_items_seen,
+                        "total_new_entries": new_count_ref[0],
+                    },
+                )
             continue
 
         if getattr(d, "bozo", False) and getattr(d, "bozo_exception", None):
@@ -165,6 +236,10 @@ def run_compile_feed():
                 url,
                 d.bozo_exception,
             )
+            feed_result["warning"] = str(d.bozo_exception)
+
+        resolved_title = feed_title or d.feed.get("title") or url
+        feed_result["title"] = resolved_title
 
         # Backfill feed title if not set
         if not feed_title and d.feed.get("title"):
@@ -176,18 +251,41 @@ def run_compile_feed():
             except Exception as exc:
                 logger.debug("Could not backfill feed title: %s", exc)
 
-        for entry in d.entries:
+        entries_list = list(d.entries)
+        feed_result["items_seen"] = len(entries_list)
+        total_items_seen += feed_result["items_seen"]
+        feed_new_count_ref = [0]
+
+        for entry in entries_list:
             try:
                 _process_entry(
                     cursor=cursor,
                     feed_id=feed_id,
                     entry=entry,
                     source_uid=getattr(entry, "link", None),
-                    new_count_ref=new_count_ref,
+                    new_count_ref=feed_new_count_ref,
                 )
             except Exception as exc:
                 logger.debug("Skipping malformed entry in feed %s: %s", url, exc)
                 continue
+
+        feed_result["new_entries"] = int(feed_new_count_ref[0])
+        new_count_ref[0] += int(feed_new_count_ref[0])
+        feed_result["completed_at"] = datetime.now(timezone.utc).isoformat()
+        completed_feeds += 1
+        results.append(feed_result)
+
+        if progress_cb:
+            progress_cb(
+                "feed_finished",
+                {
+                    "feed": feed_result,
+                    "completed_feeds": completed_feeds,
+                    "total_feeds": total_feeds,
+                    "total_items_seen": total_items_seen,
+                    "total_new_entries": new_count_ref[0],
+                },
+            )
 
     new_count = new_count_ref[0]
     conn.commit()
@@ -197,10 +295,21 @@ def run_compile_feed():
         new_count,
     )
 
-    _prune_old_entries()
+    pruned_entries = _prune_old_entries()
+    summary = {
+        "total_feeds": total_feeds,
+        "completed_feeds": completed_feeds,
+        "total_items_seen": total_items_seen,
+        "total_new_entries": new_count,
+        "results": results,
+        "pruned_entries": pruned_entries,
+    }
+    if progress_cb:
+        progress_cb("done", summary)
+    return summary
 
 
-def _prune_old_entries() -> None:
+def _prune_old_entries() -> int:
     """Remove entries older than retention_days. Never raises; logs on failure."""
     try:
         days = int(get_setting("retention_days"))
@@ -209,7 +318,7 @@ def _prune_old_entries() -> None:
 
     if days <= 0:
         logger.info("Pruning disabled (retention_days=%d).", days)
-        return
+        return 0
 
     try:
         cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
@@ -223,8 +332,10 @@ def _prune_old_entries() -> None:
         conn.close()
         if deleted:
             logger.info("Pruned %d entr%s older than %d days.", deleted, "y" if deleted == 1 else "ies", days)
+        return int(deleted or 0)
     except Exception as exc:
         logger.warning("Prune failed (retention_days=%d): %s", days, exc)
+        return 0
 
 
 if __name__ == "__main__":

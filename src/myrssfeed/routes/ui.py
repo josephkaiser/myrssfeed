@@ -96,22 +96,19 @@ class UIRoutes:
             theme_labels,
             sort_val,
         )[:initial_limit]
+        topic_groups = entries.group_entries_by_theme(entries_list)
         trending = entries.load_trending(conn)
         conn.close()
 
-        if trending:
-            try:
-                self.set_setting("wordrank_last_status", "success")
-            except Exception:
-                self.logger.exception("Could not record WordRank status from trending computation")
-
         return self.templates.TemplateResponse(
-            "index.html",
-            {
+            request=request,
+            name="index.html",
+            context={
                 "request": request,
                 "feeds": feeds,
                 "feed_map": feed_map,
                 "entries": entries_list,
+                "topic_groups": topic_groups,
                 "total_entries": total_entries,
                 "total_entries_display": f"{total_entries:,}",
                 "trending": trending,
@@ -199,17 +196,6 @@ class UIRoutes:
                 "sort": sort_val if sort_val != entries.SORT_CHRONOLOGICAL else None,
             },
         )
-        prev_url, next_url = entries.article_neighbor_urls(
-            conn,
-            entry_id,
-            q,
-            active_feed_id,
-            quality_level,
-            days_int,
-            source_scope,
-            theme_labels,
-            sort_val,
-        )
         feed_row = conn.execute(
             "SELECT id, url, title, color FROM feeds WHERE id = ?",
             (entry["feed_id"],),
@@ -229,14 +215,13 @@ class UIRoutes:
                 }
             }
         return self.templates.TemplateResponse(
-            "article.html",
-            {
+            request=request,
+            name="article.html",
+            context={
                 "request": request,
                 "entry": entry,
                 "feed_map": feed_map,
                 "back_url": back_url,
-                "prev_article_url": prev_url,
-                "next_article_url": next_url,
             },
         )
 
@@ -246,8 +231,9 @@ class UIRoutes:
         trending = entries.load_trending(conn)
         conn.close()
         return self.templates.TemplateResponse(
-            "feeds.html",
-            {
+            request=request,
+            name="feeds.html",
+            context={
                 "request": request,
                 "feeds": feeds,
                 "feed_map": catalog.build_feed_map(feeds),
@@ -263,8 +249,9 @@ class UIRoutes:
         feeds = self._load_subscribed_feeds(conn)
         conn.close()
         return self.templates.TemplateResponse(
-            "add_feed.html",
-            {
+            request=request,
+            name="add_feed.html",
+            context={
                 "request": request,
                 "feeds": feeds,
                 "feed_map": catalog.build_feed_map(feeds),
@@ -297,8 +284,9 @@ class UIRoutes:
         service_feeds = [dict(row) for row in service_rows]
         subscribed = [row["url"] for row in feeds]
         return self.templates.TemplateResponse(
-            "discover.html",
-            {
+            request=request,
+            name="discover.html",
+            context={
                 "request": request,
                 "feeds": feeds,
                 "feed_map": catalog.build_feed_map(feeds),
@@ -319,8 +307,9 @@ class UIRoutes:
         if "max_entries" not in current:
             current["max_entries"] = self.get_setting("max_entries")
         return self.templates.TemplateResponse(
-            "settings.html",
-            {
+            request=request,
+            name="settings.html",
+            context={
                 "request": request,
                 "feeds": feeds,
                 "feed_map": catalog.build_feed_map(feeds),
@@ -394,8 +383,9 @@ class UIRoutes:
         conn.close()
 
         return self.templates.TemplateResponse(
-            "stats.html",
-            {
+            request=request,
+            name="stats.html",
+            context={
                 "request": request,
                 "total_articles": total_articles,
                 "total_feeds": total_feeds,

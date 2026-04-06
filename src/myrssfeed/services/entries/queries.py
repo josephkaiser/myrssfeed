@@ -1,4 +1,3 @@
-import random
 import sqlite3
 from typing import AbstractSet, Optional
 
@@ -9,24 +8,14 @@ from .constants import (
     SORT_QUALITY_ASC,
     SORT_QUALITY_DESC,
     SOURCE_SCOPE_MY,
-    WALK_CANDIDATE_LIMIT,
-    WALK_INITIAL_STRENGTH,
 )
 from .filters import build_entry_filters
-from .parsing import (
-    build_url_with_query_params,
-    normalize_walk_direction,
-    normalize_walk_strength,
-    parse_int,
-    parse_int_list,
-)
+from .parsing import build_url_with_query_params
 from .ranking import (
-    apply_daily_source_diversity,
+    balance_entries_by_theme,
     compute_trending,
-    finalize_entry_row,
     ranking_expr,
 )
-from .walk import pick_walk_candidate
 
 
 def fetch_ranked_entries(
@@ -46,6 +35,7 @@ def fetch_ranked_entries(
         SELECT e.id, e.feed_id, f.title AS feed_title, f.url AS feed_url,
                e.title, e.link, e.published, DATE(e.published) AS published_day, e.summary,
                e.thumbnail_url,
+               e.og_image_url,
                COALESCE(e.read, 0) AS read,
                COALESCE(e.liked, 0) AS liked,
                COALESCE(e.score, 0.0) AS score,
@@ -71,26 +61,13 @@ def fetch_ranked_entries(
         query += " WHERE " + " AND ".join(filters)
     if sort == SORT_QUALITY_DESC:
         query += " ORDER BY COALESCE(e.quality_score, 0) DESC, (e.published IS NULL), e.published DESC, e.id DESC"
-        rows = conn.execute(query, params).fetchall()
-        return [dict(row) for row in rows]
-    if sort == SORT_QUALITY_ASC:
+    elif sort == SORT_QUALITY_ASC:
         query += " ORDER BY COALESCE(e.quality_score, 0) ASC, (e.published IS NULL), e.published DESC, e.id DESC"
-        rows = conn.execute(query, params).fetchall()
-        return [dict(row) for row in rows]
+    else:
+        query += " ORDER BY (e.published IS NULL), DATE(e.published) DESC, e.published DESC, base_rank DESC"
 
-    query += " ORDER BY (e.published IS NULL), DATE(e.published) DESC, e.published DESC, base_rank DESC"
-    rows = conn.execute(query, params).fetchall()
-    random_enabled = random_seed is not None
-    recency_factor = 0.3 if random_enabled else 0.8
-    rank_factor = 0.2 if random_enabled else 0.2
-    noise_factor = 0.5 if random_enabled else 0.0
-    return apply_daily_source_diversity(
-        [dict(row) for row in rows],
-        random_seed=random_seed,
-        recency_factor=recency_factor,
-        rank_factor=rank_factor,
-        noise_factor=noise_factor,
-    )
+    rows = [dict(row) for row in conn.execute(query, params).fetchall()]
+    return balance_entries_by_theme(rows, random_seed=random_seed if sort == SORT_CHRONOLOGICAL else None)
 
 
 def article_neighbor_urls(
@@ -148,6 +125,7 @@ def load_trending(conn: sqlite3.Connection) -> list[dict]:
         SELECT e.id, e.feed_id, f.title AS feed_title,
                e.title, e.link, e.published, e.summary,
                e.thumbnail_url,
+               e.og_image_url,
                COALESCE(e.read, 0) AS read,
                COALESCE(e.liked, 0) AS liked,
                COALESCE(e.score, 0.0) AS score,
@@ -160,112 +138,3 @@ def load_trending(conn: sqlite3.Connection) -> list[dict]:
     query += " DESC LIMIT 200"
     rows = conn.execute(query).fetchall()
     return compute_trending([dict(row) for row in rows])
-
-
-def fetch_random_entry(
-    conn: sqlite3.Connection,
-    q: Optional[str],
-    feed_id: Optional[int],
-    quality_level: Optional[int],
-    days_int: Optional[int],
-    source_scope: str,
-    theme_labels: Optional[set[str]],
-    exclude_id: Optional[int] = None,
-    exclude_ids: Optional[str] = None,
-    walk_anchor_id: Optional[int] = None,
-    walk_direction: Optional[int] = None,
-    walk_strength: Optional[float] = None,
-    static_catalog_urls: AbstractSet[str] = STATIC_CATALOG_URLS,
-) -> Optional[dict]:
-    filters, params = build_entry_filters(
-        q,
-        feed_id,
-        quality_level,
-        days_int,
-        source_scope,
-        theme_labels,
-        static_catalog_urls,
-    )
-    excluded_ids = parse_int_list(exclude_ids)
-    if exclude_id is not None:
-        excluded_ids.add(int(exclude_id))
-    if excluded_ids:
-        excluded_list = sorted(excluded_ids)
-        placeholders = ", ".join("?" for _ in excluded_list)
-        filters.append(f"e.id NOT IN ({placeholders})")
-        params.extend(excluded_list)
-
-    base_query = "FROM entries e JOIN feeds f ON f.id = e.feed_id"
-    where_clause = " WHERE " + " AND ".join(filters) if filters else ""
-
-    total = conn.execute(f"SELECT COUNT(*) {base_query}{where_clause}", params).fetchone()[0]
-    if not total:
-        return None
-
-    anchor_id = parse_int(walk_anchor_id)
-    direction = normalize_walk_direction(walk_direction)
-    strength = normalize_walk_strength(walk_strength)
-    if strength is None:
-        strength = WALK_INITIAL_STRENGTH if anchor_id is not None and direction is not None else 0.0
-
-    if anchor_id is not None and direction is not None:
-        anchor_row = conn.execute(
-            """
-            SELECT e.id, e.feed_id, f.title AS feed_title, f.url AS feed_url,
-                   e.title, e.link, e.published, e.summary,
-                   e.thumbnail_url,
-                   COALESCE(e.read, 0) AS read,
-                   COALESCE(e.liked, 0) AS liked,
-                   COALESCE(e.score, 0.0) AS score,
-                   COALESCE(e.quality_score, 0.0) AS quality_score,
-                   e.assessment_label,
-                   e.assessment_label_color
-            FROM entries e
-            JOIN feeds f ON f.id = e.feed_id
-            WHERE e.id = ?
-            """,
-            (anchor_id,),
-        ).fetchone()
-        if anchor_row:
-            walk_rows = conn.execute(
-                f"""
-                SELECT e.id, e.feed_id, f.title AS feed_title, f.url AS feed_url,
-                       e.title, e.link, e.published, e.summary,
-                       e.thumbnail_url,
-                       COALESCE(e.read, 0) AS read,
-                       COALESCE(e.liked, 0) AS liked,
-                       COALESCE(e.score, 0.0) AS score,
-                       COALESCE(e.quality_score, 0.0) AS quality_score,
-                       e.assessment_label,
-                       e.assessment_label_color
-                {base_query}
-                {where_clause}
-                ORDER BY (e.published IS NULL), DATE(e.published) DESC, e.published DESC, e.id DESC
-                LIMIT ?
-                """,
-                params + [WALK_CANDIDATE_LIMIT],
-            ).fetchall()
-            chosen = pick_walk_candidate([dict(row) for row in walk_rows], dict(anchor_row), direction, strength)
-            if chosen:
-                return chosen
-
-    offset = random.randrange(total)
-    row = conn.execute(
-        f"""
-        SELECT e.id, e.feed_id, f.title AS feed_title, f.url AS feed_url,
-               e.title, e.link, e.published, e.summary,
-               e.thumbnail_url,
-               COALESCE(e.read, 0) AS read,
-               COALESCE(e.liked, 0) AS liked,
-               COALESCE(e.score, 0.0) AS score,
-               COALESCE(e.quality_score, 0.0) AS quality_score,
-               e.assessment_label,
-               e.assessment_label_color
-        {base_query}
-        {where_clause}
-        ORDER BY (e.published IS NULL), DATE(e.published) DESC, e.published DESC, e.id DESC
-        LIMIT 1 OFFSET ?
-        """,
-        params + [offset],
-    ).fetchone()
-    return dict(row) if row else None

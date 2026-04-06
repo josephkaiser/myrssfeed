@@ -257,7 +257,7 @@ def _label_from_quality(quality: float) -> tuple[str, str]:
     return LABEL_STYLES[2]
 
 
-def run_quality_score() -> None:
+def run_quality_score() -> int:
     """
     Compute quality_score for all entries using title/summary heuristics
     (length and spam-like pattern detection), plus a light publisher prior.
@@ -282,7 +282,7 @@ def run_quality_score() -> None:
     ).fetchall()
     if not rows:
         conn.close()
-        return
+        return 0
 
     # Build a "NYT/WSJ signature" word model:
     # token weights are proportional to how much more common a token is in
@@ -378,6 +378,7 @@ def run_quality_score() -> None:
     conn.commit()
     conn.close()
     logger.info("Quality scores updated for %d entries.", len(updates))
+    return len(updates)
 
 
 if __name__ == "__main__":

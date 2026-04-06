@@ -138,7 +138,7 @@ def classify_theme(title: Optional[str], summary: Optional[str], link: Optional[
     return "World News", 0.45
 
 
-def run_theme_labeling() -> None:
+def run_theme_labeling() -> int:
     conn = get_db()
     _ensure_theme_columns(conn)
 
@@ -153,7 +153,7 @@ def run_theme_labeling() -> None:
 
     if not rows:
         conn.close()
-        return
+        return 0
 
     updates = []
     for r in rows:
@@ -174,6 +174,7 @@ def run_theme_labeling() -> None:
     conn.commit()
     conn.close()
     logger.info("Theme labeling updated for %d entries.", len(updates))
+    return len(updates)
 
 
 if __name__ == "__main__":

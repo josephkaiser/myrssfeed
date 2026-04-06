@@ -1,4 +1,5 @@
 import hashlib
+from collections import OrderedDict
 from collections import deque
 from typing import Optional
 
@@ -30,8 +31,14 @@ def finalize_entry_row(row: dict) -> dict:
     entry.pop("base_rank", None)
     entry.pop("published_day", None)
     entry.pop("effective_rank", None)
+    entry["theme_label"] = normalize_theme_label(entry.get("theme_label"))
     entry["feed_domain"] = feed_host(feed_url) or None
     return entry
+
+
+def normalize_theme_label(value: Optional[str]) -> str:
+    label = str(value or "").strip()
+    return label or "World News"
 
 
 def seeded_noise(seed: Optional[int], row: dict) -> float:
@@ -58,6 +65,53 @@ def source_key(row: dict) -> str:
     if feed_id:
         return f"feed:{feed_id}"
     return f"row:{row.get('id', '')}"
+
+
+def balance_entries_by_theme(entries: list[dict], random_seed: Optional[int] = None) -> list[dict]:
+    if not entries:
+        return []
+
+    grouped: "OrderedDict[str, list[dict]]" = OrderedDict()
+    for row in entries:
+        row_copy = dict(row)
+        row_copy["theme_label"] = normalize_theme_label(row_copy.get("theme_label"))
+        grouped.setdefault(row_copy["theme_label"], []).append(row_copy)
+
+    buckets: "OrderedDict[str, deque[dict]]" = OrderedDict()
+    for label, rows in grouped.items():
+        diversified = apply_source_diversity(
+            rows,
+            random_seed=random_seed,
+            recency_factor=1.0,
+            rank_factor=0.0,
+            noise_factor=0.0,
+            recent_window=4,
+            repeat_penalty=0.22,
+            streak_penalty=0.42,
+            novelty_bonus=0.08,
+        )
+        buckets[label] = deque(diversified)
+
+    ranked: list[dict] = []
+    while True:
+        appended = False
+        for bucket in buckets.values():
+            if not bucket:
+                continue
+            ranked.append(bucket.popleft())
+            appended = True
+        if not appended:
+            break
+
+    return ranked
+
+
+def group_entries_by_theme(entries: list[dict]) -> list[dict]:
+    grouped: "OrderedDict[str, list[dict]]" = OrderedDict()
+    for entry in entries:
+        label = normalize_theme_label(entry.get("theme_label"))
+        grouped.setdefault(label, []).append(entry)
+    return [{"label": label, "entries": rows} for label, rows in grouped.items()]
 
 
 def apply_source_diversity(

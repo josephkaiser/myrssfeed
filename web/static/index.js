@@ -2,11 +2,7 @@
   const navOverlay = document.getElementById("nav-overlay");
   const NAV_OPEN_KEY = "nav-open";
   const MOBILE_MAX = 640;
-const ARTICLE_PATH_RE = /^\/article\/(\d+)\/?$/;
 const ARTICLE_CONTEXT_KEYS = ["q", "feed_id", "quality_level", "days", "scope", "themes", "sort"];
-const RANDOM_HISTORY_KEY = "myrssfeed_random_history";
-const RANDOM_HISTORY_LIMIT = 120;
-const RANDOM_RETRY_WINDOWS = [120, 40, 12, 0];
 
   function isMobileViewport() {
     return typeof window !== "undefined" && window.innerWidth <= MOBILE_MAX;
@@ -35,11 +31,6 @@ function _articleContextParams() {
   return params;
 }
 
-function _currentArticleId() {
-  const match = (window.location.pathname || "").match(ARTICLE_PATH_RE);
-  return match ? match[1] : "";
-}
-
 function _articleUrlForId(entryId) {
   const params = _articleContextParams();
   const qs = params.toString();
@@ -64,138 +55,6 @@ function _withArticleContext(href) {
   } catch (_) {
     return href;
   }
-}
-
-function _parseRandomHistory(raw) {
-  if (!raw) return [];
-  try {
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-    return parsed
-      .map((value) => parseInt(value, 10))
-      .filter((value) => Number.isInteger(value) && value > 0);
-  } catch (_) {
-    return [];
-  }
-}
-
-function _loadRandomHistory() {
-  return _parseRandomHistory(_safeSessionGet(RANDOM_HISTORY_KEY));
-}
-
-function _saveRandomHistory(history) {
-  const next = Array.isArray(history) ? history.slice(-RANDOM_HISTORY_LIMIT) : [];
-  _safeSessionSet(RANDOM_HISTORY_KEY, JSON.stringify(next));
-}
-
-function _rememberRandomArticle(entryId) {
-  const id = parseInt(entryId, 10);
-  if (!Number.isInteger(id) || id <= 0) return;
-  const history = _loadRandomHistory().filter((value) => value !== id);
-  history.push(id);
-  _saveRandomHistory(history);
-}
-
-function _sessionRandomIds(extraIds = []) {
-  const ids = [];
-  const seen = new Set();
-  const add = (value) => {
-    const id = parseInt(value, 10);
-    if (!Number.isInteger(id) || id <= 0 || seen.has(id)) return;
-    seen.add(id);
-    ids.push(id);
-  };
-  _loadRandomHistory().forEach(add);
-  extraIds.forEach(add);
-  return ids.slice(-RANDOM_HISTORY_LIMIT);
-}
-
-function _randomExclusionBatches(extraIds = []) {
-  const full = _sessionRandomIds(extraIds);
-  const batches = [];
-  const seen = new Set();
-  for (const windowSize of RANDOM_RETRY_WINDOWS) {
-    const batch = windowSize > 0 ? full.slice(-windowSize) : [];
-    const key = batch.join(",");
-    if (seen.has(key)) continue;
-    seen.add(key);
-    batches.push(batch);
-  }
-  return batches;
-}
-
-async function _openRandomArticle({ excludeId = "", walk = null } = {}) {
-  const currentId = _currentArticleId();
-  const extraIds = [];
-  if (excludeId) extraIds.push(excludeId);
-  if (currentId) extraIds.push(currentId);
-  const batches = _randomExclusionBatches(extraIds);
-
-  for (const batch of batches) {
-    const params = _articleContextParams();
-    if (batch.length) {
-      params.set("exclude_ids", batch.join(","));
-    }
-    if (walk && walk.anchorId) {
-      params.set("walk_anchor_id", walk.anchorId);
-    }
-    if (walk && typeof walk.direction === "number" && !Number.isNaN(walk.direction)) {
-      params.set("walk_direction", String(walk.direction));
-    }
-    if (walk && typeof walk.strength === "number" && !Number.isNaN(walk.strength)) {
-      params.set("walk_strength", String(walk.strength));
-    }
-
-    try {
-      const res = await fetch("/api/random-article?" + params.toString());
-      if (!res.ok) {
-        if (res.status === 404) {
-          continue;
-        }
-        const data = await res.json().catch(() => ({}));
-        toast(data.detail || "No random article found.", false);
-        return;
-      }
-      const data = await res.json();
-      _rememberRandomArticle(data.id);
-      const target = data.article_url || _articleUrlForId(data.id);
-      window.location.assign(target);
-      return;
-    } catch (_) {
-      toast("Network error loading a random article.", false);
-      return;
-    }
-  }
-
-  toast("No random article found.", false);
-}
-
-async function _walkAndOpenArticle(direction) {
-  const nav = typeof window !== "undefined" ? window.ARTICLE_NAV || null : null;
-  if (nav) {
-    const targetUrl = direction < 0 ? nav.prevUrl : nav.nextUrl;
-    if (targetUrl) {
-      window.location.assign(targetUrl);
-    } else {
-      toast(direction < 0 ? "This is the first article in the feed." : "This is the last article in the feed.");
-    }
-    return;
-  }
-
-  const entryId = _currentArticleId();
-  if (!entryId) {
-    await _openRandomArticle();
-    return;
-  }
-
-  await _openRandomArticle({
-    excludeId: entryId,
-    walk: {
-      anchorId: entryId,
-      direction: direction < 0 ? -1 : 1,
-      strength: 1,
-    },
-  });
 }
 
   function openNav() {
@@ -265,9 +124,6 @@ async function _walkAndOpenArticle(direction) {
           <button type="button" data-action="filter">
             <span class="menu-icon">&#128269;</span><span>Toggle filter</span>
           </button>
-          <button type="button" data-action="random">
-            <span class="menu-icon">&#127922;</span><span>Random article</span>
-          </button>
           <a href="/settings">
             <span class="menu-icon">&#9881;</span><span>Settings</span>
           </a>
@@ -321,9 +177,6 @@ async function _walkAndOpenArticle(direction) {
           case "filter":
             headerToggleFilter();
             break;
-          case "random":
-            headerToggleRandom();
-            break;
           default:
             break;
         }
@@ -351,11 +204,6 @@ async function _walkAndOpenArticle(direction) {
     list.classList.toggle("open");
   }
 
-  async function headerToggleRandom() {
-    await _openRandomArticle();
-  }
-  window.headerToggleRandom = headerToggleRandom;
-
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && navOverlay && navOverlay.classList.contains("open")) {
       closeNav();
@@ -363,6 +211,24 @@ async function _walkAndOpenArticle(direction) {
   });
 
   // ── Header quick-action status lights ─────────────────────────────
+  function _headerFeedName(feed) {
+    if (!feed) return "";
+    return feed.title || feed.url || "";
+  }
+
+  function _headerRefreshRunningLabel(state) {
+    const total = typeof state.total_feeds === "number" ? state.total_feeds : 0;
+    const completed = typeof state.completed_feeds === "number" ? state.completed_feeds : 0;
+    const current = _headerFeedName(state.current_feed);
+    if (total > 0 && current) {
+      return `${completed}/${total} • ${current}`;
+    }
+    if (total > 0) {
+      return `${completed}/${total} feeds`;
+    }
+    return state.stage_label || "Running";
+  }
+
   function _updateHeaderDot(id, state, opts = {}) {
     const dot = document.getElementById(id);
     if (!dot) return;
@@ -371,7 +237,11 @@ async function _walkAndOpenArticle(direction) {
       dot.classList.add("running");
       if (opts.textId) {
         const textEl = document.getElementById(opts.textId);
-        if (textEl) textEl.textContent = "Running";
+        if (textEl) {
+          textEl.textContent = opts.kind === "refresh"
+            ? _headerRefreshRunningLabel(state)
+            : "Running";
+        }
       }
       return;
     }
@@ -435,6 +305,10 @@ async function _walkAndOpenArticle(direction) {
         minutes_since_last_success: typeof data.minutes_since_last_success === "number"
           ? data.minutes_since_last_success
           : null,
+        total_feeds: typeof data.total_feeds === "number" ? data.total_feeds : 0,
+        completed_feeds: typeof data.completed_feeds === "number" ? data.completed_feeds : 0,
+        current_feed: data.current_feed || null,
+        stage_label: data.stage_label || "",
       }, { kind: "refresh", textId: "header-refresh-status-text" });
     } catch (_) {
       // best-effort only
@@ -528,7 +402,7 @@ async function _walkAndOpenArticle(direction) {
   (function initHeaderStatus() {
     if (document.getElementById("header-refresh-status-dot")) {
       _fetchHeaderRefreshStatus();
-      setInterval(_fetchHeaderRefreshStatus, 8000);
+      setInterval(_fetchHeaderRefreshStatus, 2000);
     }
     if (document.getElementById("header-wordrank-status-dot")) {
       _fetchHeaderWordrankStatus();
@@ -724,42 +598,6 @@ async function _walkAndOpenArticle(direction) {
     });
   })();
 
- // ── Image lightbox ──────────────────────────────────────────────
- const lightbox    = document.getElementById("img-lightbox");
- const lightboxImg = document.getElementById("img-lightbox-img");
-
- function openLightbox(src) {
-   if (!lightbox || !lightboxImg) return;
-   lightboxImg.src = src;
-   lightbox.classList.add("open");
-   document.body.style.overflow = "hidden";
- }
-
- function closeLightbox() {
-   if (!lightbox || !lightboxImg) return;
-   lightbox.classList.remove("open");
-   lightboxImg.src = "";
-   document.body.style.overflow = "";
- }
-
- if (lightbox) {
-   lightbox.addEventListener("click", (e) => {
-     if (e.target === lightbox) closeLightbox();
-   });
- }
-
- document.addEventListener("keydown", (e) => {
-   if (e.key === "Escape" && lightbox && lightbox.classList.contains("open")) {
-     closeLightbox();
-   }
- });
-
- document.addEventListener("click", (e) => {
-   if (e.target.classList && e.target.classList.contains("entry-thumb")) {
-     openLightbox(e.target.src);
-   }
- });
-
 (function initArticleLinkContext() {
   document.querySelectorAll('a[href^="/article/"]').forEach((link) => {
     link.href = _withArticleContext(link.getAttribute("href") || link.href);
@@ -783,64 +621,110 @@ async function _walkAndOpenArticle(direction) {
   }
 })();
 
-(function initRandomArticleHistory() {
-  if (!document.body.classList.contains("article-page")) return;
-  _rememberRandomArticle(_currentArticleId());
-})();
+(function initEntryHoverPreview() {
+  const preview = document.getElementById("entry-hover-preview");
+  const previewUrl = document.getElementById("entry-hover-preview-url");
+  const previewImage = document.getElementById("entry-hover-preview-image");
+  const canHover = typeof window !== "undefined"
+    && typeof window.matchMedia === "function"
+    && window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+  let activeRow = null;
 
-(function initArticleSwipeNavigation() {
-  if (!document.body.classList.contains("article-page")) return;
-  const articleView = document.querySelector(".article-view");
-  if (!articleView) return;
+  if (!preview || !previewUrl || !previewImage) return;
 
-  let startX = 0;
-  let startY = 0;
-  let tracking = false;
-
-  function reset() {
-    tracking = false;
-    startX = 0;
-    startY = 0;
+  function normalizePreviewUrl(value) {
+    const raw = String(value || "").trim();
+    if (!raw) return "";
+    try {
+      return new URL(raw, window.location.origin).href;
+    } catch (_) {
+      return raw;
+    }
   }
 
-  articleView.addEventListener("touchstart", (e) => {
-    if (!e.touches || e.touches.length !== 1) return;
-    const touch = e.touches[0];
-    tracking = true;
-    startX = touch.clientX;
-    startY = touch.clientY;
-  }, { passive: true });
+  function positionPreview(clientX, clientY) {
+    if (preview.hidden) return;
+    const margin = 18;
+    const rect = preview.getBoundingClientRect();
+    const maxLeft = Math.max(margin, window.innerWidth - rect.width - margin);
+    const maxTop = Math.max(margin, window.innerHeight - rect.height - margin);
+    preview.style.left = `${Math.max(margin, Math.min(clientX + 20, maxLeft))}px`;
+    preview.style.top = `${Math.max(margin, Math.min(clientY + 20, maxTop))}px`;
+  }
 
-  articleView.addEventListener("touchend", async (e) => {
-    if (!tracking) return;
-    const touch = e.changedTouches && e.changedTouches[0];
-    if (!touch) {
-      reset();
+  function showPreview(row, clientX = null, clientY = null) {
+    if (!row) return;
+    const url = normalizePreviewUrl(row.dataset.previewUrl || row.getAttribute("href") || "");
+    const image = String(row.dataset.previewImage || "").trim();
+    if (!url && !image) return;
+
+    activeRow = row;
+    previewUrl.textContent = url;
+
+    if (image) {
+      previewImage.src = image;
+      previewImage.hidden = false;
+    } else {
+      previewImage.hidden = true;
+      previewImage.removeAttribute("src");
+    }
+
+    preview.hidden = false;
+    preview.classList.add("visible");
+
+    if (typeof clientX === "number" && typeof clientY === "number") {
+      positionPreview(clientX, clientY);
       return;
     }
-    const dx = touch.clientX - startX;
-    const dy = touch.clientY - startY;
-    reset();
-    if (Math.abs(dx) < 72) return;
-    if (Math.abs(dx) < Math.abs(dy) * 1.25) return;
-    await _walkAndOpenArticle(dx > 0 ? 1 : -1);
-  }, { passive: true });
 
-  articleView.addEventListener("touchcancel", reset, { passive: true });
-
-  function isTypingTarget(target) {
-    if (!target || !target.tagName) return false;
-    const tag = target.tagName.toLowerCase();
-    return tag === "input" || tag === "textarea" || tag === "select" || target.isContentEditable;
+    const rect = row.getBoundingClientRect();
+    positionPreview(rect.right, rect.top + 10);
   }
 
-  document.addEventListener("keydown", async (e) => {
-    if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.altKey) return;
-    if (isTypingTarget(e.target)) return;
-    if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+  function hidePreview(row = null) {
+    if (row && activeRow && row !== activeRow) return;
+    activeRow = null;
+    preview.hidden = true;
+    preview.classList.remove("visible");
+    previewImage.hidden = true;
+    previewImage.removeAttribute("src");
+  }
 
-    e.preventDefault();
-    await _walkAndOpenArticle(e.key === "ArrowRight" ? 1 : -1);
+  function bindRow(row) {
+    if (!row || row.dataset.hoverBound === "1") return;
+    row.dataset.hoverBound = "1";
+
+    row.addEventListener("mouseenter", (event) => {
+      if (!canHover) return;
+      showPreview(row, event.clientX, event.clientY);
+    });
+    row.addEventListener("mousemove", (event) => {
+      if (!canHover || activeRow !== row) return;
+      positionPreview(event.clientX, event.clientY);
+    });
+    row.addEventListener("mouseleave", () => {
+      if (!canHover) return;
+      hidePreview(row);
+    });
+    row.addEventListener("focus", () => {
+      showPreview(row);
+    });
+    row.addEventListener("blur", () => {
+      hidePreview(row);
+    });
+  }
+
+  document.querySelectorAll(".entry-row").forEach(bindRow);
+  window.bindEntryRowHoverPreview = bindRow;
+
+  document.addEventListener("scroll", () => {
+    if (!activeRow || !canHover) return;
+    const rect = activeRow.getBoundingClientRect();
+    positionPreview(rect.right, rect.top + 10);
+  }, { passive: true });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") hidePreview();
   });
 })();
 
@@ -926,13 +810,17 @@ async function _walkAndOpenArticle(direction) {
   window.handleNavbarAddFeed = handleNavbarAddFeed;
 
   // ── Read state ──────────────────────────────────────────────────
-  function markRead(entryId, el) {
-    const card = el.closest(".entry-card");
-    if (card && !card.classList.contains("read")) {
-      card.classList.add("read");
-      fetch(`/api/entries/${entryId}/read`, { method: "POST" }).catch(() => {});
+  function markRead(entryId, eventOrEl) {
+    const target = eventOrEl && eventOrEl.currentTarget ? eventOrEl.currentTarget : eventOrEl;
+    const row = target && typeof target.closest === "function"
+      ? target.closest(".entry-row")
+      : null;
+    if (row && !row.classList.contains("read")) {
+      row.classList.add("read");
     }
+    fetch(`/api/entries/${entryId}/read`, { method: "POST", keepalive: true }).catch(() => {});
   }
+  window.markRead = markRead;
 
   // ── Delete feed from sidebar/nav ────────────────────────────────────
   async function deleteFeed(feedId, btn) {
@@ -1030,21 +918,149 @@ function _publishedDateText(published) {
 
   // ── Lazy loading for main article list ────────────────────────────
   (function initLazyLoading() {
-    const entriesPanel = document.getElementById("entries-panel");
-    if (!entriesPanel) return; // Only on the main index page
+    const entriesList = document.getElementById("entries-list");
+    if (!entriesList) return;
+
+    const topicSections = new Map();
+
+    function normalizeThemeLabel(value) {
+      const label = String(value || "").trim();
+      return label || "World News";
+    }
+
+    function collectTopicSections() {
+      topicSections.clear();
+      entriesList.querySelectorAll(".topic-section").forEach((section) => {
+        const label = section.dataset.topicLabel || "";
+        const rows = section.querySelector(".topic-section-rows");
+        if (label && rows) {
+          topicSections.set(label, rows);
+        }
+      });
+    }
+
+    function ensureTopicSection(label) {
+      const normalized = normalizeThemeLabel(label);
+      if (topicSections.has(normalized)) {
+        return topicSections.get(normalized);
+      }
+
+      const section = document.createElement("section");
+      section.className = "topic-section";
+      section.dataset.topicLabel = normalized;
+
+      const header = document.createElement("div");
+      header.className = "topic-section-header";
+      const title = document.createElement("h2");
+      title.className = "topic-section-title";
+      title.textContent = normalized;
+      header.appendChild(title);
+
+      const rows = document.createElement("div");
+      rows.className = "topic-section-rows";
+
+      section.appendChild(header);
+      section.appendChild(rows);
+      entriesList.appendChild(section);
+      topicSections.set(normalized, rows);
+      return rows;
+    }
+
+    function buildEntryRow(e) {
+      const row = document.createElement("a");
+      const href = e.link || _articleUrlForId(e.id);
+      const topicLabel = normalizeThemeLabel(e.theme_label);
+      const previewImage = e.og_image_url || e.thumbnail_url || "";
+
+      row.href = href;
+      row.className = "entry-row" + (e.read ? " read" : "");
+      row.dataset.entryId = String(e.id);
+      row.dataset.topicLabel = topicLabel;
+      row.dataset.previewUrl = href;
+      row.dataset.previewImage = previewImage;
+      row.title = href;
+      row.addEventListener("click", (event) => {
+        markRead(e.id, event);
+      });
+
+      const feedInfo = (window.FEED_MAP && window.FEED_MAP[e.feed_id]) || {};
+      const domain = e.feed_domain || feedInfo.domain;
+
+      const logo = document.createElement("span");
+      logo.className = "entry-row-logo";
+      if (domain) {
+        const favicon = document.createElement("img");
+        favicon.className = "entry-favicon";
+        favicon.src = "https://www.google.com/s2/favicons?domain=" +
+          encodeURIComponent(domain) + "&sz=32";
+        favicon.width = 16;
+        favicon.height = 16;
+        favicon.loading = "lazy";
+        favicon.alt = "";
+        logo.appendChild(favicon);
+      } else {
+        const placeholder = document.createElement("span");
+        placeholder.className = "entry-favicon entry-favicon-placeholder";
+        logo.appendChild(placeholder);
+      }
+
+      const main = document.createElement("span");
+      main.className = "entry-row-main";
+
+      const headline = document.createElement("span");
+      headline.className = "entry-row-headline";
+      headline.textContent = e.title || "(no title)";
+      main.appendChild(headline);
+
+      const summaryText = stripTags(e.summary || "").trim();
+      if (summaryText) {
+        const divider = document.createElement("span");
+        divider.className = "entry-row-divider";
+        divider.textContent = ":";
+        const description = document.createElement("span");
+        description.className = "entry-row-description";
+        description.textContent = summaryText;
+        main.appendChild(divider);
+        main.appendChild(description);
+      }
+
+      const source = document.createElement("span");
+      source.className = "entry-row-source";
+      source.textContent = e.feed_title || "Unknown";
+
+      const date = document.createElement("time");
+      date.className = "entry-row-date";
+      date.textContent = _publishedDateText(e.published);
+      if (e.published) {
+        date.setAttribute("data-published", e.published);
+        date.setAttribute("data-published-format", "date");
+        date.dateTime = e.published;
+      }
+
+      row.appendChild(logo);
+      row.appendChild(main);
+      row.appendChild(source);
+      row.appendChild(date);
+
+      if (typeof window.bindEntryRowHoverPreview === "function") {
+        window.bindEntryRowHoverPreview(row);
+      }
+
+      return row;
+    }
+
+    collectTopicSections();
 
     let isLoadingMore = false;
     let allLoaded = false;
 
-    // Use the number of server-rendered cards as our page size heuristic.
-    const INITIAL_CARDS = entriesPanel.querySelectorAll(".entry-card").length;
-    const PAGE_SIZE = INITIAL_CARDS || 40;
+    const INITIAL_ROWS = entriesList.querySelectorAll(".entry-row").length;
+    const PAGE_SIZE = INITIAL_ROWS || 40;
 
     async function loadMoreEntries() {
       if (isLoadingMore || allLoaded) return;
-      const existing = entriesPanel.querySelectorAll(".entry-card").length;
-      if (!existing && INITIAL_CARDS === 0) {
-        // No entries at all; nothing to page through.
+      const existing = entriesList.querySelectorAll(".entry-row").length;
+      if (!existing && INITIAL_ROWS === 0) {
         allLoaded = true;
         return;
       }
@@ -1082,111 +1098,13 @@ function _publishedDateText(published) {
     }
 
     function appendEntries(entries) {
-      const frag = document.createDocumentFragment();
+      const emptyState = entriesList.querySelector(".empty-state");
+      if (emptyState) emptyState.remove();
       for (const e of entries) {
-        const card = buildEntryCard(e);
-        frag.appendChild(card);
+        const rows = ensureTopicSection(e.theme_label);
+        rows.appendChild(buildEntryRow(e));
       }
-      entriesPanel.appendChild(frag);
-    }
-
-    function buildEntryCard(e) {
-      const card = document.createElement("article");
-      const hasThumb = !!e.thumbnail_url;
-      card.className = "entry-card" +
-        (e.read ? " read" : "") +
-        (hasThumb ? " has-thumb" : "");
-      card.dataset.entryId = String(e.id);
-
-      const link = document.createElement("a");
-      link.href = _articleUrlForId(e.id);
-      link.className = "entry-card-link";
-
-      const headerRow = document.createElement("div");
-      headerRow.className = "entry-header-row";
-      const titleEl = document.createElement("div");
-      titleEl.className = "entry-title";
-      titleEl.textContent = e.title || "(no title)";
-      headerRow.appendChild(titleEl);
-
-      const meta = document.createElement("div");
-      meta.className = "entry-meta";
-      const feedInfo = (window.FEED_MAP && window.FEED_MAP[e.feed_id]) || {};
-      const domain = e.feed_domain || feedInfo.domain;
-
-      const favicon = document.createElement("img");
-      favicon.className = "entry-favicon";
-      if (domain) {
-        favicon.src = "https://www.google.com/s2/favicons?domain=" +
-          encodeURIComponent(domain) + "&sz=32";
-      }
-      favicon.width = 14;
-      favicon.height = 14;
-      favicon.loading = "lazy";
-      favicon.alt = "";
-
-      const tag = document.createElement("span");
-      tag.className = "tag entry-source-tag";
-      tag.textContent = e.feed_title || "Unknown";
-
-      const date = document.createElement("time");
-      date.className = "entry-date";
-      date.textContent = _publishedDateText(e.published);
-      if (e.published) {
-        date.setAttribute("data-published", e.published);
-        date.setAttribute("data-published-format", "date");
-        date.dateTime = e.published;
-      }
-
-      meta.appendChild(favicon);
-      meta.appendChild(tag);
-      meta.appendChild(date);
-
-      const body = document.createElement("div");
-      body.className = "entry-body";
-
-      const content = document.createElement("div");
-      content.className = "entry-content";
-      if (e.summary) {
-        const summary = document.createElement("div");
-        summary.className = "entry-summary";
-        summary.textContent = stripTags(e.summary);
-        content.appendChild(summary);
-      }
-
-      body.appendChild(content);
-
-      if (hasThumb) {
-        const img = document.createElement("img");
-        img.className = "entry-thumb";
-        img.src = e.thumbnail_url;
-        img.alt = "";
-        img.loading = "lazy";
-        body.appendChild(img);
-      }
-
-      link.appendChild(headerRow);
-      link.appendChild(meta);
-      link.appendChild(body);
-
-      const linkRow = document.createElement("div");
-      linkRow.className = "entry-link-row";
-      const original = document.createElement("a");
-      original.href = e.link || _articleUrlForId(e.id);
-      original.target = "_blank";
-      original.rel = "noopener noreferrer";
-      original.textContent = "Read full article";
-      if (e.link) {
-        original.addEventListener("click", (evt) => {
-          try { markRead(e.id, evt.currentTarget); } catch (_) {}
-        });
-      }
-      linkRow.appendChild(original);
-
-      card.appendChild(link);
-      card.appendChild(linkRow);
-
-      return card;
+      applyLocalPublishedDates(entriesList);
     }
 
     function maybeLoadMore() {

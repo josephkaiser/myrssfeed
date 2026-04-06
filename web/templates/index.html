@@ -308,52 +308,58 @@
       </div>
     </div>
 
-    {% if entries %}
-      {% for entry in entries %}
-      {% set card_thumb = entry.thumbnail_url %}
-      {% set feed_info = feed_map.get(entry.feed_id) %}
-      <article class="entry-card{% if entry.read %} read{% endif %}{% if card_thumb %} has-thumb{% endif %}" data-entry-id="{{ entry.id }}">
-        <a href="/article/{{ entry.id }}" class="entry-card-link">
-          <div class="entry-header-row">
-            <div class="entry-title">{{ entry.title or "(no title)" }}</div>
+    <div class="entries-list" id="entries-list">
+      {% if topic_groups %}
+        {% for group in topic_groups %}
+        <section class="topic-section" data-topic-label="{{ group.label }}">
+          <div class="topic-section-header">
+            <h2 class="topic-section-title">{{ group.label }}</h2>
           </div>
-          <div class="entry-meta">
-            {% if feed_info and feed_info.domain %}
-            <img class="entry-favicon" src="https://www.google.com/s2/favicons?domain={{ feed_info.domain }}&sz=32" width="14" height="14" alt="" loading="lazy" />
-            {% endif %}
-            <span class="tag entry-source-tag">{{ entry.feed_title or "Unknown" }}</span>
-            <time class="entry-date" data-published="{{ entry.published }}" data-published-format="date" datetime="{{ entry.published }}">{{ entry.published[:10] if entry.published else "" }}</time>
+          <div class="topic-section-rows">
+            {% for entry in group.entries %}
+            {% set feed_info = feed_map.get(entry.feed_id) %}
+            {% set row_href = entry.link or ('/article/' ~ entry.id) %}
+            {% set preview_image = entry.og_image_url or entry.thumbnail_url or '' %}
+            <a
+              href="{{ row_href }}"
+              class="entry-row{% if entry.read %} read{% endif %}"
+              data-entry-id="{{ entry.id }}"
+              data-topic-label="{{ group.label }}"
+              data-preview-url="{{ row_href }}"
+              data-preview-image="{{ preview_image }}"
+              title="{{ row_href }}"
+              onclick="markRead({{ entry.id }}, event)"
+            >
+              <span class="entry-row-logo">
+                {% if feed_info and feed_info.domain %}
+                <img class="entry-favicon" src="https://www.google.com/s2/favicons?domain={{ feed_info.domain }}&sz=32" width="16" height="16" alt="" loading="lazy" />
+                {% endif %}
+              </span>
+              <span class="entry-row-main">
+                <span class="entry-row-headline">{{ entry.title or "(no title)" }}</span>
+                {% if entry.summary %}
+                <span class="entry-row-divider">:</span>
+                <span class="entry-row-description">{{ entry.summary | striptags }}</span>
+                {% endif %}
+              </span>
+              <span class="entry-row-source">{{ entry.feed_title or "Unknown" }}</span>
+              <time class="entry-row-date" data-published="{{ entry.published }}" data-published-format="date" datetime="{{ entry.published }}">{{ entry.published[:10] if entry.published else "" }}</time>
+            </a>
+            {% endfor %}
           </div>
-          <div class="entry-body">
-            <div class="entry-content">
-              {% if entry.summary %}
-              <div class="entry-summary">{{ entry.summary | striptags }}</div>
-              {% endif %}
-            </div>
-            {% if card_thumb %}
-            <img class="entry-thumb" src="{{ card_thumb }}" alt="" loading="lazy" />
-            {% endif %}
-          </div>
-        </a>
-        <div class="entry-link-row">
-          {% if entry.link %}
-          <a href="{{ entry.link }}" target="_blank" rel="noopener noreferrer" onclick="markRead({{ entry.id }}, this)">Read full article</a>
+        </section>
+        {% endfor %}
+      {% else %}
+        <div class="empty-state">
+          <div style="font-size:2.5rem">&#128237;</div>
+          {% if source_scope == 'discover' %}
+          <p>No discover articles yet. Switch back to <a href="/">My Feed</a> or add more feeds to the catalogue.</p>
           {% else %}
-          <a href="/article/{{ entry.id }}" target="_blank" rel="noopener noreferrer">Read full article</a>
+          <p>No articles yet. Use <a href="/add-feed">Add Feed</a> to add feeds, then switch to <a href="{{ discover_feed_url }}">Discover</a>.</p>
           {% endif %}
         </div>
-      </article>
-      {% endfor %}
-    {% else %}
-      <div class="empty-state">
-        <div style="font-size:2.5rem">&#128237;</div>
-        {% if source_scope == 'discover' %}
-        <p>No discover articles yet. Switch back to <a href="/">My Feed</a> or add more feeds to the catalogue.</p>
-        {% else %}
-        <p>No articles yet. Use <a href="/add-feed">Add Feed</a> to add feeds, then switch to <a href="{{ discover_feed_url }}">Discover</a>.</p>
-        {% endif %}
-      </div>
-    {% endif %}
+      {% endif %}
+    </div>
   </main>
 
   <aside class="sidebar-right">
@@ -387,10 +393,9 @@
 </div>
 
 <div id="toast"></div>
-
-<div id="img-lightbox" role="dialog" aria-modal="true" aria-label="Image preview">
-  <button id="img-lightbox-close" onclick="closeLightbox()" aria-label="Close">&#10005;</button>
-  <img id="img-lightbox-img" src="" alt="" />
+<div class="entry-hover-preview" id="entry-hover-preview" hidden>
+  <div class="entry-hover-preview-url" id="entry-hover-preview-url"></div>
+  <img class="entry-hover-preview-image" id="entry-hover-preview-image" src="" alt="" hidden />
 </div>
 
 <script>

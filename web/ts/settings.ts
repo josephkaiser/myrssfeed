@@ -17,19 +17,56 @@ interface SaveSettingsPayload {
 
 interface JsonResponse {
   detail?: string;
+  completed_feeds?: number;
+  current_feed?: FeedRefreshResult | null;
+  feed_results?: FeedRefreshResult[];
   last_error?: string;
   last_status?: string;
   message?: string;
   minutes_since_last_success?: number;
+  progress_percent?: number;
+  pruned_entries?: number;
   running?: boolean;
+  stage?: string;
+  stage_label?: string;
   status?: string;
+  theme_updates?: number;
+  total_feeds?: number;
+  total_items_seen?: number;
+  total_new_entries?: number;
+  quality_updates?: number;
 }
 
 interface StatusState {
+  completed_feeds?: number;
+  current_feed?: FeedRefreshResult | null;
+  feed_results?: FeedRefreshResult[];
   running?: boolean;
   last_status?: StatusKind;
   minutes_since_last_success?: number | null;
   last_error?: string;
+  message?: string;
+  progress_percent?: number;
+  pruned_entries?: number;
+  stage?: string;
+  stage_label?: string;
+  theme_updates?: number;
+  total_feeds?: number;
+  total_items_seen?: number;
+  total_new_entries?: number;
+  quality_updates?: number;
+}
+
+interface FeedRefreshResult {
+  feed_id?: number;
+  title?: string;
+  url?: string;
+  items_seen?: number;
+  new_entries?: number;
+  status?: string;
+  warning?: string;
+  error?: string;
+  completed_at?: string;
 }
 
 function getElement<T extends HTMLElement>(id: string): T | null {
@@ -165,8 +202,8 @@ function updatePipelineRefreshDial(): void {
   label.textContent = describePipelineRefreshMinutes(minutes);
 }
 
-async function readJson(response: Response): Promise<JsonResponse> {
-  return (await response.json().catch(() => ({}))) as JsonResponse;
+async function readJson<T extends JsonResponse>(response: Response): Promise<T> {
+  return (await response.json().catch(() => ({}))) as T;
 }
 
 async function saveSettings(): Promise<void> {
@@ -265,7 +302,11 @@ function updateRefreshStatusUI(state: StatusState): void {
 
   if (state.running) {
     dot.classList.add("running");
-    text.textContent = "Running";
+    if (typeof state.completed_feeds === "number" && typeof state.total_feeds === "number" && state.total_feeds > 0) {
+      text.textContent = `${state.completed_feeds}/${state.total_feeds} feeds`;
+    } else {
+      text.textContent = state.stage_label || "Running";
+    }
     return;
   }
 
@@ -290,22 +331,142 @@ function updateRefreshStatusUI(state: StatusState): void {
   }
 }
 
+function feedDisplayName(feed: FeedRefreshResult | null | undefined): string {
+  if (!feed) {
+    return "feed";
+  }
+  return feed.title || feed.url || "feed";
+}
+
+function renderRefreshProgressDetails(state: StatusState): void {
+  const card = getElement<HTMLElement>("refresh-progress-card");
+  const stage = getElement<HTMLElement>("refresh-progress-stage");
+  const count = getElement<HTMLElement>("refresh-progress-count");
+  const fill = getElement<HTMLElement>("refresh-progress-bar-fill");
+  const current = getElement<HTMLElement>("refresh-progress-current");
+  const summary = getElement<HTMLElement>("refresh-progress-summary");
+  const list = getElement<HTMLElement>("refresh-progress-list");
+  if (!card || !stage || !count || !fill || !current || !summary || !list) {
+    return;
+  }
+
+  const results = Array.isArray(state.feed_results) ? state.feed_results : [];
+  const totalFeeds = Math.max(0, Number(state.total_feeds || 0));
+  const completedFeeds = Math.max(0, Number(state.completed_feeds || 0));
+  const percent = Math.max(0, Math.min(100, Number(state.progress_percent || 0)));
+  const shouldShow = state.running || results.length > 0 || totalFeeds > 0 || Boolean(state.message);
+  card.hidden = !shouldShow;
+  if (!shouldShow) {
+    return;
+  }
+
+  stage.textContent = state.stage_label || (state.running ? "Refreshing feeds" : "Latest refresh");
+  count.textContent = totalFeeds > 0 ? `${completedFeeds} / ${totalFeeds} feeds` : "Waiting";
+  fill.style.width = `${percent}%`;
+
+  if (state.running) {
+    if (state.current_feed) {
+      current.textContent = `Currently pulling ${feedDisplayName(state.current_feed)}`;
+    } else {
+      current.textContent = state.message || "Working…";
+    }
+  } else {
+    current.textContent = state.message || "Idle";
+  }
+
+  const summaryParts: string[] = [];
+  if (typeof state.total_items_seen === "number" && state.total_items_seen > 0) {
+    summaryParts.push(`${state.total_items_seen.toLocaleString()} items retrieved`);
+  }
+  if (typeof state.total_new_entries === "number") {
+    summaryParts.push(`${state.total_new_entries.toLocaleString()} new`);
+  }
+  if (typeof state.pruned_entries === "number" && state.pruned_entries > 0) {
+    summaryParts.push(`${state.pruned_entries.toLocaleString()} pruned`);
+  }
+  if (typeof state.quality_updates === "number" && state.quality_updates > 0) {
+    summaryParts.push(`${state.quality_updates.toLocaleString()} scored`);
+  }
+  if (typeof state.theme_updates === "number" && state.theme_updates > 0) {
+    summaryParts.push(`${state.theme_updates.toLocaleString()} themed`);
+  }
+  summary.textContent = summaryParts.join(" • ");
+
+  list.replaceChildren();
+  const orderedResults = results.slice().reverse();
+  if (!orderedResults.length) {
+    const empty = document.createElement("div");
+    empty.className = "refresh-progress-empty";
+    empty.textContent = state.running ? "No feeds completed yet." : "No recent feed refresh details.";
+    list.appendChild(empty);
+    return;
+  }
+
+  orderedResults.forEach((result) => {
+    const item = document.createElement("div");
+    item.className = "refresh-progress-item";
+
+    const name = document.createElement("div");
+    name.className = "refresh-progress-item-name";
+    name.textContent = feedDisplayName(result);
+
+    const status = document.createElement("div");
+    status.className = "refresh-progress-item-status";
+    const statusValue = (result.status || "success").toLowerCase();
+    status.classList.add(statusValue === "error" ? "error" : "success");
+    status.textContent = statusValue === "error" ? "Error" : "Done";
+
+    const meta = document.createElement("div");
+    meta.className = "refresh-progress-item-meta";
+    const metaParts = [
+      `${Number(result.items_seen || 0).toLocaleString()} items`,
+      `${Number(result.new_entries || 0).toLocaleString()} new`,
+    ];
+    if (result.warning) {
+      metaParts.push("parsed with warnings");
+    }
+    if (result.error) {
+      metaParts.push(result.error);
+    }
+    meta.textContent = metaParts.join(" • ");
+
+    item.appendChild(name);
+    item.appendChild(status);
+    item.appendChild(meta);
+    list.appendChild(item);
+  });
+}
+
 async function fetchRefreshStatus(): Promise<void> {
   try {
-    const response = await fetch("/api/refresh/status");
+    const response = await fetch("/api/refresh/status?details=1");
     if (!response.ok) {
       return;
     }
 
-    const data = await readJson(response);
+    const data = await readJson<JsonResponse>(response);
     const state: StatusState = {
       running: Boolean(data.running),
       last_status: (data.last_status as StatusKind | undefined) || "never",
       minutes_since_last_success:
         typeof data.minutes_since_last_success === "number" ? data.minutes_since_last_success : null,
+      stage: data.stage || "",
+      stage_label: data.stage_label || "",
+      message: data.message || "",
+      total_feeds: typeof data.total_feeds === "number" ? data.total_feeds : 0,
+      completed_feeds: typeof data.completed_feeds === "number" ? data.completed_feeds : 0,
+      progress_percent: typeof data.progress_percent === "number" ? data.progress_percent : 0,
+      current_feed: data.current_feed || null,
+      total_items_seen: typeof data.total_items_seen === "number" ? data.total_items_seen : 0,
+      total_new_entries: typeof data.total_new_entries === "number" ? data.total_new_entries : 0,
+      pruned_entries: typeof data.pruned_entries === "number" ? data.pruned_entries : 0,
+      quality_updates: typeof data.quality_updates === "number" ? data.quality_updates : 0,
+      theme_updates: typeof data.theme_updates === "number" ? data.theme_updates : 0,
+      feed_results: Array.isArray(data.feed_results) ? data.feed_results : [],
     };
     updateRefreshStatusUI(state);
     updatePipelineStatusUI(state);
+    renderRefreshProgressDetails(state);
   } catch {
     // Silently ignore; status light is best-effort only.
   }
@@ -409,7 +570,7 @@ async function refreshNow(): Promise<void> {
     void fetchRefreshStatus();
     window.setInterval(() => {
       void fetchRefreshStatus();
-    }, 8000);
+    }, 2000);
   }
 
   if (getElement("newsletter-status-dot")) {

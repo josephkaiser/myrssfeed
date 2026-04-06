@@ -17,6 +17,7 @@ from myrssfeed.routes.ui import UIRoutes
 from myrssfeed.scripts.newsletter_ingest import is_newsletter_running, run_newsletter_ingest_async
 from myrssfeed.scripts.scheduler import (
     create_scheduler,
+    get_pipeline_progress,
     is_pipeline_running,
     reconfigure_scheduler,
     run_pipeline_async,
@@ -141,6 +142,7 @@ system_api_routes = SystemAPIRoutes(
     reconfigure_scheduler=reconfigure_scheduler,
     is_pipeline_running=is_pipeline_running,
     run_pipeline_async=run_pipeline_async,
+    get_pipeline_progress=get_pipeline_progress,
     is_newsletter_running=is_newsletter_running,
     run_newsletter_ingest_async=run_newsletter_ingest_async,
     logger=logger,
@@ -173,7 +175,6 @@ list_entries = entry_api_routes.list_entries
 mark_read = entry_api_routes.mark_read
 toggle_like = entry_api_routes.toggle_like
 set_like = entry_api_routes.set_like
-get_random_article = entry_api_routes.get_random_article
 
 get_settings = system_api_routes.get_settings
 update_settings = system_api_routes.update_settings

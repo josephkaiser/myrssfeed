@@ -5,6 +5,7 @@ from myrssfeed.paths import DEFAULT_DB_FILE
 
 
 DB_FILE = os.path.normpath(str(DEFAULT_DB_FILE))
+SQLITE_BUSY_TIMEOUT_MS = 30_000
 
 DEFAULTS: dict[str, str] = {
     "retention_days": "90",
@@ -40,8 +41,12 @@ DEFAULTS: dict[str, str] = {
 
 
 def get_db() -> sqlite3.Connection:
-    conn = sqlite3.connect(DB_FILE)
+    conn = sqlite3.connect(DB_FILE, timeout=SQLITE_BUSY_TIMEOUT_MS / 1000)
     conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA foreign_keys = ON")
+    conn.execute(f"PRAGMA busy_timeout = {SQLITE_BUSY_TIMEOUT_MS}")
+    conn.execute("PRAGMA journal_mode = WAL")
+    conn.execute("PRAGMA synchronous = NORMAL")
     return conn
 
 

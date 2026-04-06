@@ -24,6 +24,7 @@ class SystemAPIRoutes:
         reconfigure_scheduler: Callable[[], None],
         is_pipeline_running: Callable[[], bool],
         run_pipeline_async: Callable[[], bool],
+        get_pipeline_progress: Callable[[], dict],
         is_newsletter_running: Callable[[], bool],
         run_newsletter_ingest_async: Callable[..., bool],
         logger,
@@ -36,6 +37,7 @@ class SystemAPIRoutes:
         self.reconfigure_scheduler = reconfigure_scheduler
         self.is_pipeline_running = is_pipeline_running
         self.run_pipeline_async = run_pipeline_async
+        self.get_pipeline_progress = get_pipeline_progress
         self.is_newsletter_running = is_newsletter_running
         self.run_newsletter_ingest_async = run_newsletter_ingest_async
         self.logger = logger
@@ -72,7 +74,7 @@ class SystemAPIRoutes:
             return {"status": "running", "message": "Pipeline already in progress."}
         return {"status": "started", "message": "Pipeline started in background."}
 
-    def get_refresh_status(self):
+    def get_refresh_status(self, details: bool = False):
         running = self.is_pipeline_running()
         last_status = self.get_setting("pipeline_last_status") or "never"
         minutes_since_last_success = None
@@ -87,11 +89,29 @@ class SystemAPIRoutes:
                 minutes_since_last_success = max(0, int(diff.total_seconds() // 60))
             except Exception:
                 minutes_since_last_success = None
-        return {
+        progress = self.get_pipeline_progress()
+        response = {
             "running": running,
             "last_status": last_status,
             "minutes_since_last_success": minutes_since_last_success,
+            "stage": progress.get("stage"),
+            "stage_label": progress.get("stage_label"),
+            "message": progress.get("message"),
+            "started_at": progress.get("started_at"),
+            "updated_at": progress.get("updated_at"),
+            "total_feeds": progress.get("total_feeds", 0),
+            "completed_feeds": progress.get("completed_feeds", 0),
+            "progress_percent": progress.get("progress_percent", 0),
+            "current_feed": progress.get("current_feed"),
+            "total_items_seen": progress.get("total_items_seen", 0),
+            "total_new_entries": progress.get("total_new_entries", 0),
+            "pruned_entries": progress.get("pruned_entries", 0),
+            "quality_updates": progress.get("quality_updates", 0),
+            "theme_updates": progress.get("theme_updates", 0),
         }
+        if details:
+            response["feed_results"] = progress.get("results", [])
+        return response
 
     def live_search(
         self,

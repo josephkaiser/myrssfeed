@@ -135,31 +135,6 @@
       <a class="back-link" href="{{ back_url }}">&larr; Back to feed</a>
     </div>
 
-    <div class="article-actions">
-      <div class="article-nav-controls" aria-label="Feed article navigation">
-        <button
-          type="button"
-          class="article-nav-btn article-nav-btn-left"
-          title="Previous article in this feed"
-          aria-label="Previous article in this feed"
-          onclick="_walkAndOpenArticle(-1)"
-          {% if not prev_article_url %}disabled{% endif %}
-        >
-          <span class="article-nav-symbol" aria-hidden="true">&larr;</span>
-        </button>
-        <button
-          type="button"
-          class="article-nav-btn article-nav-btn-right"
-          title="Next article in this feed"
-          aria-label="Next article in this feed"
-          onclick="_walkAndOpenArticle(1)"
-          {% if not next_article_url %}disabled{% endif %}
-        >
-          <span class="article-nav-symbol" aria-hidden="true">&rarr;</span>
-        </button>
-      </div>
-    </div>
-
     <div class="article-meta">
       {% set feed_info = feed_map.get(entry.feed_id) %}
       {% if feed_info and feed_info.domain %}
@@ -209,12 +184,6 @@
 
 <script>
   const FEED_MAP = {{ feed_map | tojson }};
-</script>
-<script>
-  window.ARTICLE_NAV = {
-    prevUrl: {{ prev_article_url | tojson }},
-    nextUrl: {{ next_article_url | tojson }},
-  };
 </script>
 <script>
   (function initArticleMediaStage() {
