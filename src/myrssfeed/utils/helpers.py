@@ -11,7 +11,11 @@ DEFAULTS: dict[str, str] = {
     "retention_days": "90",
     "theme": "system",
     "max_entries": "1000",
-    # Automatic refresh interval for the full pipeline, in minutes.
+    # Automatic refresh cadence for the full pipeline.
+    "pipeline_refresh_schedule": "15m",
+    "pipeline_refresh_day": "monday",
+    "pipeline_refresh_time": "06:00",
+    # Legacy numeric compatibility for older installs / API clients.
     "pipeline_refresh_minutes": "15",
     # Pipeline scheduler & status (for manual/automatic refresh jobs)
     # Newsletter mailbox polling

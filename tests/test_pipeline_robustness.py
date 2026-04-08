@@ -139,7 +139,14 @@ def _install_fastapi_stub() -> None:
         def __init__(self, directory):
             self.directory = directory
 
-        def TemplateResponse(self, template_name, context):
+        def TemplateResponse(self, template_name=None, context=None, **kwargs):
+            if template_name is None:
+                template_name = kwargs.get("name")
+            if context is None:
+                context = kwargs.get("context", {})
+            request = kwargs.get("request")
+            if request is not None and isinstance(context, dict):
+                context = {"request": request, **context}
             return _TemplateResponse(template_name, context)
 
     class BaseModel:
@@ -177,6 +184,9 @@ main = importlib.import_module("myrssfeed.app")
 helpers = importlib.import_module("myrssfeed.utils.helpers")
 quality_score = importlib.import_module("myrssfeed.scripts.quality_score")
 newsletter_ingest = importlib.import_module("myrssfeed.scripts.newsletter_ingest")
+entry_constants = importlib.import_module("myrssfeed.services.entries.constants")
+entry_queries = importlib.import_module("myrssfeed.services.entries.queries")
+subscriptions = importlib.import_module("myrssfeed.services.subscriptions")
 
 
 class CompileFeedHelperTests(unittest.TestCase):
@@ -272,18 +282,60 @@ class PipelineIntervalScheduleTests(unittest.TestCase):
 
     def test_defaults_to_fifteen_minutes(self):
         self.assertEqual(scheduler._parse_pipeline_refresh_minutes(), 15)
+        self.assertEqual(
+            scheduler.get_pipeline_schedule_settings()["pipeline_refresh_schedule"],
+            "15m",
+        )
 
     def test_legacy_daily_schedule_maps_to_daily_interval(self):
         helpers.set_setting("pipeline_schedule_frequency", "daily")
         helpers.set_setting("pipeline_schedule_time", "06:00")
 
         self.assertEqual(scheduler._parse_pipeline_refresh_minutes(), 1440)
+        self.assertEqual(
+            scheduler.get_pipeline_schedule_settings()["pipeline_refresh_schedule"],
+            "1d",
+        )
 
     def test_new_interval_setting_wins_over_legacy_values(self):
         helpers.set_setting("pipeline_schedule_frequency", "daily")
+        helpers.set_setting("pipeline_refresh_schedule", "45m")
         helpers.set_setting("pipeline_refresh_minutes", "45")
 
         self.assertEqual(scheduler._parse_pipeline_refresh_minutes(), 45)
+
+    def test_continuous_schedule_uses_short_interval_trigger(self):
+        helpers.set_setting("pipeline_refresh_schedule", "continuous")
+
+        sched = scheduler.create_scheduler()
+        pipeline_job = next(kwargs for _, kwargs in getattr(sched, "jobs", []) if kwargs.get("id") == "pipeline_refresh")
+
+        self.assertEqual(pipeline_job["name"], "Continuous refresh")
+        self.assertEqual(pipeline_job["trigger"].kwargs["seconds"], 30)
+
+    def test_daily_schedule_uses_cron_trigger_with_selected_time(self):
+        helpers.set_setting("pipeline_refresh_schedule", "1d")
+        helpers.set_setting("pipeline_refresh_time", "08:45")
+
+        sched = scheduler.create_scheduler()
+        pipeline_job = next(kwargs for _, kwargs in getattr(sched, "jobs", []) if kwargs.get("id") == "pipeline_refresh")
+
+        self.assertEqual(pipeline_job["trigger"].kwargs["hour"], 8)
+        self.assertEqual(pipeline_job["trigger"].kwargs["minute"], 45)
+        self.assertEqual(pipeline_job["name"], "Daily refresh at 08:45")
+
+    def test_weekly_schedule_uses_cron_trigger_with_selected_day_and_time(self):
+        helpers.set_setting("pipeline_refresh_schedule", "weekly")
+        helpers.set_setting("pipeline_refresh_day", "friday")
+        helpers.set_setting("pipeline_refresh_time", "18:30")
+
+        sched = scheduler.create_scheduler()
+        pipeline_job = next(kwargs for _, kwargs in getattr(sched, "jobs", []) if kwargs.get("id") == "pipeline_refresh")
+
+        self.assertEqual(pipeline_job["trigger"].kwargs["day_of_week"], "fri")
+        self.assertEqual(pipeline_job["trigger"].kwargs["hour"], 18)
+        self.assertEqual(pipeline_job["trigger"].kwargs["minute"], 30)
+        self.assertEqual(pipeline_job["name"], "Weekly refresh every Friday at 18:30")
 
     def test_create_scheduler_adds_newsletter_job_when_enabled(self):
         helpers.set_setting("newsletter_enabled", "true")
@@ -347,6 +399,20 @@ class SchemaInitializationTests(unittest.TestCase):
         self.assertEqual(row["name"], "Example Feed")
         self.assertEqual(row["category"], "Tech")
         self.assertEqual(row["description"], "Test feed")
+
+    def test_init_db_subscribes_curated_starter_feeds(self):
+        conn = helpers.get_db()
+        try:
+            starter_urls = {
+                row["url"]
+                for row in conn.execute(
+                    "SELECT url FROM feeds WHERE COALESCE(subscribed, 1) = 1"
+                ).fetchall()
+            }
+        finally:
+            conn.close()
+
+        self.assertEqual(starter_urls, set(main._STARTER_CATALOG_URLS))
 
 
 class FeedDiversityRankingTests(unittest.TestCase):
@@ -627,7 +693,10 @@ class FeedScopeToggleTests(unittest.TestCase):
         conn = main.get_db()
         subscribed_id = self._insert_feed(conn, "https://subscribed.example/rss", "Subscribed", 1)
         hidden_id = self._insert_feed(conn, "https://hidden.example/rss", "Hidden", 0)
-        catalog_url = next(iter(sorted(main._STATIC_CATALOG_URLS)), None)
+        catalog_url = next(
+            (url for url in sorted(main._STATIC_CATALOG_URLS) if url not in main._STARTER_CATALOG_URLS),
+            None,
+        )
         self.assertIsNotNone(catalog_url)
         catalog_id = conn.execute("SELECT id FROM feeds WHERE url = ?", (catalog_url,)).fetchone()["id"]
 
@@ -649,7 +718,10 @@ class FeedScopeToggleTests(unittest.TestCase):
         conn = main.get_db()
         subscribed_id = self._insert_feed(conn, "https://subscribed.example/rss", "Subscribed", 1)
         hidden_id = self._insert_feed(conn, "https://hidden.example/rss", "Hidden", 0)
-        catalog_url = next(iter(sorted(main._STATIC_CATALOG_URLS)), None)
+        catalog_url = next(
+            (url for url in sorted(main._STATIC_CATALOG_URLS) if url not in main._STARTER_CATALOG_URLS),
+            None,
+        )
         self.assertIsNotNone(catalog_url)
         catalog_id = conn.execute("SELECT id FROM feeds WHERE url = ?", (catalog_url,)).fetchone()["id"]
 
@@ -1171,6 +1243,149 @@ class QualityScoreMajorSimilarityTests(unittest.TestCase):
         conn.close()
 
         self.assertGreater(sim_quality, dissim_quality)
+
+
+class QueuedSubscriptionChangeTests(unittest.TestCase):
+    def setUp(self):
+        self._orig_main_db_file = main.DB_FILE
+        self._orig_helpers_db_file = helpers.DB_FILE
+        self._tmpdir = TemporaryDirectory()
+        db_path = str(Path(self._tmpdir.name) / "rss.db")
+        main.DB_FILE = db_path
+        helpers.DB_FILE = db_path
+        main.init_db()
+        subscriptions.reset_pending_subscription_changes()
+        self.pipeline_running = False
+        self.routes = main.FeedAPIRoutes(
+            get_db=main.get_db,
+            is_pipeline_running=lambda: self.pipeline_running,
+        )
+
+    def tearDown(self):
+        subscriptions.reset_pending_subscription_changes()
+        main.DB_FILE = self._orig_main_db_file
+        helpers.DB_FILE = self._orig_helpers_db_file
+        self._tmpdir.cleanup()
+
+    def _insert_feed_with_entry(self, subscribed: int) -> int:
+        conn = main.get_db()
+        try:
+            feed_id = conn.execute(
+                "INSERT INTO feeds (url, title, subscribed) VALUES (?, ?, ?)",
+                (f"https://example.com/{subscribed}/rss", f"Feed {subscribed}", subscribed),
+            ).lastrowid
+            conn.execute(
+                """
+                INSERT INTO entries (
+                    feed_id, title, link, published, summary
+                ) VALUES (?, ?, ?, ?, ?)
+                """,
+                (
+                    feed_id,
+                    "Sample entry",
+                    f"https://example.com/{subscribed}/entry",
+                    datetime(2026, 4, 1, 12, 0, tzinfo=timezone.utc).isoformat(),
+                    "Summary",
+                ),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+        return int(feed_id)
+
+    def test_delete_feed_queues_during_refresh_and_hides_from_my_feed(self):
+        feed_id = self._insert_feed_with_entry(subscribed=1)
+        self.pipeline_running = True
+
+        result = self.routes.delete_feed(feed_id)
+
+        self.assertTrue(result["queued"])
+        self.assertEqual(result["status"], "queued")
+        self.assertEqual(result["feed"]["id"], feed_id)
+
+        conn = main.get_db()
+        try:
+            stored = conn.execute(
+                "SELECT subscribed FROM feeds WHERE id = ?",
+                (feed_id,),
+            ).fetchone()["subscribed"]
+            rows = entry_queries.fetch_ranked_entries(
+                conn,
+                None,
+                None,
+                None,
+                None,
+                None,
+                entry_constants.SOURCE_SCOPE_MY,
+                None,
+            )
+        finally:
+            conn.close()
+
+        self.assertEqual(stored, 1)
+        self.assertEqual(rows, [])
+        listed_ids = [feed["id"] for feed in self.routes.list_feeds()]
+        self.assertNotIn(feed_id, listed_ids)
+
+        applied = subscriptions.apply_pending_subscription_changes(main.get_db)
+
+        self.assertEqual(applied, [{"feed_id": feed_id, "subscribed": False}])
+        conn = main.get_db()
+        try:
+            stored = conn.execute(
+                "SELECT subscribed FROM feeds WHERE id = ?",
+                (feed_id,),
+            ).fetchone()["subscribed"]
+        finally:
+            conn.close()
+        self.assertEqual(stored, 0)
+
+    def test_subscribe_feed_queues_during_refresh_and_restores_my_feed(self):
+        feed_id = self._insert_feed_with_entry(subscribed=0)
+        self.pipeline_running = True
+
+        row = self.routes.subscribe_feed(feed_id)
+
+        self.assertTrue(row["subscribed"])
+        self.assertEqual(row["id"], feed_id)
+
+        listed_ids = [feed["id"] for feed in self.routes.list_feeds()]
+        self.assertIn(feed_id, listed_ids)
+
+        conn = main.get_db()
+        try:
+            stored = conn.execute(
+                "SELECT subscribed FROM feeds WHERE id = ?",
+                (feed_id,),
+            ).fetchone()["subscribed"]
+            rows = entry_queries.fetch_ranked_entries(
+                conn,
+                None,
+                None,
+                None,
+                None,
+                None,
+                entry_constants.SOURCE_SCOPE_MY,
+                None,
+            )
+        finally:
+            conn.close()
+
+        self.assertEqual(stored, 0)
+        self.assertEqual([entry["feed_id"] for entry in rows], [feed_id])
+
+        applied = subscriptions.apply_pending_subscription_changes(main.get_db)
+
+        self.assertEqual(applied, [{"feed_id": feed_id, "subscribed": True}])
+        conn = main.get_db()
+        try:
+            stored = conn.execute(
+                "SELECT subscribed FROM feeds WHERE id = ?",
+                (feed_id,),
+            ).fetchone()["subscribed"]
+        finally:
+            conn.close()
+        self.assertEqual(stored, 1)
 
 
 if __name__ == "__main__":

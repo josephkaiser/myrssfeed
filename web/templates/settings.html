@@ -23,197 +23,23 @@
   </script>
   <link rel="stylesheet" href="/static/styles.css" />
 </head>
-<body>
+<body class="settings-page">
 
-<header>
-  <button class="hamburger-btn" type="button" onclick="toggleNav()" aria-label="Open navigation">
-    <span></span>
-    <span></span>
-    <span></span>
-  </button>
-  <a class="header-brand" href="/">myRSSfeed</a>
-
-  <form class="search-bar" method="get" action="/" id="search-form">
-    <input type="hidden" name="q" id="search-query-base" value="{{ q|default('') }}" />
-    <div class="search-input-wrap{% if q %} has-search-term{% endif %}">
-      {% if q %}
-      <div class="search-term-chip" id="search-term-chip">
-        <span class="search-term-chip-text">{{ q }}</span>
-        <button type="button" class="search-term-chip-remove" id="search-term-remove" aria-label="Remove search term">&times;</button>
-      </div>
-      <input type="search" id="search-input" value="" placeholder="Add more terms..." autocomplete="off" />
-      {% else %}
-      <input type="search" id="search-input" value="" placeholder="Search articles..." autocomplete="off" />
-      {% endif %}
-      <div class="search-dropdown" id="search-dropdown" style="display:none"></div>
+<header class="simple-header settings-header">
+  <div class="settings-header-main">
+    <a class="header-brand" href="/">myRSSfeed</a>
+    <div class="settings-header-copy">
+      <div class="settings-header-kicker">Settings</div>
+      <h1>Preferences</h1>
+      <p>Adjust appearance, storage, newsletters, and refresh behavior without the feed layout competing for attention.</p>
     </div>
-    <div class="search-advanced">
-      <button type="button" class="btn pill search-advanced-btn" id="advanced-toggle" aria-expanded="false" aria-haspopup="true" aria-controls="advanced-dropdown">Advanced</button>
-      <div class="search-advanced-dropdown" id="advanced-dropdown" role="menu" aria-labelledby="advanced-toggle" hidden>
-        <div class="search-advanced-row">
-          <label for="date-range">Date range</label>
-          <select name="days" id="date-range" aria-label="Limit results to last N days">
-            <option value="">All-Time</option>
-            <option value="1" {% if date_range == 1 %}selected{% endif %}>Last 1 day</option>
-            <option value="5" {% if date_range == 5 %}selected{% endif %}>Last 5 days</option>
-            <option value="30" {% if date_range == 30 %}selected{% endif %}>Last 30 days</option>
-            <option value="90" {% if date_range == 90 %}selected{% endif %}>Last 90 days</option>
-          </select>
-        </div>
-      </div>
-    </div>
-    <button class="btn pill" type="submit">Go</button>
-    {% if q or (date_range is defined and date_range) %}
-    <a href="{{ clear_url|default('/') }}" class="btn ghost pill" id="search-clear">Clear</a>
-    {% endif %}
-  </form>
-
-  <div class="header-right">
-    <div class="header-actions" aria-label="Quick actions">
-      <div class="header-action">
-        <button
-          class="btn icon-btn"
-          id="header-refresh-btn"
-          type="button"
-          title="Fetch latest from all feeds"
-          onclick="headerRefreshNow()"
-        >
-          &#10227;
-        </button>
-        <div class="refresh-status header-refresh-status" aria-live="polite">
-          <span class="refresh-status-dot" id="header-refresh-status-dot" aria-hidden="true"></span>
-          <span class="refresh-status-text" id="header-refresh-status-text">Ready</span>
-        </div>
-      </div>
-      <div class="header-action">
-        <a
-          href="/settings"
-          class="btn icon-btn header-gear-link"
-          title="Settings"
-          aria-label="Settings"
-        >
-          &#9881;
-        </a>
-      </div>
-    </div>
+  </div>
+  <div class="settings-header-actions">
+    <a class="btn ghost pill" href="/">Back to feed</a>
   </div>
 </header>
 
-<!-- Overlay nav drawer (mobile only) -->
-<div class="nav-overlay" id="nav-overlay" onclick="closeNav()">
-  <nav class="nav-drawer" onclick="event.stopPropagation()">
-    <div class="nav-drawer-header">
-      <span class="nav-drawer-brand">myRSSfeed</span>
-      <button class="nav-drawer-close" onclick="closeNav()">&times;</button>
-    </div>
-    <div class="nav-drawer-links">
-      <a href="/feeds">
-        <span class="nav-icon">&#128220;</span> Subscriptions
-      </a>
-      <a href="/discover">
-        <span class="nav-icon">&#128269;</span> Discover
-      </a>
-      <a href="/add-feed">
-        <span class="nav-icon">&#10133;</span> Add Feed
-      </a>
-      <a href="/stats">
-        <span class="nav-icon">&#128201;</span> Statistics
-      </a>
-      <a href="/settings" class="active">
-        <span class="nav-icon">&#9881;</span> Settings
-      </a>
-      <div class="nav-section">Subscriptions</div>
-      <button class="nav-feeds-toggle" id="nav-feeds-toggle" onclick="toggleNavFeeds()">
-        <span class="nav-icon">&#128240;</span> Subscriptions
-        <span class="chevron">&#9654;</span>
-      </button>
-      <div class="nav-feeds-list" id="nav-feeds-list">
-        {% for feed in feeds %}
-        <div class="nav-feeds-row" data-feed-id="{{ feed.id }}">
-          <a href="/?feed_id={{ feed.id }}">
-            <img class="nav-feed-favicon" src="https://www.google.com/s2/favicons?domain={{ feed_map[feed.id].domain }}&sz=32" width="14" height="14" alt="" loading="lazy" />
-            <span class="nav-feed-label">{{ feed.title or feed.url }}</span>
-          </a>
-          <button type="button" class="nav-feed-remove" onclick="deleteFeed({{ feed.id }}, this)" title="Remove feed" aria-label="Remove feed">&times;</button>
-        </div>
-        {% endfor %}
-        <div class="nav-add-feed-row">
-          <input
-            type="url"
-            id="nav-add-feed-input"
-            class="detect-input"
-            placeholder="https://example.com or https://example.com/feed.xml"
-            autocomplete="off"
-          />
-          <button
-            class="btn"
-            id="nav-add-feed-btn"
-            type="button"
-            onclick="handleNavbarAddFeed('nav')"
-          >
-            Add
-          </button>
-        </div>
-      </div>
-    </div>
-  </nav>
-</div>
-
-<div class="layout layout-two-col">
-  <aside class="sidebar-left">
-    <div class="sidebar-section">
-      <div class="sidebar-section-title">Navigation</div>
-      <nav class="sidebar-nav">
-        <a href="/feeds">
-          <span class="nav-icon">&#128220;</span> Subscriptions
-        </a>
-        <a href="/discover">
-          <span class="nav-icon">&#128269;</span> Discover
-        </a>
-        <a href="/add-feed">
-          <span class="nav-icon">&#10133;</span> Add Feed
-        </a>
-        <a href="/stats">
-          <span class="nav-icon">&#128201;</span> Statistics
-        </a>
-        <a href="/settings">
-          <span class="nav-icon">&#9881;</span> Settings
-        </a>
-      </nav>
-    </div>
-    <div class="sidebar-section">
-      <div class="sidebar-section-title">Subscriptions</div>
-      <div class="sidebar-feeds">
-        {% for feed in feeds %}
-        <div class="sidebar-feeds-row" data-feed-id="{{ feed.id }}">
-          <a href="/?feed_id={{ feed.id }}">
-            <img class="sidebar-feed-favicon" src="https://www.google.com/s2/favicons?domain={{ feed_map[feed.id].domain }}&sz=32" width="14" height="14" alt="" loading="lazy" />
-            <span class="sidebar-feed-label">{{ feed.title or feed.url }}</span>
-          </a>
-          <button type="button" class="sidebar-feed-remove" onclick="deleteFeed({{ feed.id }}, this)" title="Remove feed" aria-label="Remove feed">&times;</button>
-        </div>
-        {% endfor %}
-        <div class="sidebar-add-feed-row">
-          <input
-            type="url"
-            id="sidebar-add-feed-input"
-            class="detect-input"
-            placeholder="https://example.com or https://example.com/feed.xml"
-            autocomplete="off"
-          />
-          <button
-            class="btn"
-            id="sidebar-add-feed-btn"
-            type="button"
-            onclick="handleNavbarAddFeed('sidebar')"
-          >
-            Add
-          </button>
-        </div>
-      </div>
-    </div>
-  </aside>
-
+<main class="settings-page-main">
   <div class="settings-wrap">
 
   <div class="settings-section">
@@ -426,24 +252,56 @@
 
     <div class="setting-row">
       <div class="setting-info">
-        <div class="setting-label">Automatic refresh interval</div>
+        <div class="setting-label">Automatic refresh schedule</div>
         <div class="setting-desc">
-          Choose how often the full pipeline (fetch → rank → visualize) runs automatically.
+          Choose when the full pipeline (fetch → rank → visualize) runs automatically.
         </div>
       </div>
-      {% set refresh_minutes = settings.pipeline_refresh_minutes or '15' %}
-      <div class="setting-control setting-control-stacked">
-        <div class="refresh-interval-control">
-          <input
-            class="refresh-interval-slider"
-            type="range"
-            id="pipeline_refresh_minutes"
-            min="5"
-            max="240"
-            step="5"
-            value="{{ refresh_minutes }}"
-          />
-          <span class="refresh-interval-value" id="pipeline_refresh_minutes_value">{{ refresh_minutes }} min</span>
+      {% set refresh_schedule = settings.pipeline_refresh_schedule or '15m' %}
+      {% set refresh_day = settings.pipeline_refresh_day or 'monday' %}
+      {% set refresh_time = settings.pipeline_refresh_time or '06:00' %}
+      <div class="setting-control setting-control-stacked pipeline-schedule-control">
+        <div class="pipeline-schedule-row">
+          <select class="select-input" id="pipeline_refresh_schedule">
+            <option value="continuous" {% if refresh_schedule == 'continuous' %}selected{% endif %}>Continuous</option>
+            <option value="15m" {% if refresh_schedule == '15m' %}selected{% endif %}>15 minutes</option>
+            <option value="30m" {% if refresh_schedule == '30m' %}selected{% endif %}>30 minutes</option>
+            <option value="45m" {% if refresh_schedule == '45m' %}selected{% endif %}>45 minutes</option>
+            <option value="1h" {% if refresh_schedule == '1h' %}selected{% endif %}>1 hour</option>
+            <option value="2h" {% if refresh_schedule == '2h' %}selected{% endif %}>2 hours</option>
+            <option value="12h" {% if refresh_schedule == '12h' %}selected{% endif %}>12 hours</option>
+            <option value="1d" {% if refresh_schedule == '1d' %}selected{% endif %}>1 day</option>
+            <option value="weekly" {% if refresh_schedule == 'weekly' %}selected{% endif %}>Weekly</option>
+          </select>
+        </div>
+        <div class="pipeline-schedule-row">
+          <div class="pipeline-schedule-meta" id="pipeline_refresh_time_wrap" {% if refresh_schedule not in ['1d', 'weekly'] %}hidden{% endif %}>
+            <span class="pipeline-schedule-meta-label">Time</span>
+            <input class="time-input" type="time" id="pipeline_refresh_time" value="{{ refresh_time }}" step="60" />
+          </div>
+          <div class="pipeline-schedule-meta" id="pipeline_refresh_day_wrap" {% if refresh_schedule != 'weekly' %}hidden{% endif %}>
+            <span class="pipeline-schedule-meta-label">Day</span>
+            <select class="select-input" id="pipeline_refresh_day">
+              <option value="monday" {% if refresh_day == 'monday' %}selected{% endif %}>Monday</option>
+              <option value="tuesday" {% if refresh_day == 'tuesday' %}selected{% endif %}>Tuesday</option>
+              <option value="wednesday" {% if refresh_day == 'wednesday' %}selected{% endif %}>Wednesday</option>
+              <option value="thursday" {% if refresh_day == 'thursday' %}selected{% endif %}>Thursday</option>
+              <option value="friday" {% if refresh_day == 'friday' %}selected{% endif %}>Friday</option>
+              <option value="saturday" {% if refresh_day == 'saturday' %}selected{% endif %}>Saturday</option>
+              <option value="sunday" {% if refresh_day == 'sunday' %}selected{% endif %}>Sunday</option>
+            </select>
+          </div>
+        </div>
+        <div class="pipeline-schedule-help" id="pipeline_refresh_schedule_help">
+          {% if refresh_schedule == 'continuous' %}
+            Runs back-to-back with a short pause between passes so new feed items show up as quickly as possible.
+          {% elif refresh_schedule == '1d' %}
+            Runs once per day at the local time you choose below.
+          {% elif refresh_schedule == 'weekly' %}
+            Runs once per week on the day and time you choose below.
+          {% else %}
+            Runs on a fixed repeating interval all day.
+          {% endif %}
         </div>
         <div class="refresh-status" id="pipeline-status" aria-live="polite">
           <span class="refresh-status-dot" id="pipeline-status-dot" aria-hidden="true"></span>
@@ -454,7 +312,7 @@
   </div>
 
   </div>
-</div>
+</main>
 
 <div class="save-bar">
   <span class="save-status" id="save-status">✓ Saved</span>
@@ -464,7 +322,6 @@
 
 <div id="toast"></div>
 
-<script src="/static/index.js"></script>
 <script src="/static/settings.js"></script>
 
 </body>

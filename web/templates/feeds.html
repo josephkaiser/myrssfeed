@@ -246,7 +246,7 @@
       <div class="trending-list">
         {% for entry in trending %}
         {% set feed_info = feed_map.get(entry.feed_id) %}
-        <article class="trending-item">
+        <article class="trending-item" data-feed-id="{{ entry.feed_id }}">
           <div class="trending-meta">
             {% if feed_info and feed_info.domain %}
             <img class="sidebar-feed-favicon" src="https://www.google.com/s2/favicons?domain={{ feed_info.domain }}&sz=32" width="14" height="14" alt="" loading="lazy" />
@@ -254,7 +254,7 @@
             <span class="trending-source">{{ entry.feed_title or "Unknown" }}</span>
             <time class="trending-date" data-published="{{ entry.published }}" data-published-format="date" datetime="{{ entry.published }}">{{ entry.published[:10] if entry.published else "" }}</time>
           </div>
-          <a class="trending-title" href="{{ entry.link or ('/article/' ~ entry.id) }}" target="_blank" rel="noopener noreferrer"{% if entry.link %} onclick="markRead({{ entry.id }}, this)"{% endif %}>
+          <a class="trending-title" href="{{ '/article/' ~ entry.id }}">
             {{ loop.index }}. {{ entry.title or "(no title)" }}
           </a>
         </article>
@@ -313,17 +313,7 @@ async function renameFeed(id) {
 
 async function unsubscribeFeed(id, btn) {
   if (!confirm("Remove this feed from your subscriptions? It will stay in the service; you can add it again from Discover.")) return;
-  if (btn) btn.disabled = true;
-  const res = await fetch("/api/feeds/" + id, { method: "DELETE" });
-  if (!res.ok) {
-    if (btn) btn.disabled = false;
-    showToast("Could not remove from subscriptions.");
-    return;
-  }
-  const row = document.querySelector('.subscriptions-row[data-feed-id="' + id + '"]');
-  if (row) row.remove();
-  document.querySelectorAll('.sidebar-feeds-row[data-feed-id="' + id + '"], .nav-feeds-row[data-feed-id="' + id + '"]').forEach(function(r) { r.remove(); });
-  showToast("Removed from subscriptions.");
+  await deleteFeed(id, btn, { successMessage: "Removed from subscriptions." });
 }
 </script>
 </body>

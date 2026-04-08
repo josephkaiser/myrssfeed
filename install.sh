@@ -4,7 +4,7 @@
 # What this does:
 #   1. Ensures a Python venv exists and dependencies are installed
 #   2. Ensures the app is registered as a systemd service (port 8080)
-#   3. Ensures the Pi's mDNS hostname (avahi) is set — resolves as myrssfeed.local on some clients
+#   3. Ensures avahi-daemon is available for mDNS using the Pi's existing hostname
 #
 # It is safe to re-run: each section first checks if things already look healthy
 # and will skip work that does not need to be redone. If a check fails, it will
@@ -16,7 +16,6 @@ APP_DIR="$(cd "$(dirname "$0")" && pwd)"
 SERVICE_NAME="myrssfeed"
 PYTHON="$(which python3)"
 VENV_DIR="$APP_DIR/.venv"
-HOSTNAME_MDNS="myrssfeed"
 OS_TYPE="$(uname -s)"
 
 # Optional local overrides (ignored by git via .gitignore)
@@ -49,7 +48,7 @@ log_step "Ensuring Python dependencies are installed…"
 "$VENV_DIR/bin/pip" install -r "$APP_DIR/requirements.txt" -q && \
     log_ok "Dependencies installed from requirements.txt"
 
-# ── 2. systemd service + mDNS (Linux only) ───────────────────────────────────
+# ── 2. systemd service + mDNS support (Linux only) ───────────────────────────
 if [[ "$OS_TYPE" == "Linux" ]] && command -v systemctl >/dev/null 2>&1; then
     log_step "Checking systemd service ${SERVICE_NAME}.service…"
     SERVICE_ACTIVE=0
@@ -101,33 +100,33 @@ EOF
         log_fail "myRSSfeed service is not active after (re)install — check \`systemctl status ${SERVICE_NAME}.service\`"
     fi
 
-    # ── 3. mDNS hostname ─────────────────────────────────────────────────────
-    log_step "Checking mDNS hostname and avahi-daemon…"
-    CURRENT_HOSTNAME="$(hostnamectl --static)"
+    # ── 3. mDNS via avahi ────────────────────────────────────────────────────
+    log_step "Checking avahi-daemon for mDNS…"
+    CURRENT_HOSTNAME="$(hostnamectl --static 2>/dev/null || hostname 2>/dev/null || true)"
     AVAHI_OK=0
     if systemctl is-active --quiet avahi-daemon 2>/dev/null && \
        systemctl is-enabled --quiet avahi-daemon 2>/dev/null; then
         AVAHI_OK=1
     fi
 
-    if [[ "$CURRENT_HOSTNAME" == "$HOSTNAME_MDNS" && "$AVAHI_OK" -eq 1 ]]; then
-        log_skip "Hostname (${HOSTNAME_MDNS}) and avahi-daemon are already set up"
+    if [[ "$AVAHI_OK" -eq 1 ]]; then
+        log_skip "avahi-daemon is active and enabled"
     else
-        log_step "Configuring mDNS hostname to ${HOSTNAME_MDNS}…"
-        if [[ "$CURRENT_HOSTNAME" != "$HOSTNAME_MDNS" ]]; then
-            sudo hostnamectl set-hostname "$HOSTNAME_MDNS"
-        fi
+        log_step "Ensuring avahi-daemon is installed and enabled…"
         if ! command -v avahi-daemon &>/dev/null; then
             sudo apt-get install -y -q avahi-daemon
         fi
         sudo systemctl enable --now avahi-daemon
     fi
 
-    if [[ "$(hostnamectl --static)" == "$HOSTNAME_MDNS" ]] && \
-       systemctl is-active --quiet avahi-daemon 2>/dev/null; then
-        log_ok "Hostname and mDNS are configured. Pi responds to ${HOSTNAME_MDNS}.local on the network."
+    if systemctl is-active --quiet avahi-daemon 2>/dev/null; then
+        if [[ -n "${CURRENT_HOSTNAME:-}" ]]; then
+            log_ok "mDNS is configured. This Pi should respond to ${CURRENT_HOSTNAME}.local on the network."
+        else
+            log_ok "mDNS is configured via avahi-daemon."
+        fi
     else
-        log_fail "mDNS configuration did not fully succeed — check \`hostnamectl status\` and \`systemctl status avahi-daemon\`."
+        log_fail "mDNS configuration did not fully succeed — check \`systemctl status avahi-daemon\`."
     fi
 else
     log_step "Non-Linux or non-systemd host detected."

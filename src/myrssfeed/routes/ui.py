@@ -6,7 +6,9 @@ from typing import Callable, Optional
 from fastapi import HTTPException, Request
 from fastapi.responses import HTMLResponse
 
+from myrssfeed.scripts.scheduler import get_pipeline_schedule_settings
 from myrssfeed.services import catalog, entries
+from myrssfeed.services.subscriptions import apply_effective_subscription, filter_subscribed_rows
 
 
 class UIRoutes:
@@ -37,9 +39,13 @@ class UIRoutes:
 
     def _load_subscribed_feeds(self, conn: sqlite3.Connection, order_by: str = "title") -> list[dict]:
         rows = conn.execute(
-            f"SELECT id, url, title, color FROM feeds WHERE COALESCE(subscribed, 1) = 1 ORDER BY {order_by}"
+            f"""
+            SELECT id, url, title, color, COALESCE(subscribed, 1) AS subscribed
+            FROM feeds
+            ORDER BY {order_by}
+            """
         ).fetchall()
-        return [dict(row) for row in rows]
+        return filter_subscribed_rows([dict(row) for row in rows])
 
     def index(
         self,
@@ -50,11 +56,14 @@ class UIRoutes:
         days: Optional[str] = None,
         scope: Optional[str] = None,
         themes: Optional[str] = None,
+        read_status: Optional[str] = None,
         sort: Optional[str] = None,
     ):
         days_int = entries.parse_days(days)
         source_scope = entries.normalize_source_scope(scope)
         theme_labels = entries.parse_themes_param(themes)
+        read_status_val = entries.normalize_read_status(read_status)
+        read_status_param = read_status_val if read_status_val != entries.READ_STATUS_UNREAD else None
         sort_val = entries.normalize_sort(sort)
         active_feed_id = feed_id if source_scope == entries.SOURCE_SCOPE_MY else None
 
@@ -69,6 +78,7 @@ class UIRoutes:
             days_int,
             source_scope,
             theme_labels,
+            read_status_val,
         )
         count_query = "SELECT COUNT(*) FROM entries e JOIN feeds f ON f.id = e.feed_id"
         if filters:
@@ -94,10 +104,10 @@ class UIRoutes:
             days_int,
             source_scope,
             theme_labels,
+            read_status_val,
             sort_val,
         )[:initial_limit]
-        topic_groups = entries.group_entries_by_theme(entries_list)
-        trending = entries.load_trending(conn)
+        trending = entries.load_trending(conn, source_scope=source_scope)
         conn.close()
 
         return self.templates.TemplateResponse(
@@ -108,7 +118,6 @@ class UIRoutes:
                 "feeds": feeds,
                 "feed_map": feed_map,
                 "entries": entries_list,
-                "topic_groups": topic_groups,
                 "total_entries": total_entries,
                 "total_entries_display": f"{total_entries:,}",
                 "trending": trending,
@@ -117,6 +126,8 @@ class UIRoutes:
                 "date_range": days_int if (days_int is not None and days_int in entries.DATE_RANGE_DAYS) else None,
                 "quality_level": quality_level,
                 "source_scope": source_scope,
+                "read_status": read_status_val,
+                "show_read": read_status_val != entries.READ_STATUS_UNREAD,
                 "sort": sort_val,
                 "my_feed_url": entries.build_url_with_query_params(
                     "/",
@@ -127,6 +138,7 @@ class UIRoutes:
                         "days": str(days_int) if days_int is not None else None,
                         "scope": entries.SOURCE_SCOPE_MY,
                         "themes": theme_param,
+                        "read_status": read_status_param,
                         "sort": sort_val if sort_val != entries.SORT_CHRONOLOGICAL else None,
                     },
                 ),
@@ -138,6 +150,7 @@ class UIRoutes:
                         "days": str(days_int) if days_int is not None else None,
                         "scope": entries.SOURCE_SCOPE_DISCOVER,
                         "themes": theme_param,
+                        "read_status": read_status_param,
                         "sort": sort_val if sort_val != entries.SORT_CHRONOLOGICAL else None,
                     },
                 ),
@@ -148,6 +161,7 @@ class UIRoutes:
                         "quality_level": str(quality_level) if quality_level is not None else None,
                         "scope": source_scope,
                         "themes": theme_param,
+                        "read_status": read_status_param,
                         "sort": sort_val if sort_val != entries.SORT_CHRONOLOGICAL else None,
                     },
                 ),
@@ -176,12 +190,18 @@ class UIRoutes:
             raise HTTPException(status_code=404, detail="Article not found.")
 
         entry = dict(row)
+        if not entry.get("read"):
+            conn.execute("UPDATE entries SET read = 1 WHERE id = ?", (entry_id,))
+            conn.commit()
+            entry["read"] = 1
         q = request.query_params.get("q")
         feed_id = entries.parse_int(request.query_params.get("feed_id"))
         quality_level = entries.parse_int(request.query_params.get("quality_level"))
         days_int = entries.parse_days(request.query_params.get("days"))
         source_scope = entries.normalize_source_scope(request.query_params.get("scope"))
         theme_labels = entries.parse_themes_param(request.query_params.get("themes"))
+        read_status_val = entries.normalize_read_status(request.query_params.get("read_status"))
+        read_status_param = read_status_val if read_status_val != entries.READ_STATUS_UNREAD else None
         sort_val = entries.normalize_sort(request.query_params.get("sort"))
         active_feed_id = feed_id if source_scope == entries.SOURCE_SCOPE_MY else None
         back_url = entries.build_url_with_query_params(
@@ -193,6 +213,7 @@ class UIRoutes:
                 "days": request.query_params.get("days"),
                 "scope": request.query_params.get("scope"),
                 "themes": ",".join(sorted(theme_labels)) if theme_labels is not None else None,
+                "read_status": read_status_param,
                 "sort": sort_val if sort_val != entries.SORT_CHRONOLOGICAL else None,
             },
         )
@@ -200,8 +221,6 @@ class UIRoutes:
             "SELECT id, url, title, color FROM feeds WHERE id = ?",
             (entry["feed_id"],),
         ).fetchone()
-        conn.execute("UPDATE entries SET read = 1 WHERE id = ?", (entry_id,))
-        conn.commit()
         conn.close()
 
         if feed_row:
@@ -282,6 +301,7 @@ class UIRoutes:
         conn.close()
 
         service_feeds = [dict(row) for row in service_rows]
+        service_feeds = [apply_effective_subscription(row) for row in service_feeds]
         subscribed = [row["url"] for row in feeds]
         return self.templates.TemplateResponse(
             request=request,
@@ -306,6 +326,7 @@ class UIRoutes:
         current = {key: self.get_setting(key) for key in self.defaults}
         if "max_entries" not in current:
             current["max_entries"] = self.get_setting("max_entries")
+        current.update(get_pipeline_schedule_settings())
         return self.templates.TemplateResponse(
             request=request,
             name="settings.html",
@@ -323,9 +344,7 @@ class UIRoutes:
     def stats_page(self, request: Request):
         conn = self.get_db()
         total_articles = conn.execute("SELECT COUNT(*) FROM entries").fetchone()[0]
-        total_feeds = conn.execute(
-            "SELECT COUNT(*) FROM feeds WHERE COALESCE(subscribed, 1) = 1"
-        ).fetchone()[0]
+        total_feeds = len(self._load_subscribed_feeds(conn))
         unread_articles = conn.execute(
             "SELECT COUNT(*) FROM entries WHERE COALESCE(read, 0) = 0"
         ).fetchone()[0]
@@ -333,10 +352,26 @@ class UIRoutes:
             "SELECT COUNT(*) FROM entries WHERE COALESCE(liked, 0) = 1"
         ).fetchone()[0]
         newest_row = conn.execute(
-            "SELECT published FROM entries WHERE published IS NOT NULL ORDER BY published DESC LIMIT 1"
+            """
+            SELECT published
+            FROM entries
+            WHERE published IS NOT NULL
+              AND TRIM(published) != ''
+              AND julianday(published) IS NOT NULL
+            ORDER BY julianday(published) DESC, published DESC
+            LIMIT 1
+            """
         ).fetchone()
         oldest_row = conn.execute(
-            "SELECT published FROM entries WHERE published IS NOT NULL ORDER BY published ASC LIMIT 1"
+            """
+            SELECT published
+            FROM entries
+            WHERE published IS NOT NULL
+              AND TRIM(published) != ''
+              AND julianday(published) IS NOT NULL
+            ORDER BY julianday(published) ASC, published ASC
+            LIMIT 1
+            """
         ).fetchone()
         top_sources_rows = conn.execute(
             """

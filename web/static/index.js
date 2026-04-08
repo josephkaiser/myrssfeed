@@ -2,7 +2,10 @@
   const navOverlay = document.getElementById("nav-overlay");
   const NAV_OPEN_KEY = "nav-open";
   const MOBILE_MAX = 640;
-const ARTICLE_CONTEXT_KEYS = ["q", "feed_id", "quality_level", "days", "scope", "themes", "sort"];
+const ARTICLE_CONTEXT_KEYS = ["q", "feed_id", "quality_level", "days", "scope", "themes", "read_status", "sort"];
+const ENTRY_VIEW_MODE_KEY = "entry_view_mode";
+const FEED_VIEW_STATE_KEY = "myrssfeed_feed_view_state";
+let _restoredFeedViewState = null;
 
   function isMobileViewport() {
     return typeof window !== "undefined" && window.innerWidth <= MOBILE_MAX;
@@ -17,6 +20,7 @@ function getCurrentFilters() {
     qualityLevel: params.get("quality_level") || "",
     days: params.get("days") || "",
     themes: params.get("themes") || "",
+    readStatus: params.get("read_status") || "",
     sort: params.get("sort") || "chronological",
   };
 }
@@ -56,6 +60,136 @@ function _withArticleContext(href) {
     return href;
   }
 }
+
+function normalizePreviewUrl(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  try {
+    return new URL(raw, window.location.origin).href;
+  } catch (_) {
+    return raw;
+  }
+}
+
+function normalizeEntryViewMode(value) {
+  return String(value || "").trim().toLowerCase() === "expanded" ? "expanded" : "condensed";
+}
+
+function getStoredEntryViewMode() {
+  try {
+    return normalizeEntryViewMode(localStorage.getItem(ENTRY_VIEW_MODE_KEY));
+  } catch (_) {
+    return "condensed";
+  }
+}
+
+function applyEntryViewMode(mode) {
+  const normalized = normalizeEntryViewMode(mode);
+  document.documentElement.setAttribute("data-entry-view", normalized);
+  return normalized;
+}
+
+function getFeedScrollContainer() {
+  const panel = document.getElementById("entries-panel");
+  if (!panel || typeof window === "undefined" || typeof window.getComputedStyle !== "function") {
+    return window;
+  }
+  try {
+    const style = window.getComputedStyle(panel);
+    if (style.overflowY === "auto" || style.overflowY === "scroll") {
+      return panel;
+    }
+  } catch (_) {}
+  return window;
+}
+
+function getFeedScrollPosition() {
+  const scrollContainer = getFeedScrollContainer();
+  if (scrollContainer && scrollContainer !== window) {
+    return scrollContainer.scrollTop || 0;
+  }
+  return window.scrollY || window.pageYOffset || 0;
+}
+
+function setFeedScrollPosition(value) {
+  const nextValue = Math.max(0, Number(value) || 0);
+  const scrollContainer = getFeedScrollContainer();
+  if (scrollContainer && scrollContainer !== window) {
+    scrollContainer.scrollTop = nextValue;
+    return;
+  }
+  if (typeof window.scrollTo === "function") {
+    window.scrollTo(0, nextValue);
+  }
+}
+
+function adjustFeedScroll(delta) {
+  if (!delta) return;
+  setFeedScrollPosition(getFeedScrollPosition() + delta);
+}
+
+function _safeSessionGet(key) {
+  try { return sessionStorage.getItem(key) || ""; } catch (_) { return ""; }
+}
+
+function _safeSessionSet(key, value) {
+  try { sessionStorage.setItem(key, value); } catch (_) {}
+}
+
+function _safeSessionRemove(key) {
+  try { sessionStorage.removeItem(key); } catch (_) {}
+}
+
+function _currentFeedViewUrl() {
+  return window.location.pathname + window.location.search;
+}
+
+function _readFeedViewState() {
+  const raw = _safeSessionGet(FEED_VIEW_STATE_KEY);
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw);
+  } catch (_) {
+    return null;
+  }
+}
+
+function rememberFeedViewState(options = {}) {
+  if (window.location.pathname !== "/") return;
+  const currentUrl = _currentFeedViewUrl();
+  const previous = _readFeedViewState();
+  const state = {
+    url: currentUrl,
+    scrollTop: Math.max(0, Math.round(getFeedScrollPosition())),
+    anchorEntryId: options.anchorEntryId
+      || (previous && previous.url === currentUrl ? previous.anchorEntryId || "" : ""),
+    activeEntryId: options.activeEntryId
+      || (previous && previous.url === currentUrl ? previous.activeEntryId || "" : ""),
+    savedAt: Date.now(),
+  };
+  _safeSessionSet(FEED_VIEW_STATE_KEY, JSON.stringify(state));
+}
+
+(function initFeedViewStateRestore() {
+  if (window.location.pathname !== "/") return;
+  if (typeof history !== "undefined" && "scrollRestoration" in history) {
+    history.scrollRestoration = "manual";
+  }
+  const state = _readFeedViewState();
+  if (!state || state.url !== _currentFeedViewUrl()) return;
+  _restoredFeedViewState = state;
+  const scrollTop = typeof state.scrollTop === "number" ? state.scrollTop : 0;
+  requestAnimationFrame(() => {
+    setFeedScrollPosition(scrollTop);
+    requestAnimationFrame(() => {
+      _safeSessionRemove(FEED_VIEW_STATE_KEY);
+    });
+  });
+})();
+
+window.addEventListener("pagehide", () => {
+  rememberFeedViewState();
+});
 
   function openNav() {
     if (!navOverlay) return;
@@ -219,14 +353,10 @@ function _withArticleContext(href) {
   function _headerRefreshRunningLabel(state) {
     const total = typeof state.total_feeds === "number" ? state.total_feeds : 0;
     const completed = typeof state.completed_feeds === "number" ? state.completed_feeds : 0;
-    const current = _headerFeedName(state.current_feed);
-    if (total > 0 && current) {
-      return `${completed}/${total} • ${current}`;
-    }
     if (total > 0) {
-      return `${completed}/${total} feeds`;
+      return `Sync ${completed}/${total}`;
     }
-    return state.stage_label || "Running";
+    return "Syncing";
   }
 
   function _updateHeaderDot(id, state, opts = {}) {
@@ -238,9 +368,15 @@ function _withArticleContext(href) {
       if (opts.textId) {
         const textEl = document.getElementById(opts.textId);
         if (textEl) {
+          const current = _headerFeedName(state.current_feed);
           textEl.textContent = opts.kind === "refresh"
             ? _headerRefreshRunningLabel(state)
             : "Running";
+          if (current) {
+            textEl.title = `Refreshing ${current}`;
+          } else {
+            textEl.removeAttribute("title");
+          }
         }
       }
       return;
@@ -288,6 +424,7 @@ function _withArticleContext(href) {
           }
         }
         textEl.textContent = label;
+        textEl.removeAttribute("title");
       }
     }
   }
@@ -557,6 +694,103 @@ function _withArticleContext(href) {
     btn.classList.toggle("active", !_allThemesSelected());
   })();
 
+  function _readStatusBtn() {
+    return document.getElementById("read-status-btn");
+  }
+
+  function _normalizeReadStatus(value) {
+    const raw = String(value || "").trim().toLowerCase();
+    if (raw === "all" || raw === "read" || raw === "unread") return raw;
+    return "unread";
+  }
+
+  function _showReadEnabled(readStatus) {
+    return _normalizeReadStatus(readStatus) !== "unread";
+  }
+
+  function _renderReadStatusButton(readStatus) {
+    const btn = _readStatusBtn();
+    if (!btn) return;
+    const showRead = _showReadEnabled(readStatus);
+    btn.textContent = showRead ? "All" : "Unread";
+    btn.dataset.readStatus = showRead ? "all" : "unread";
+    btn.classList.toggle("active", showRead);
+    btn.setAttribute("aria-pressed", showRead ? "true" : "false");
+    btn.setAttribute(
+      "aria-label",
+      showRead
+        ? "Currently showing all articles. Switch to unread only."
+        : "Currently showing unread articles only. Switch to all articles."
+    );
+    btn.title = showRead ? "Showing all articles" : "Showing unread articles only";
+  }
+
+  function cycleReadStatusFilter() {
+    const params = new URLSearchParams(window.location.search || "");
+    if (_showReadEnabled(params.get("read_status"))) {
+      params.delete("read_status");
+    } else {
+      params.set("read_status", "all");
+    }
+    window.location.search = params.toString();
+  }
+  window.cycleReadStatusFilter = cycleReadStatusFilter;
+
+  (function initReadStatusFilter() {
+    const btn = _readStatusBtn();
+    if (!btn) return;
+    const params = new URLSearchParams(window.location.search || "");
+    _renderReadStatusButton(params.get("read_status"));
+    btn.addEventListener("click", (event) => {
+      event.preventDefault();
+      cycleReadStatusFilter();
+    });
+  })();
+
+  function _entryViewModeBtn() {
+    return document.getElementById("entry-view-mode-btn");
+  }
+
+  function _renderEntryViewModeButton(mode) {
+    const btn = _entryViewModeBtn();
+    if (!btn) return;
+    const normalized = normalizeEntryViewMode(mode);
+    const label = normalized === "expanded" ? "Expanded" : "Condensed";
+    btn.textContent = label;
+    btn.dataset.viewMode = normalized;
+    btn.classList.toggle("active", normalized === "expanded");
+    btn.setAttribute("aria-pressed", normalized === "expanded" ? "true" : "false");
+    btn.setAttribute("aria-label", `Toggle row view. Currently ${label}.`);
+    btn.title = `Row view: ${label}`;
+  }
+
+  function setEntryViewMode(mode) {
+    const normalized = applyEntryViewMode(mode);
+    try {
+      localStorage.setItem(ENTRY_VIEW_MODE_KEY, normalized);
+    } catch (_) {}
+    _renderEntryViewModeButton(normalized);
+    if (typeof window.__entryRowActivityRefreshViewMode === "function") {
+      window.__entryRowActivityRefreshViewMode(normalized);
+    }
+    return normalized;
+  }
+  window.setEntryViewMode = setEntryViewMode;
+
+  (function initEntryViewModeToggle() {
+    const btn = _entryViewModeBtn();
+    const initialMode = applyEntryViewMode(getStoredEntryViewMode());
+    _renderEntryViewModeButton(initialMode);
+    if (!btn) return;
+    btn.addEventListener("click", (event) => {
+      event.preventDefault();
+      const nextMode = normalizeEntryViewMode(btn.dataset.viewMode) === "expanded"
+        ? "condensed"
+        : "expanded";
+      setEntryViewMode(nextMode);
+    });
+  })();
+
   (function initSortSelect() {
     const sortSelect = document.getElementById("sort-select");
     if (!sortSelect) return;
@@ -621,111 +855,532 @@ function _withArticleContext(href) {
   }
 })();
 
-(function initEntryHoverPreview() {
-  const preview = document.getElementById("entry-hover-preview");
-  const previewUrl = document.getElementById("entry-hover-preview-url");
-  const previewImage = document.getElementById("entry-hover-preview-image");
-  const canHover = typeof window !== "undefined"
-    && typeof window.matchMedia === "function"
-    && window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+(function initEntryRowActivity() {
+  const entriesPanel = document.getElementById("entries-panel");
+  const entriesListRoot = document.getElementById("entries-list");
+  if (!entriesPanel || !entriesListRoot) return;
+
   let activeRow = null;
+  let inlineExpandedRow = null;
+  let lastInputWasKeyboard = false;
+  let pendingGUntil = 0;
+  let shortcutsHelpTimer = 0;
+  let currentViewMode = normalizeEntryViewMode(
+    document.documentElement.getAttribute("data-entry-view") || getStoredEntryViewMode()
+  );
+  const shortcutsHelp = document.getElementById("feed-shortcuts-help");
+  const shortcutsHelpClose = document.getElementById("feed-shortcuts-help-close");
+  const SHORTCUTS_HELP_SESSION_KEY = "feed_shortcuts_help_seen";
+  const coarsePointer = typeof window !== "undefined"
+    && typeof window.matchMedia === "function"
+    && window.matchMedia("(hover: none), (pointer: coarse)").matches;
 
-  if (!preview || !previewUrl || !previewImage) return;
+  function getRows() {
+    return Array.from(document.querySelectorAll(".entry-row"));
+  }
 
-  function normalizePreviewUrl(value) {
-    const raw = String(value || "").trim();
-    if (!raw) return "";
-    try {
-      return new URL(raw, window.location.origin).href;
-    } catch (_) {
-      return raw;
+  function shouldIgnoreRowShortcuts(target) {
+    if (!target || typeof target.closest !== "function") {
+      return false;
+    }
+    return !!target.closest("input, textarea, select, [contenteditable], [role='textbox']");
+  }
+
+  function showShortcutsHelp(options = {}) {
+    if (!shortcutsHelp) return;
+    const autoHide = options.autoHide === true;
+    const durationMs = typeof options.durationMs === "number" ? options.durationMs : 7000;
+    if (shortcutsHelpTimer) {
+      clearTimeout(shortcutsHelpTimer);
+      shortcutsHelpTimer = 0;
+    }
+    shortcutsHelp.hidden = false;
+    requestAnimationFrame(() => {
+      shortcutsHelp.classList.add("show");
+    });
+    if (autoHide) {
+      shortcutsHelpTimer = window.setTimeout(() => {
+        hideShortcutsHelp();
+      }, durationMs);
     }
   }
 
-  function positionPreview(clientX, clientY) {
-    if (preview.hidden) return;
-    const margin = 18;
-    const rect = preview.getBoundingClientRect();
-    const maxLeft = Math.max(margin, window.innerWidth - rect.width - margin);
-    const maxTop = Math.max(margin, window.innerHeight - rect.height - margin);
-    preview.style.left = `${Math.max(margin, Math.min(clientX + 20, maxLeft))}px`;
-    preview.style.top = `${Math.max(margin, Math.min(clientY + 20, maxTop))}px`;
+  function hideShortcutsHelp() {
+    if (!shortcutsHelp) return;
+    if (shortcutsHelpTimer) {
+      clearTimeout(shortcutsHelpTimer);
+      shortcutsHelpTimer = 0;
+    }
+    shortcutsHelp.classList.remove("show");
+    window.setTimeout(() => {
+      if (!shortcutsHelp.classList.contains("show")) {
+        shortcutsHelp.hidden = true;
+      }
+    }, 180);
   }
 
-  function showPreview(row, clientX = null, clientY = null) {
+  function syncRowPreview(row) {
     if (!row) return;
+    const preview = row.querySelector(".entry-row-preview");
+    if (!preview) return;
+    const previewCopy = preview.querySelector(".entry-row-preview-copy");
+    const previewUrl = preview.querySelector(".entry-row-preview-url");
+    const previewImage = preview.querySelector(".entry-row-preview-image");
+    const copy = String(row.dataset.previewCopy || "").trim();
     const url = normalizePreviewUrl(row.dataset.previewUrl || row.getAttribute("href") || "");
     const image = String(row.dataset.previewImage || "").trim();
-    if (!url && !image) return;
 
-    activeRow = row;
-    previewUrl.textContent = url;
-
-    if (image) {
-      previewImage.src = image;
-      previewImage.hidden = false;
-    } else {
-      previewImage.hidden = true;
-      previewImage.removeAttribute("src");
+    if (previewCopy) {
+      previewCopy.textContent = copy;
+      previewCopy.hidden = !copy;
     }
-
-    preview.hidden = false;
-    preview.classList.add("visible");
-
-    if (typeof clientX === "number" && typeof clientY === "number") {
-      positionPreview(clientX, clientY);
-      return;
+    if (previewUrl) {
+      previewUrl.textContent = url;
     }
-
-    const rect = row.getBoundingClientRect();
-    positionPreview(rect.right, rect.top + 10);
+    if (previewImage) {
+      if (image) {
+        previewImage.src = image;
+        previewImage.hidden = false;
+      } else {
+        previewImage.hidden = true;
+        previewImage.removeAttribute("src");
+      }
+    }
   }
 
-  function hidePreview(row = null) {
-    if (row && activeRow && row !== activeRow) return;
-    activeRow = null;
-    preview.hidden = true;
-    preview.classList.remove("visible");
-    previewImage.hidden = true;
-    previewImage.removeAttribute("src");
+  function rowPreviewIsVisible(row) {
+    return rowPreviewVisible(row, row === activeRow);
+  }
+
+  function openInlinePreview(row) {
+    if (!row) return;
+    syncRowPreview(row);
+    if (!shouldShowExpandedPreview()) {
+      expandInlinePreview(row);
+    }
+  }
+
+  function focusRow(row) {
+    if (!row || typeof row.focus !== "function") return;
+    if (document.activeElement === row) return;
+    try {
+      row.focus({ preventScroll: true });
+    } catch (_) {
+      row.focus();
+    }
+  }
+
+  function shouldShowExpandedPreview() {
+    return currentViewMode === "expanded";
+  }
+
+  function rowPreviewVisible(row, isActive) {
+    if (!row) return false;
+    if (shouldShowExpandedPreview()) return !!isActive;
+    return inlineExpandedRow === row;
+  }
+
+  function renderRowState(row, isActive) {
+    if (!row) return;
+    const preview = row.querySelector(".entry-row-preview");
+    const previewVisible = rowPreviewVisible(row, isActive);
+    row.classList.toggle("active", !!isActive);
+    row.classList.toggle("preview-open", previewVisible);
+    row.setAttribute("aria-expanded", previewVisible ? "true" : "false");
+    if (preview) {
+      preview.hidden = !previewVisible;
+    }
+  }
+
+  function collapseInlinePreview() {
+    if (!inlineExpandedRow) return;
+    const row = inlineExpandedRow;
+    inlineExpandedRow = null;
+    renderRowState(row, row === activeRow);
+  }
+
+  function expandInlinePreview(row) {
+    if (!row || shouldShowExpandedPreview()) return;
+    if (inlineExpandedRow && inlineExpandedRow !== row) {
+      renderRowState(inlineExpandedRow, inlineExpandedRow === activeRow);
+    }
+    inlineExpandedRow = row;
+    renderRowState(row, row === activeRow);
+  }
+
+  function openRow(row) {
+    if (!row || !row.href) return;
+    rememberFeedViewState({
+      anchorEntryId: row.dataset.entryId || "",
+      activeEntryId: row.dataset.entryId || "",
+    });
+    window.location.assign(row.href);
+  }
+
+  function setExpanded(row, expanded) {
+    renderRowState(row, expanded);
+  }
+
+  function viewportBounds() {
+    const scrollContainer = getFeedScrollContainer();
+    if (scrollContainer && scrollContainer !== window) {
+      const rect = scrollContainer.getBoundingClientRect();
+      return {
+        top: rect.top + 8,
+        bottom: rect.bottom - 14,
+      };
+    }
+    const header = document.querySelector("header");
+    const topInset = header ? Math.ceil(header.getBoundingClientRect().bottom) + 8 : 8;
+    const bottomInset = 14;
+    return {
+      top: topInset,
+      bottom: window.innerHeight - bottomInset,
+    };
+  }
+
+  function scrollMetrics() {
+    const scrollContainer = getFeedScrollContainer();
+    if (scrollContainer && scrollContainer !== window) {
+      return {
+        scrollContainer,
+        viewport: scrollContainer.clientHeight || 0,
+      };
+    }
+    return {
+      scrollContainer: window,
+      viewport: window.innerHeight || document.documentElement.clientHeight || 0,
+    };
+  }
+
+  function scrollRowIntoViewIfNeeded(row, behavior = "auto") {
+    if (!row) return;
+    const scrollContainer = getFeedScrollContainer();
+    const rect = row.getBoundingClientRect();
+    const bounds = viewportBounds();
+    const deltaTop = rect.top - bounds.top;
+    const deltaBottom = rect.bottom - bounds.bottom;
+    const delta = deltaTop < 0 ? deltaTop : (deltaBottom > 0 ? deltaBottom : 0);
+    if (!delta) return;
+
+    if (scrollContainer && scrollContainer !== window) {
+      if (typeof scrollContainer.scrollBy === "function") {
+        scrollContainer.scrollBy({ top: delta, behavior });
+      } else {
+        scrollContainer.scrollTop += delta;
+      }
+      return;
+    }
+    if (typeof window.scrollBy !== "function") return;
+    if (rect.top < bounds.top) {
+      window.scrollBy({ top: rect.top - bounds.top, behavior });
+    } else if (rect.bottom > bounds.bottom) {
+      window.scrollBy({ top: rect.bottom - bounds.bottom, behavior });
+    }
+  }
+
+  function findBestVisibleRow() {
+    const rows = getRows();
+    if (!rows.length) return null;
+    const bounds = viewportBounds();
+    const anchor = bounds.top + ((bounds.bottom - bounds.top) * 0.35);
+    let bestRow = null;
+    let bestDistance = Number.POSITIVE_INFINITY;
+
+    for (const row of rows) {
+      const rect = row.getBoundingClientRect();
+      const visibleTop = Math.max(rect.top, bounds.top);
+      const visibleBottom = Math.min(rect.bottom, bounds.bottom);
+      const visibleHeight = visibleBottom - visibleTop;
+      if (visibleHeight <= 0) continue;
+      const distance = Math.abs(rect.top - anchor);
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        bestRow = row;
+      }
+    }
+
+    return bestRow || rows[0];
+  }
+
+  function findAdjacentRow(row, direction = 1) {
+    const rows = getRows();
+    const index = rows.indexOf(row);
+    if (index < 0) return null;
+    return rows[index + direction] || null;
+  }
+
+  function syncActiveRowToViewport(options = {}) {
+    const nextRow = findBestVisibleRow();
+    if (!nextRow) return;
+    activateRow(nextRow, {
+      focus: options.focus === true,
+      scroll: false,
+      behavior: options.behavior || "auto",
+    });
+  }
+
+  function pageScroll(direction, fraction) {
+    const { scrollContainer, viewport } = scrollMetrics();
+    if (!viewport) return;
+    const overlap = fraction >= 1 ? 24 : 0;
+    const amount = Math.max(0, Math.round((viewport * fraction) - overlap)) * direction;
+
+    if (scrollContainer && scrollContainer !== window) {
+      if (typeof scrollContainer.scrollBy === "function") {
+        scrollContainer.scrollBy({ top: amount, behavior: "auto" });
+      } else {
+        scrollContainer.scrollTop += amount;
+      }
+    } else if (typeof window.scrollBy === "function") {
+      window.scrollBy({ top: amount, behavior: "auto" });
+    }
+
+    requestAnimationFrame(() => {
+      syncActiveRowToViewport({ focus: true, behavior: "auto" });
+    });
+  }
+
+  function activateRow(row, options = {}) {
+    if (!row) return;
+    const shouldFocus = options.focus === true;
+    const shouldScroll = options.scroll === true;
+    const scrollBehavior = options.behavior || "auto";
+
+    if (activeRow && activeRow !== row) {
+      collapseInlinePreview();
+      setExpanded(activeRow, false);
+    }
+
+    activeRow = row.isConnected ? row : null;
+    if (!activeRow) return;
+    syncRowPreview(activeRow);
+    setExpanded(activeRow, true);
+    rememberFeedViewState({ activeEntryId: activeRow.dataset.entryId || "" });
+
+    if (shouldFocus && typeof activeRow.focus === "function" && document.activeElement !== activeRow) {
+      try {
+        activeRow.focus({ preventScroll: true });
+      } catch (_) {
+        activeRow.focus();
+      }
+    }
+
+    if (shouldScroll) {
+      requestAnimationFrame(() => {
+        if (activeRow === row) {
+          scrollRowIntoViewIfNeeded(row, scrollBehavior);
+        }
+      });
+    }
+  }
+
+  function moveActiveRow(delta) {
+    const rows = getRows();
+    if (!rows.length) return;
+    let index = activeRow ? rows.indexOf(activeRow) : -1;
+    if (index < 0) {
+      index = delta > 0 ? -1 : rows.length;
+    }
+    index = Math.max(0, Math.min(rows.length - 1, index + delta));
+    activateRow(rows[index], { focus: true, scroll: true, behavior: "auto" });
+  }
+
+  function jumpToRow(position) {
+    const rows = getRows();
+    if (!rows.length) return;
+    const row = position === "end" ? rows[rows.length - 1] : rows[0];
+    activateRow(row, { focus: true, scroll: true, behavior: "auto" });
   }
 
   function bindRow(row) {
-    if (!row || row.dataset.hoverBound === "1") return;
-    row.dataset.hoverBound = "1";
+    if (!row || row.dataset.activityBound === "1") return;
+    row.dataset.activityBound = "1";
+    row.dataset.read = row.classList.contains("read") ? "1" : (row.dataset.read || "0");
+    syncRowPreview(row);
+    setExpanded(row, false);
 
-    row.addEventListener("mouseenter", (event) => {
-      if (!canHover) return;
-      showPreview(row, event.clientX, event.clientY);
+    row.addEventListener("click", (event) => {
+      const isPrimaryClick = event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey;
+
+      if (!isPrimaryClick) {
+        return;
+      }
+
+      if (activeRow !== row) {
+        event.preventDefault();
+        activateRow(row, { focus: true, behavior: "auto" });
+        return;
+      }
+
+      rememberFeedViewState({
+        anchorEntryId: row.dataset.entryId || "",
+        activeEntryId: row.dataset.entryId || "",
+      });
     });
-    row.addEventListener("mousemove", (event) => {
-      if (!canHover || activeRow !== row) return;
-      positionPreview(event.clientX, event.clientY);
-    });
-    row.addEventListener("mouseleave", () => {
-      if (!canHover) return;
-      hidePreview(row);
-    });
+
     row.addEventListener("focus", () => {
-      showPreview(row);
+      if (!lastInputWasKeyboard) return;
+      activateRow(row, { behavior: "auto" });
     });
-    row.addEventListener("blur", () => {
-      hidePreview(row);
+
+    row.addEventListener("keydown", (event) => {
+      if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return;
+      if (event.key !== "Enter") return;
+
+      if (activeRow !== row) {
+        event.preventDefault();
+        activateRow(row, { focus: true, behavior: "auto" });
+        openInlinePreview(row);
+        return;
+      }
+
+      if (!rowPreviewIsVisible(row)) {
+        event.preventDefault();
+        focusRow(row);
+        openInlinePreview(row);
+      }
+    });
+  }
+
+  document.addEventListener("keydown", () => {
+    lastInputWasKeyboard = true;
+  }, true);
+  document.addEventListener("pointerdown", () => {
+    lastInputWasKeyboard = false;
+  }, true);
+
+  if (shortcutsHelpClose) {
+    shortcutsHelpClose.addEventListener("click", (event) => {
+      event.preventDefault();
+      hideShortcutsHelp();
     });
   }
 
   document.querySelectorAll(".entry-row").forEach(bindRow);
-  window.bindEntryRowHoverPreview = bindRow;
+  window.bindEntryRowActivity = bindRow;
 
-  document.addEventListener("scroll", () => {
-    if (!activeRow || !canHover) return;
-    const rect = activeRow.getBoundingClientRect();
-    positionPreview(rect.right, rect.top + 10);
-  }, { passive: true });
+  window.__entryRowActivityRefreshViewMode = function refreshViewMode(mode) {
+    currentViewMode = normalizeEntryViewMode(mode);
+    collapseInlinePreview();
+    getRows().forEach((row) => {
+      setExpanded(row, row === activeRow);
+    });
+    if (activeRow && shouldShowExpandedPreview()) {
+      syncRowPreview(activeRow);
+    }
+  };
+
+  if (!coarsePointer) {
+    const initialRows = getRows();
+    const restoredActiveId = _restoredFeedViewState
+      ? String(_restoredFeedViewState.activeEntryId || "").trim()
+      : "";
+    const initialActive = initialRows.find((row) => row.dataset.entryId === restoredActiveId)
+      || initialRows.find((row) => !row.classList.contains("read"))
+      || initialRows[0]
+      || null;
+    if (initialActive) {
+      activateRow(initialActive, { behavior: "auto" });
+    }
+  }
+
+  try {
+    if (sessionStorage.getItem(SHORTCUTS_HELP_SESSION_KEY) !== "1") {
+      sessionStorage.setItem(SHORTCUTS_HELP_SESSION_KEY, "1");
+      window.setTimeout(() => {
+        showShortcutsHelp({ autoHide: true, durationMs: 8000 });
+      }, 450);
+    }
+  } catch (_) {
+    window.setTimeout(() => {
+      showShortcutsHelp({ autoHide: true, durationMs: 8000 });
+    }, 450);
+  }
 
   document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") hidePreview();
+    if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return;
+    if (shouldIgnoreRowShortcuts(event.target)) return;
+
+    if (event.key === "Escape") {
+      collapseInlinePreview();
+      hideShortcutsHelp();
+      pendingGUntil = 0;
+      return;
+    }
+
+    if (event.key === "?" || (event.code === "Slash" && event.shiftKey)) {
+      event.preventDefault();
+      pendingGUntil = 0;
+      showShortcutsHelp({ autoHide: false });
+      return;
+    }
+
+    if (event.key === "g" && !event.shiftKey) {
+      const now = Date.now();
+      event.preventDefault();
+      if (pendingGUntil > now) {
+        pendingGUntil = 0;
+        jumpToRow("start");
+      } else {
+        pendingGUntil = now + 450;
+      }
+      return;
+    }
+
+    pendingGUntil = 0;
+
+    if (event.key === "Enter") {
+      if (!activeRow) return;
+      if (!rowPreviewIsVisible(activeRow)) {
+        event.preventDefault();
+        activateRow(activeRow, { focus: true, behavior: "auto" });
+        openInlinePreview(activeRow);
+        return;
+      }
+      if (document.activeElement === activeRow) {
+        return;
+      }
+      event.preventDefault();
+      activateRow(activeRow, { focus: true, behavior: "auto" });
+    } else if (event.key === "j" || event.key === "ArrowDown") {
+      event.preventDefault();
+      moveActiveRow(1);
+    } else if (event.key === "k" || event.key === "ArrowUp") {
+      event.preventDefault();
+      moveActiveRow(-1);
+    } else if (event.key === "G") {
+      event.preventDefault();
+      jumpToRow("end");
+    } else if (event.key === "d" && !event.shiftKey) {
+      event.preventDefault();
+      pageScroll(1, 0.5);
+    } else if (event.key === "u" && !event.shiftKey) {
+      event.preventDefault();
+      pageScroll(-1, 0.5);
+    } else if (event.key === " " || event.code === "Space") {
+      event.preventDefault();
+      pageScroll(event.shiftKey ? -1 : 1, 1);
+    }
   });
+
+  let previewCollapseQueued = false;
+  function queueInlinePreviewCollapseCheck() {
+    if (previewCollapseQueued) return;
+    previewCollapseQueued = true;
+    requestAnimationFrame(() => {
+      previewCollapseQueued = false;
+      if (!inlineExpandedRow || shouldShowExpandedPreview()) return;
+      const rect = inlineExpandedRow.getBoundingClientRect();
+      const bounds = viewportBounds();
+      if (rect.bottom < bounds.top || rect.top > bounds.bottom) {
+        collapseInlinePreview();
+      }
+    });
+  }
+
+  window.addEventListener("scroll", queueInlinePreviewCollapseCheck, { passive: true });
+  entriesPanel.addEventListener("scroll", queueInlinePreviewCollapseCheck, { passive: true });
 })();
 
   // ── Toast ───────────────────────────────────────────────────────
@@ -810,37 +1465,106 @@ function _withArticleContext(href) {
   window.handleNavbarAddFeed = handleNavbarAddFeed;
 
   // ── Read state ──────────────────────────────────────────────────
+  const _pendingReadIds = new Set();
+
   function markRead(entryId, eventOrEl) {
     const target = eventOrEl && eventOrEl.currentTarget ? eventOrEl.currentTarget : eventOrEl;
     const row = target && typeof target.closest === "function"
       ? target.closest(".entry-row")
       : null;
-    if (row && !row.classList.contains("read")) {
+    const key = String(entryId);
+    const alreadyRead = row
+      ? row.classList.contains("read") || row.dataset.read === "1"
+      : _pendingReadIds.has(key);
+    if (row) {
       row.classList.add("read");
+      row.dataset.read = "1";
     }
-    fetch(`/api/entries/${entryId}/read`, { method: "POST", keepalive: true }).catch(() => {});
+    if (alreadyRead || _pendingReadIds.has(key)) {
+      return;
+    }
+    _pendingReadIds.add(key);
+    fetch(`/api/entries/${entryId}/read`, { method: "POST", keepalive: true })
+      .then((res) => {
+        if (!res.ok) {
+          _pendingReadIds.delete(key);
+        }
+      })
+      .catch(() => {
+        _pendingReadIds.delete(key);
+      });
   }
   window.markRead = markRead;
 
   // ── Delete feed from sidebar/nav ────────────────────────────────────
-  async function deleteFeed(feedId, btn) {
+  function refreshTrendingAfterFeedRemoval() {
+    document.querySelectorAll(".trending-list").forEach((list) => {
+      const items = Array.from(list.querySelectorAll(".trending-item"));
+      const section = list.closest(".sidebar-section");
+      const empty = section ? section.querySelector(".trending-empty") : null;
+      if (!items.length) {
+        if (empty) return;
+        const emptyState = document.createElement("div");
+        emptyState.className = "trending-empty";
+        emptyState.innerHTML = "<p>No trending articles yet.</p>";
+        list.insertAdjacentElement("afterend", emptyState);
+        return;
+      }
+      if (empty) {
+        empty.remove();
+      }
+      items.forEach((item, index) => {
+        const link = item.querySelector(".trending-title");
+        if (!link) return;
+        link.textContent = link.textContent.replace(/^\d+\.\s+/, `${index + 1}. `);
+      });
+    });
+  }
+
+  function refreshSubscriptionsAfterFeedRemoval() {
+    const list = document.getElementById("feeds-list");
+    if (!list) return;
+    const hasRows = !!list.querySelector(".subscriptions-row");
+    let empty = document.querySelector(".catalog-empty");
+    if (hasRows) {
+      if (empty) empty.remove();
+      return;
+    }
+    if (!empty) {
+      empty = document.createElement("p");
+      empty.className = "catalog-empty";
+      empty.innerHTML = 'No subscriptions yet. <a href="/add-feed">Add a feed</a> or browse <a href="/discover">Discover</a>.';
+      list.insertAdjacentElement("afterend", empty);
+    }
+  }
+
+  async function deleteFeed(feedId, btn, options = {}) {
     if (btn) btn.disabled = true;
     try {
       const res = await fetch(`/api/feeds/${feedId}`, { method: "DELETE" });
+      const data = await res.json().catch(() => ({}));
       if (res.ok) {
-        // Remove this feed from both sidebar and overlay nav lists
         document.querySelectorAll(`[data-feed-id="${feedId}"]`).forEach((row) => row.remove());
+        refreshTrendingAfterFeedRemoval();
+        refreshSubscriptionsAfterFeedRemoval();
+        if (typeof window.refreshEntryListAfterFeedRemoval === "function") {
+          window.refreshEntryListAfterFeedRemoval(feedId);
+        }
         // If we were viewing this feed, send user back to main list
         const params = new URLSearchParams(window.location.search);
         if (params.get("feed_id") === String(feedId)) {
           window.location.href = "/";
+          return { ok: true, data };
         }
-        toast("Feed removed.");
+        toast(data.message || options.successMessage || "Feed removed.");
+        return { ok: true, data };
       } else {
-        toast("Could not remove feed.", false);
+        toast(data.detail || options.failureMessage || "Could not remove feed.", false);
+        return { ok: false, data };
       }
     } catch (_) {
-      toast("Network error removing feed.", false);
+      toast(options.networkMessage || "Network error removing feed.", false);
+      return { ok: false, data: null };
     } finally {
       if (btn) btn.disabled = false;
     }
@@ -919,69 +1643,27 @@ function _publishedDateText(published) {
   // ── Lazy loading for main article list ────────────────────────────
   (function initLazyLoading() {
     const entriesList = document.getElementById("entries-list");
+    const entriesPanel = document.getElementById("entries-panel");
     if (!entriesList) return;
-
-    const topicSections = new Map();
-
-    function normalizeThemeLabel(value) {
-      const label = String(value || "").trim();
-      return label || "World News";
-    }
-
-    function collectTopicSections() {
-      topicSections.clear();
-      entriesList.querySelectorAll(".topic-section").forEach((section) => {
-        const label = section.dataset.topicLabel || "";
-        const rows = section.querySelector(".topic-section-rows");
-        if (label && rows) {
-          topicSections.set(label, rows);
-        }
-      });
-    }
-
-    function ensureTopicSection(label) {
-      const normalized = normalizeThemeLabel(label);
-      if (topicSections.has(normalized)) {
-        return topicSections.get(normalized);
-      }
-
-      const section = document.createElement("section");
-      section.className = "topic-section";
-      section.dataset.topicLabel = normalized;
-
-      const header = document.createElement("div");
-      header.className = "topic-section-header";
-      const title = document.createElement("h2");
-      title.className = "topic-section-title";
-      title.textContent = normalized;
-      header.appendChild(title);
-
-      const rows = document.createElement("div");
-      rows.className = "topic-section-rows";
-
-      section.appendChild(header);
-      section.appendChild(rows);
-      entriesList.appendChild(section);
-      topicSections.set(normalized, rows);
-      return rows;
-    }
 
     function buildEntryRow(e) {
       const row = document.createElement("a");
-      const href = e.link || _articleUrlForId(e.id);
-      const topicLabel = normalizeThemeLabel(e.theme_label);
+      const articleHref = _articleUrlForId(e.id);
+      const previewUrl = e.link || articleHref;
       const previewImage = e.og_image_url || e.thumbnail_url || "";
+      const previewCopyText = stripTags(e.og_description || e.summary || "").trim();
+      const previewId = `entry-preview-${e.id}`;
 
-      row.href = href;
+      row.href = articleHref;
       row.className = "entry-row" + (e.read ? " read" : "");
       row.dataset.entryId = String(e.id);
-      row.dataset.topicLabel = topicLabel;
-      row.dataset.previewUrl = href;
+      row.dataset.feedId = String(e.feed_id);
+      row.dataset.read = e.read ? "1" : "0";
+      row.dataset.previewUrl = previewUrl;
       row.dataset.previewImage = previewImage;
-      row.title = href;
-      row.addEventListener("click", (event) => {
-        markRead(e.id, event);
-      });
+      row.dataset.previewCopy = previewCopyText;
+      row.setAttribute("aria-expanded", "false");
+      row.setAttribute("aria-controls", previewId);
 
       const feedInfo = (window.FEED_MAP && window.FEED_MAP[e.feed_id]) || {};
       const domain = e.feed_domain || feedInfo.domain;
@@ -1012,14 +1694,13 @@ function _publishedDateText(published) {
       headline.textContent = e.title || "(no title)";
       main.appendChild(headline);
 
-      const summaryText = stripTags(e.summary || "").trim();
-      if (summaryText) {
+      if (previewCopyText) {
         const divider = document.createElement("span");
         divider.className = "entry-row-divider";
         divider.textContent = ":";
         const description = document.createElement("span");
         description.className = "entry-row-description";
-        description.textContent = summaryText;
+        description.textContent = previewCopyText;
         main.appendChild(divider);
         main.appendChild(description);
       }
@@ -1042,14 +1723,47 @@ function _publishedDateText(published) {
       row.appendChild(source);
       row.appendChild(date);
 
-      if (typeof window.bindEntryRowHoverPreview === "function") {
-        window.bindEntryRowHoverPreview(row);
+      const preview = document.createElement("span");
+      preview.className = "entry-row-preview";
+      preview.id = previewId;
+      preview.dataset.hasImage = previewImage ? "1" : "0";
+      preview.hidden = true;
+
+      const previewBody = document.createElement("span");
+      previewBody.className = "entry-row-preview-body";
+      if (previewCopyText) {
+        const previewCopy = document.createElement("span");
+        previewCopy.className = "entry-row-preview-copy";
+        previewCopy.textContent = previewCopyText;
+        previewBody.appendChild(previewCopy);
+      }
+
+      const previewUrlEl = document.createElement("span");
+      previewUrlEl.className = "entry-row-preview-url";
+      previewUrlEl.textContent = normalizePreviewUrl(row.dataset.previewUrl || "");
+      previewBody.appendChild(previewUrlEl);
+      preview.appendChild(previewBody);
+
+      const previewImg = document.createElement("img");
+      previewImg.className = "entry-row-preview-image";
+      previewImg.alt = "";
+      previewImg.loading = "lazy";
+      if (previewImage) {
+        previewImg.src = previewImage;
+        previewImg.hidden = false;
+      } else {
+        previewImg.hidden = true;
+      }
+      preview.appendChild(previewImg);
+
+      row.appendChild(preview);
+
+      if (typeof window.bindEntryRowActivity === "function") {
+        window.bindEntryRowActivity(row);
       }
 
       return row;
     }
-
-    collectTopicSections();
 
     let isLoadingMore = false;
     let allLoaded = false;
@@ -1066,7 +1780,7 @@ function _publishedDateText(published) {
       }
 
       isLoadingMore = true;
-      const { q, scope, feedId, qualityLevel, days, themes, sort } = getCurrentFilters();
+      const { q, scope, feedId, qualityLevel, days, themes, readStatus, sort } = getCurrentFilters();
       const params = new URLSearchParams();
       params.set("limit", String(PAGE_SIZE));
       params.set("offset", String(existing));
@@ -1076,6 +1790,7 @@ function _publishedDateText(published) {
       if (qualityLevel) params.set("quality_level", qualityLevel);
       if (days) params.set("days", days);
       if (themes) params.set("themes", themes);
+      if (readStatus) params.set("read_status", readStatus);
       if (sort && sort !== "chronological") params.set("sort", sort);
 
       try {
@@ -1101,17 +1816,65 @@ function _publishedDateText(published) {
       const emptyState = entriesList.querySelector(".empty-state");
       if (emptyState) emptyState.remove();
       for (const e of entries) {
-        const rows = ensureTopicSection(e.theme_label);
-        rows.appendChild(buildEntryRow(e));
+        entriesList.appendChild(buildEntryRow(e));
       }
       applyLocalPublishedDates(entriesList);
+      if (typeof window.__entryRowActivityRefreshViewMode === "function") {
+        window.__entryRowActivityRefreshViewMode(
+          document.documentElement.getAttribute("data-entry-view") || getStoredEntryViewMode()
+        );
+      }
     }
+
+    function updateEntriesSummary() {
+      const count = entriesList.querySelectorAll(".entry-row").length;
+      const countValue = document.querySelector(".entries-header-count-value");
+      const countCopy = document.querySelector(".entries-header-count-copy");
+      if (countValue) {
+        countValue.textContent = count.toLocaleString();
+      }
+      if (countCopy) {
+        countCopy.textContent = count === 1 ? "article" : "articles";
+      }
+    }
+
+    function ensureEmptyEntriesState() {
+      if (entriesList.querySelector(".entry-row") || entriesList.querySelector(".empty-state")) {
+        return;
+      }
+      const filters = typeof getCurrentFilters === "function"
+        ? getCurrentFilters()
+        : { scope: "my" };
+      const emptyState = document.createElement("div");
+      emptyState.className = "empty-state";
+      emptyState.innerHTML = filters.scope === "discover"
+        ? '<div style="font-size:2.5rem">&#128237;</div><p>No discover articles yet. Switch back to <a href="/">My Feed</a> or add more feeds to the catalogue.</p>'
+        : '<div style="font-size:2.5rem">&#128237;</div><p>No articles left in this feed. Use <a href="/add-feed">Add Feed</a> to add feeds, then switch to <a href="/?scope=discover">Discover</a>.</p>';
+      entriesList.appendChild(emptyState);
+    }
+
+    window.refreshEntryListAfterFeedRemoval = function refreshEntryListAfterFeedRemoval() {
+      updateEntriesSummary();
+      ensureEmptyEntriesState();
+    };
 
     function maybeLoadMore() {
       if (isLoadingMore || allLoaded) return;
-      const scrollY = window.scrollY || window.pageYOffset || 0;
-      const viewport = window.innerHeight || document.documentElement.clientHeight || 0;
-      const docHeight = document.documentElement.scrollHeight || document.body.scrollHeight || 0;
+      const scrollContainer = getFeedScrollContainer();
+      let scrollY = 0;
+      let viewport = 0;
+      let docHeight = 0;
+
+      if (scrollContainer && scrollContainer !== window) {
+        scrollY = scrollContainer.scrollTop || 0;
+        viewport = scrollContainer.clientHeight || 0;
+        docHeight = scrollContainer.scrollHeight || 0;
+      } else {
+        scrollY = window.scrollY || window.pageYOffset || 0;
+        viewport = window.innerHeight || document.documentElement.clientHeight || 0;
+        docHeight = document.documentElement.scrollHeight || document.body.scrollHeight || 0;
+      }
+
       // Start loading a bit before the user hits the end.
       if (scrollY + viewport + 400 >= docHeight) {
         loadMoreEntries();
@@ -1119,6 +1882,9 @@ function _publishedDateText(published) {
     }
 
     window.addEventListener("scroll", maybeLoadMore, { passive: true });
+    if (entriesPanel) {
+      entriesPanel.addEventListener("scroll", maybeLoadMore, { passive: true });
+    }
     window.addEventListener("resize", maybeLoadMore);
 
     // In case the initial page is short, attempt an eager load.
@@ -1162,14 +1928,6 @@ function _publishedDateText(published) {
     if (base) parts.push(base);
     if (draft) parts.push(draft);
     return parts.join(" ").trim();
-  }
-
-  function _safeSessionGet(key) {
-    try { return sessionStorage.getItem(key) || ""; } catch (_) { return ""; }
-  }
-
-  function _safeSessionSet(key, value) {
-    try { sessionStorage.setItem(key, value); } catch (_) {}
   }
 
   function _rememberFeedUrl() {
@@ -1306,6 +2064,7 @@ function _publishedDateText(published) {
         if (params.scope === "my" && params.feedId) searchParams.set("feed_id", params.feedId);
         if (params.qualityLevel) searchParams.set("quality_level", params.qualityLevel);
         if (params.days) searchParams.set("days", params.days);
+        if (params.readStatus) searchParams.set("read_status", params.readStatus);
         const res = await fetch("/api/search?" + searchParams.toString());
         if (!res.ok) return;
         if (q !== _composeSearchQuery()) return;

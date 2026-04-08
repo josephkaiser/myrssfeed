@@ -360,8 +360,10 @@ async function unsubscribeFeedByUrl(url) {
   const state = SERVICE_BY_URL.get(url);
   if (!state || !state.id) return;
   const res = await fetch('/api/feeds/' + state.id, { method: 'DELETE' });
-  if (!res.ok) throw new Error('Could not unsubscribe.');
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.detail || 'Could not unsubscribe.');
   SERVICE_BY_URL.set(url, { ...state, subscribed: false });
+  return data;
 }
 
 async function toggleSubscription(url, btn) {
@@ -371,9 +373,9 @@ async function toggleSubscription(url, btn) {
   btn.disabled = true;
   try {
     if (subscribed) {
-      await unsubscribeFeedByUrl(url);
+      const data = await unsubscribeFeedByUrl(url);
       SUBSCRIBED.delete(url);
-      showToast('Unsubscribed.');
+      showToast((data && data.message) || 'Unsubscribed.');
     } else {
       await subscribeFeed(url, feed.name || '');
       SUBSCRIBED.add(url);
@@ -432,6 +434,5 @@ renderCatalog();
 </script>
 </body>
 </html>
-
 
 

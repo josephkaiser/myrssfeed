@@ -1,5 +1,15 @@
 # Python
 .venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.hypothesis/
+.tox/
+.nox/
+.coverage
+.coverage.*
+htmlcov/
+.pycache*/
 __pycache__/
 **/__pycache__/
 *.pyc
@@ -7,9 +17,11 @@ __pycache__/
 *.egg-info/
 
 # Runtime data
-feeds/*.db
-feeds/*.db-shm
-feeds/*.db-wal
+browser-profile/
+feeds/*
+!feeds/.gitkeep
+data/*
+!data/feed_catalog.json
 
 # Logs (generated at runtime)
 logs/
@@ -18,13 +30,22 @@ logs/
 # Secrets & certs (generated on each host)
 .env
 .env.*
-certs/*.pem
+!.env.example
+certs/*
+!certs/.gitkeep
 
 # Build / packaging artifacts
 *.deb
 dist/
+build/
 node_modules/
+*.tsbuildinfo
 
-# OS
+# OS / editor
 .DS_Store
 Thumbs.db
+.idea/
+.vscode/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

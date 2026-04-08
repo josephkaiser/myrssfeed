@@ -28,10 +28,12 @@ class EntryAPIRoutes:
         days: Optional[str] = None,
         scope: Optional[str] = None,
         themes: Optional[str] = None,
+        read_status: Optional[str] = None,
         sort: Optional[str] = None,
     ):
         days_int = entries.parse_days(days)
         sort_val = entries.normalize_sort(sort)
+        read_status_val = entries.normalize_read_status(read_status)
         if limit <= 0:
             limit = 100
         if offset < 0:
@@ -52,6 +54,7 @@ class EntryAPIRoutes:
                 days_int,
                 source_scope,
                 theme_labels,
+                read_status_val,
                 sort_val,
             )
         finally:

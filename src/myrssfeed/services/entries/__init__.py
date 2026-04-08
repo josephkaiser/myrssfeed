@@ -1,6 +1,10 @@
 from .constants import (
     DATE_RANGE_DAYS,
     RANDOM_SEED_COOKIE,
+    READ_STATUS_ALL,
+    READ_STATUS_OPTIONS,
+    READ_STATUS_READ,
+    READ_STATUS_UNREAD,
     SORT_CHRONOLOGICAL,
     SORT_OPTIONS,
     SORT_QUALITY_ASC,
@@ -18,6 +22,7 @@ from .filters import build_entry_filters, source_scope_clause
 from .parsing import (
     build_url_with_query_params,
     minutes_since_iso_timestamp,
+    normalize_read_status,
     normalize_sort,
     normalize_source_scope,
     normalize_walk_direction,
@@ -35,6 +40,7 @@ from .queries import (
     load_trending,
 )
 from .ranking import (
+    annotate_entries_for_ranking,
     apply_daily_source_diversity,
     apply_source_diversity,
     balance_entries_by_theme,
@@ -57,6 +63,10 @@ from .walk import (
 __all__ = [
     "DATE_RANGE_DAYS",
     "RANDOM_SEED_COOKIE",
+    "READ_STATUS_ALL",
+    "READ_STATUS_OPTIONS",
+    "READ_STATUS_READ",
+    "READ_STATUS_UNREAD",
     "SORT_CHRONOLOGICAL",
     "SORT_OPTIONS",
     "SORT_QUALITY_ASC",
@@ -64,6 +74,7 @@ __all__ = [
     "SOURCE_SCOPE_DISCOVER",
     "SOURCE_SCOPE_MY",
     "THEME_LABELS",
+    "annotate_entries_for_ranking",
     "WALK_CANDIDATE_LIMIT",
     "WALK_DECAY_FACTOR",
     "WALK_INITIAL_STRENGTH",
@@ -81,6 +92,7 @@ __all__ = [
     "group_entries_by_theme",
     "load_trending",
     "minutes_since_iso_timestamp",
+    "normalize_read_status",
     "normalize_theme_label",
     "normalize_sort",
     "normalize_source_scope",

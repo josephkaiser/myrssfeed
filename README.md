@@ -37,9 +37,11 @@ cd myrssfeed
 bash install.sh
 ```
 
-After install, open the URL printed by the script. If mDNS is available, this often works:
+After install, open the URL printed by the script. If mDNS is available, this often works with your Pi's existing hostname:
 
-- `http://myrssfeed.local:8080`
+- `http://<current-pi-hostname>.local:8080`
+
+`install.sh` does not rename the machine.
 
 Logs endpoint:
 
@@ -96,7 +98,7 @@ sudo systemctl status myrssfeed
 
 Then open:
 
-- `http://myrssfeed.local:8080`
+- `http://<current-pi-hostname>.local:8080`
 - or `http://<pi-lan-ip>:8080`
 
 Useful verification commands:

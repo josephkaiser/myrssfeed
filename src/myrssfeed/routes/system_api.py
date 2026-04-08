@@ -11,6 +11,13 @@ from typing import Callable, Optional
 from fastapi import HTTPException
 
 from myrssfeed.api.schemas import DetectRequest, SettingsUpdate
+from myrssfeed.scripts.scheduler import (
+    get_pipeline_schedule_settings,
+    normalize_pipeline_schedule_day,
+    normalize_pipeline_schedule_option,
+    normalize_pipeline_schedule_time,
+    pipeline_schedule_minutes_fallback,
+)
 from myrssfeed.services import entries
 
 
@@ -57,14 +64,26 @@ class SystemAPIRoutes:
         app.get("/api/logs")(self.get_logs)
 
     def get_settings(self):
-        return {key: self.get_setting(key) for key in self.defaults}
+        settings = {key: self.get_setting(key) for key in self.defaults}
+        settings.update(get_pipeline_schedule_settings())
+        return settings
 
     def update_settings(self, payload: SettingsUpdate):
         updates = payload.model_dump(exclude_none=True)
+        if "pipeline_refresh_schedule" in updates:
+            schedule = normalize_pipeline_schedule_option(updates["pipeline_refresh_schedule"])
+            updates["pipeline_refresh_schedule"] = schedule
+            updates["pipeline_refresh_minutes"] = str(pipeline_schedule_minutes_fallback(schedule))
+        if "pipeline_refresh_day" in updates:
+            updates["pipeline_refresh_day"] = normalize_pipeline_schedule_day(updates["pipeline_refresh_day"])
+        if "pipeline_refresh_time" in updates:
+            updates["pipeline_refresh_time"] = normalize_pipeline_schedule_time(updates["pipeline_refresh_time"])
         for key, value in updates.items():
             self.set_setting(key, str(value))
         self.reconfigure_scheduler()
-        return {key: self.get_setting(key) for key in self.defaults}
+        settings = {key: self.get_setting(key) for key in self.defaults}
+        settings.update(get_pipeline_schedule_settings())
+        return settings
 
     def trigger_refresh(self):
         if self.is_pipeline_running():
@@ -121,6 +140,7 @@ class SystemAPIRoutes:
         quality_level: Optional[int] = None,
         days: Optional[str] = None,
         scope: Optional[str] = None,
+        read_status: Optional[str] = None,
     ):
         if not q or not q.strip():
             return {"suggestions": [], "entries": []}
@@ -131,6 +151,7 @@ class SystemAPIRoutes:
             days_int = entries.parse_days(days)
             source_scope = entries.normalize_source_scope(scope)
             active_feed_id = feed_id if source_scope == entries.SOURCE_SCOPE_MY else None
+            read_status_val = entries.normalize_read_status(read_status)
             filters, params = entries.build_entry_filters(
                 query_text,
                 active_feed_id,
@@ -138,6 +159,7 @@ class SystemAPIRoutes:
                 days_int,
                 source_scope,
                 None,
+                read_status_val,
             )
             query = """
                 SELECT e.id, e.feed_id, f.title AS feed_title,
@@ -163,6 +185,7 @@ class SystemAPIRoutes:
                     days_int,
                     source_scope,
                     None,
+                    read_status_val,
                 )
                 title_query = """
                     SELECT e.title

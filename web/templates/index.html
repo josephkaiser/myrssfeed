@@ -20,9 +20,18 @@
       else el.removeAttribute("data-theme");
     })();
   </script>
+  <script>
+    (function() {
+      var mode = "condensed";
+      try {
+        mode = localStorage.getItem("entry_view_mode") === "expanded" ? "expanded" : "condensed";
+      } catch (_) {}
+      document.documentElement.setAttribute("data-entry-view", mode);
+    })();
+  </script>
   <link rel="stylesheet" href="/static/styles.css" />
 </head>
-<body>
+<body class="feed-page">
 
 <header>
   <button class="hamburger-btn" type="button" onclick="toggleNav()" aria-label="Open navigation">
@@ -38,6 +47,9 @@
     {% endif %}
     {% if quality_level is not none %}
     <input type="hidden" name="quality_level" value="{{ quality_level }}" />
+    {% endif %}
+    {% if read_status and read_status != 'unread' %}
+    <input type="hidden" name="read_status" value="{{ read_status }}" />
     {% endif %}
     <input type="hidden" name="scope" value="{{ source_scope }}" />
     <input type="hidden" name="q" id="search-query-base" value="{{ q }}" />
@@ -148,7 +160,7 @@
             type="url"
             id="nav-add-feed-input"
             class="detect-input"
-            placeholder="https://example.com or https://example.com/feed.xml"
+            placeholder="Add feed URL"
             autocomplete="off"
           />
           <button
@@ -204,7 +216,7 @@
             type="url"
             id="sidebar-add-feed-input"
             class="detect-input"
-            placeholder="https://example.com or https://example.com/feed.xml"
+            placeholder="Add feed URL"
             autocomplete="off"
           />
           <button
@@ -250,104 +262,80 @@
           <span class="entries-header-count-value">{{ total_entries_display }}</span>
           <span class="entries-header-count-copy">article{% if total_entries != 1 %}s{% endif %}</span>
         </div>
-        <div class="theme-filter">
-          <button
-            id="theme-filter-btn"
-            class="btn ghost pill theme-filter-btn"
-            type="button"
-            aria-expanded="false"
-            aria-controls="theme-filter-panel"
-            title="Filter by category"
-          >
-            Filter
-          </button>
-          <div id="theme-filter-panel" class="theme-filter-panel" hidden>
-            <div class="theme-filter-sort-row">
-              <label for="sort-select" class="theme-filter-panel-title">Sort</label>
-              <select id="sort-select" aria-label="Sort order">
-                <option value="chronological" {% if sort == 'chronological' %}selected{% endif %}>Chronological</option>
-                <option value="quality_desc" {% if sort == 'quality_desc' %}selected{% endif %}>Quality: highest → lowest</option>
-                <option value="quality_asc" {% if sort == 'quality_asc' %}selected{% endif %}>Quality: lowest → highest</option>
-              </select>
-            </div>
-            <div class="theme-filter-panel-title">Categories</div>
-            <label class="theme-filter-item">
-              <input type="checkbox" class="theme-filter-checkbox" value="Politics" />
-              <span>Politics</span>
-            </label>
-            <label class="theme-filter-item">
-              <input type="checkbox" class="theme-filter-checkbox" value="Technology" />
-              <span>Technology</span>
-            </label>
-            <label class="theme-filter-item">
-              <input type="checkbox" class="theme-filter-checkbox" value="Business" />
-              <span>Business</span>
-            </label>
-            <label class="theme-filter-item">
-              <input type="checkbox" class="theme-filter-checkbox" value="Stocks" />
-              <span>Stocks</span>
-            </label>
-            <label class="theme-filter-item">
-              <input type="checkbox" class="theme-filter-checkbox" value="Spam" />
-              <span>Spam</span>
-            </label>
-            <label class="theme-filter-item">
-              <input type="checkbox" class="theme-filter-checkbox" value="Science" />
-              <span>Science</span>
-            </label>
-            <label class="theme-filter-item">
-              <input type="checkbox" class="theme-filter-checkbox" value="World News" />
-              <span>World News</span>
-            </label>
-            <div class="theme-filter-actions">
-              <button class="btn pill theme-filter-apply" type="button" onclick="applyThemeFilter()">Apply</button>
-              <button class="btn ghost pill theme-filter-clear" type="button" onclick="clearThemeFilter()">All</button>
-            </div>
-          </div>
-        </div>
+        <button
+          id="read-status-btn"
+          class="btn ghost pill read-status-btn{% if show_read %} active{% endif %}"
+          type="button"
+          aria-pressed="{{ 'true' if show_read else 'false' }}"
+          title="{{ 'Showing all articles' if show_read else 'Showing unread articles only' }}"
+        >
+          {{ 'All' if show_read else 'Unread' }}
+        </button>
+        <button
+          id="entry-view-mode-btn"
+          class="btn ghost pill entry-view-mode-btn"
+          type="button"
+          aria-pressed="false"
+          title="Toggle between condensed and expanded rows"
+        >
+          Condensed
+        </button>
+        <label class="entries-sort">
+          <span class="sr-only">Sort order</span>
+          <select id="sort-select" class="entries-sort-select" aria-label="Sort order">
+            <option value="chronological" {% if sort == 'chronological' %}selected{% endif %}>Latest</option>
+            <option value="quality_desc" {% if sort == 'quality_desc' %}selected{% endif %}>Best first</option>
+            <option value="quality_asc" {% if sort == 'quality_asc' %}selected{% endif %}>Low quality first</option>
+          </select>
+        </label>
       </div>
     </div>
 
-    <div class="entries-list" id="entries-list">
-      {% if topic_groups %}
-        {% for group in topic_groups %}
-        <section class="topic-section" data-topic-label="{{ group.label }}">
-          <div class="topic-section-header">
-            <h2 class="topic-section-title">{{ group.label }}</h2>
-          </div>
-          <div class="topic-section-rows">
-            {% for entry in group.entries %}
-            {% set feed_info = feed_map.get(entry.feed_id) %}
-            {% set row_href = entry.link or ('/article/' ~ entry.id) %}
-            {% set preview_image = entry.og_image_url or entry.thumbnail_url or '' %}
-            <a
-              href="{{ row_href }}"
-              class="entry-row{% if entry.read %} read{% endif %}"
-              data-entry-id="{{ entry.id }}"
-              data-topic-label="{{ group.label }}"
-              data-preview-url="{{ row_href }}"
-              data-preview-image="{{ preview_image }}"
-              title="{{ row_href }}"
-              onclick="markRead({{ entry.id }}, event)"
-            >
-              <span class="entry-row-logo">
-                {% if feed_info and feed_info.domain %}
-                <img class="entry-favicon" src="https://www.google.com/s2/favicons?domain={{ feed_info.domain }}&sz=32" width="16" height="16" alt="" loading="lazy" />
-                {% endif %}
-              </span>
-              <span class="entry-row-main">
-                <span class="entry-row-headline">{{ entry.title or "(no title)" }}</span>
-                {% if entry.summary %}
-                <span class="entry-row-divider">:</span>
-                <span class="entry-row-description">{{ entry.summary | striptags }}</span>
-                {% endif %}
-              </span>
-              <span class="entry-row-source">{{ entry.feed_title or "Unknown" }}</span>
-              <time class="entry-row-date" data-published="{{ entry.published }}" data-published-format="date" datetime="{{ entry.published }}">{{ entry.published[:10] if entry.published else "" }}</time>
-            </a>
-            {% endfor %}
-          </div>
-        </section>
+    <div class="entries-list entries-stream" id="entries-list">
+      {% if entries %}
+        {% for entry in entries %}
+        {% set feed_info = feed_map.get(entry.feed_id) %}
+        {% set article_href = '/article/' ~ entry.id %}
+        {% set preview_url = entry.link or article_href %}
+        {% set preview_image = entry.og_image_url or entry.thumbnail_url or '' %}
+        {% set preview_copy = (entry.og_description or entry.summary or '') | striptags %}
+        {% set preview_id = 'entry-preview-' ~ entry.id %}
+        <a
+          href="{{ article_href }}"
+          class="entry-row{% if entry.read %} read{% endif %}"
+          data-entry-id="{{ entry.id }}"
+          data-feed-id="{{ entry.feed_id }}"
+          data-read="{{ 1 if entry.read else 0 }}"
+          data-preview-url="{{ preview_url }}"
+          data-preview-image="{{ preview_image }}"
+          data-preview-copy="{{ preview_copy }}"
+          aria-expanded="false"
+          aria-controls="{{ preview_id }}"
+        >
+          <span class="entry-row-logo">
+            {% if feed_info and feed_info.domain %}
+            <img class="entry-favicon" src="https://www.google.com/s2/favicons?domain={{ feed_info.domain }}&sz=32" width="16" height="16" alt="" loading="lazy" />
+            {% endif %}
+          </span>
+          <span class="entry-row-main">
+            <span class="entry-row-headline">{{ entry.title or "(no title)" }}</span>
+            {% if preview_copy %}
+            <span class="entry-row-divider">:</span>
+            <span class="entry-row-description">{{ preview_copy }}</span>
+            {% endif %}
+          </span>
+          <span class="entry-row-source">{{ entry.feed_title or "Unknown" }}</span>
+          <time class="entry-row-date" data-published="{{ entry.published }}" data-published-format="date" datetime="{{ entry.published }}">{{ entry.published[:10] if entry.published else "" }}</time>
+          <span class="entry-row-preview" id="{{ preview_id }}" data-has-image="{{ 1 if preview_image else 0 }}" hidden>
+            <span class="entry-row-preview-body">
+              {% if preview_copy %}
+              <span class="entry-row-preview-copy">{{ preview_copy }}</span>
+              {% endif %}
+              <span class="entry-row-preview-url">{{ preview_url }}</span>
+            </span>
+            <img class="entry-row-preview-image" src="{{ preview_image }}" alt="" loading="lazy"{% if not preview_image %} hidden{% endif %} />
+          </span>
+        </a>
         {% endfor %}
       {% else %}
         <div class="empty-state">
@@ -369,7 +357,7 @@
       <div class="trending-list">
         {% for entry in trending %}
         {% set feed_info = feed_map.get(entry.feed_id) %}
-        <article class="trending-item">
+        <article class="trending-item" data-feed-id="{{ entry.feed_id }}">
           <div class="trending-meta">
             {% if feed_info and feed_info.domain %}
             <img class="sidebar-feed-favicon" src="https://www.google.com/s2/favicons?domain={{ feed_info.domain }}&sz=32" width="14" height="14" alt="" loading="lazy" />
@@ -377,7 +365,7 @@
             <span class="trending-source">{{ entry.feed_title or "Unknown" }}</span>
             <time class="trending-date" data-published="{{ entry.published }}" data-published-format="date" datetime="{{ entry.published }}">{{ entry.published[:10] if entry.published else "" }}</time>
           </div>
-          <a class="trending-title" href="{{ entry.link or ('/article/' ~ entry.id) }}" target="_blank" rel="noopener noreferrer"{% if entry.link %} onclick="markRead({{ entry.id }}, this)"{% endif %}>
+          <a class="trending-title" href="{{ '/article/' ~ entry.id }}">
             {{ loop.index }}. {{ entry.title or "(no title)" }}
           </a>
         </article>
@@ -393,10 +381,19 @@
 </div>
 
 <div id="toast"></div>
-<div class="entry-hover-preview" id="entry-hover-preview" hidden>
-  <div class="entry-hover-preview-url" id="entry-hover-preview-url"></div>
-  <img class="entry-hover-preview-image" id="entry-hover-preview-image" src="" alt="" hidden />
-</div>
+<aside class="feed-shortcuts-help" id="feed-shortcuts-help" hidden aria-live="polite" aria-label="Feed keyboard shortcuts">
+  <div class="feed-shortcuts-help-header">
+    <strong>Feed shortcuts</strong>
+    <button type="button" class="feed-shortcuts-help-close" id="feed-shortcuts-help-close" aria-label="Close shortcuts help">&times;</button>
+  </div>
+  <p class="feed-shortcuts-help-copy">Press <kbd>?</kbd> anytime to reopen this guide.</p>
+  <div class="feed-shortcuts-help-grid">
+    <div class="feed-shortcuts-help-item"><kbd>j</kbd> <kbd>k</kbd> or arrows move</div>
+    <div class="feed-shortcuts-help-item"><kbd>gg</kbd> top, <kbd>G</kbd> bottom</div>
+    <div class="feed-shortcuts-help-item"><kbd>d</kbd> / <kbd>u</kbd> half page</div>
+    <div class="feed-shortcuts-help-item"><kbd>Space</kbd> / <kbd>Shift</kbd>+<kbd>Space</kbd> page</div>
+  </div>
+</aside>
 
 <script>
   const FEED_MAP = {{ feed_map | tojson }};

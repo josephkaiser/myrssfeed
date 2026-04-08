@@ -23,7 +23,13 @@ from myrssfeed.scripts.scheduler import (
     run_pipeline_async,
     trigger_pipeline_refresh_if_due_on_startup,
 )
-from myrssfeed.services.catalog import FEED_CATALOG, STATIC_CATALOG_URLS, seed_catalogue_feeds
+from myrssfeed.services.catalog import (
+    FEED_CATALOG,
+    STARTER_CATALOG_URLS,
+    STATIC_CATALOG_URLS,
+    seed_catalogue_feeds,
+    seed_starter_subscriptions,
+)
 from myrssfeed.utils.helpers import (
     DEFAULTS as CORE_DEFAULTS,
     DB_FILE as CORE_DB_FILE,
@@ -69,6 +75,7 @@ logger = _configure_logging()
 DEFAULTS: dict[str, str] = CORE_DEFAULTS
 DB_FILE: str = CORE_DB_FILE
 _FEED_CATALOG = FEED_CATALOG
+_STARTER_CATALOG_URLS = STARTER_CATALOG_URLS
 _STATIC_CATALOG_URLS = STATIC_CATALOG_URLS
 
 
@@ -87,6 +94,7 @@ def init_db() -> None:
     conn = get_db()
     try:
         seed_catalogue_feeds(conn)
+        seed_starter_subscriptions(conn)
     finally:
         conn.close()
 
@@ -132,7 +140,10 @@ ui_routes = UIRoutes(
     defaults=DEFAULTS,
     logger=logger,
 )
-feed_api_routes = FeedAPIRoutes(get_db=get_db)
+feed_api_routes = FeedAPIRoutes(
+    get_db=get_db,
+    is_pipeline_running=is_pipeline_running,
+)
 entry_api_routes = EntryAPIRoutes(get_db=get_db)
 system_api_routes = SystemAPIRoutes(
     get_db=get_db,

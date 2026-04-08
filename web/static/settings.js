@@ -1,4 +1,13 @@
 "use strict";
+const PIPELINE_REFRESH_INTERVAL_MINUTES = {
+    "15m": 15,
+    "30m": 30,
+    "45m": 45,
+    "1h": 60,
+    "2h": 120,
+    "12h": 720,
+    "1d": 1440,
+};
 function getElement(id) {
     return document.getElementById(id);
 }
@@ -96,23 +105,83 @@ function toast(message, ok = true) {
         element.classList.remove("show");
     }, 2800);
 }
-function getPipelineRefreshMinutes() {
-    const input = getElement("pipeline_refresh_minutes");
-    return clampInt(input?.value, 15, 5, 240);
-}
-function describePipelineRefreshMinutes(minutes) {
-    const value = Math.min(240, Math.max(5, minutes));
-    return `${value} min`;
-}
-function updatePipelineRefreshDial() {
-    const input = getElement("pipeline_refresh_minutes");
-    const label = getElement("pipeline_refresh_minutes_value");
-    if (!input || !label) {
-        return;
+function getPipelineRefreshSchedule() {
+    const input = getElement("pipeline_refresh_schedule");
+    const rawValue = input?.value ?? "15m";
+    switch (rawValue) {
+        case "continuous":
+        case "15m":
+        case "30m":
+        case "45m":
+        case "1h":
+        case "2h":
+        case "12h":
+        case "1d":
+        case "weekly":
+            return rawValue;
+        default:
+            return "15m";
     }
-    const minutes = getPipelineRefreshMinutes();
-    input.value = String(minutes);
-    label.textContent = describePipelineRefreshMinutes(minutes);
+}
+function getPipelineRefreshDay() {
+    const input = getElement("pipeline_refresh_day");
+    const rawValue = input?.value ?? "monday";
+    switch (rawValue) {
+        case "monday":
+        case "tuesday":
+        case "wednesday":
+        case "thursday":
+        case "friday":
+        case "saturday":
+        case "sunday":
+            return rawValue;
+        default:
+            return "monday";
+    }
+}
+function isValidTime(value) {
+    return /^([01]\d|2[0-3]):([0-5]\d)$/.test(value);
+}
+function getPipelineRefreshTime() {
+    const input = getElement("pipeline_refresh_time");
+    const rawValue = (input?.value || "").trim();
+    return isValidTime(rawValue) ? rawValue : "06:00";
+}
+function getPipelineRefreshMinutesFallback(schedule) {
+    if (schedule === "continuous") {
+        return 0;
+    }
+    if (schedule === "weekly") {
+        return 7 * 24 * 60;
+    }
+    return PIPELINE_REFRESH_INTERVAL_MINUTES[schedule];
+}
+function describePipelineRefreshSchedule(schedule) {
+    switch (schedule) {
+        case "continuous":
+            return "Runs back-to-back with a short pause between passes so new feed items show up as quickly as possible.";
+        case "1d":
+            return "Runs once per day at the local time you choose below.";
+        case "weekly":
+            return "Runs once per week on the day and time you choose below.";
+        default:
+            return "Runs on a fixed repeating interval all day.";
+    }
+}
+function updatePipelineScheduleUI() {
+    const schedule = getPipelineRefreshSchedule();
+    const dayWrap = getElement("pipeline_refresh_day_wrap");
+    const timeWrap = getElement("pipeline_refresh_time_wrap");
+    const help = getElement("pipeline_refresh_schedule_help");
+    if (timeWrap) {
+        timeWrap.hidden = !(schedule === "1d" || schedule === "weekly");
+    }
+    if (dayWrap) {
+        dayWrap.hidden = schedule !== "weekly";
+    }
+    if (help) {
+        help.textContent = describePipelineRefreshSchedule(schedule);
+    }
 }
 async function readJson(response) {
     return (await response.json().catch(() => ({})));
@@ -139,6 +208,9 @@ async function saveSettings() {
     const newsletterPassInput = requireInput("newsletter_imap_password");
     const newsletterFolderInput = requireInput("newsletter_imap_folder");
     const newsletterPollInput = requireInput("newsletter_poll_minutes");
+    const pipelineScheduleSelect = requireSelect("pipeline_refresh_schedule");
+    const pipelineDaySelect = requireSelect("pipeline_refresh_day");
+    const pipelineTimeInput = requireInput("pipeline_refresh_time");
     const newsletterPortValue = Number.parseInt(newsletterPortInput.value, 10);
     if (Number.isNaN(newsletterPortValue) || newsletterPortValue < 1 || newsletterPortValue > 65535) {
         toast("Newsletter IMAP port must be between 1 and 65535.", false);
@@ -151,6 +223,13 @@ async function saveSettings() {
         newsletterPollInput.focus();
         return;
     }
+    const pipelineSchedule = getPipelineRefreshSchedule();
+    const pipelineTimeValue = pipelineTimeInput.value.trim();
+    if ((pipelineSchedule === "1d" || pipelineSchedule === "weekly") && !isValidTime(pipelineTimeValue)) {
+        toast("Choose a valid time for the refresh schedule.", false);
+        pipelineTimeInput.focus();
+        return;
+    }
     if (maxEntriesValue > 5000) {
         toast("Large article lists may be slow on lower-end devices. Make sure this machine has enough disk space and a fast drive.", true);
     }
@@ -158,7 +237,10 @@ async function saveSettings() {
         retention_days: String(days),
         theme: readStoredTheme(),
         max_entries: String(maxEntriesValue),
-        pipeline_refresh_minutes: String(getPipelineRefreshMinutes()),
+        pipeline_refresh_schedule: pipelineScheduleSelect.value,
+        pipeline_refresh_day: pipelineDaySelect.value,
+        pipeline_refresh_time: isValidTime(pipelineTimeValue) ? pipelineTimeValue : getPipelineRefreshTime(),
+        pipeline_refresh_minutes: String(getPipelineRefreshMinutesFallback(pipelineSchedule)),
         newsletter_enabled: newsletterEnabledSelect.value,
         newsletter_imap_host: newsletterHostInput.value.trim(),
         newsletter_imap_port: String(newsletterPortValue),
@@ -598,10 +680,10 @@ async function wordrankNow() {
     }
 }
 (function initPipelineControls() {
-    const refreshInput = getElement("pipeline_refresh_minutes");
-    if (refreshInput) {
-        refreshInput.addEventListener("input", updatePipelineRefreshDial);
-        updatePipelineRefreshDial();
+    const refreshScheduleInput = getElement("pipeline_refresh_schedule");
+    if (refreshScheduleInput) {
+        refreshScheduleInput.addEventListener("change", updatePipelineScheduleUI);
+        updatePipelineScheduleUI();
     }
     if (getElement("wordrank-status-dot")) {
         void fetchWordrankStatus();

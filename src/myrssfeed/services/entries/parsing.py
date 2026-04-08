@@ -8,6 +8,8 @@ from fastapi import Request
 from .constants import (
     DATE_RANGE_DAYS,
     RANDOM_SEED_COOKIE,
+    READ_STATUS_OPTIONS,
+    READ_STATUS_UNREAD,
     SORT_CHRONOLOGICAL,
     SORT_OPTIONS,
     SOURCE_SCOPE_DISCOVER,
@@ -132,6 +134,18 @@ def normalize_sort(sort: Optional[str]) -> str:
     if raw in SORT_OPTIONS:
         return raw
     return SORT_CHRONOLOGICAL
+
+
+def normalize_read_status(
+    read_status: Optional[str],
+    default: Optional[str] = READ_STATUS_UNREAD,
+) -> Optional[str]:
+    raw = (read_status or "").strip().lower()
+    if not raw:
+        return default
+    if raw in READ_STATUS_OPTIONS:
+        return raw
+    return default
 
 
 def build_url_with_query_params(path: str, params: dict[str, Optional[str]]) -> str:

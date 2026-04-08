@@ -32,6 +32,7 @@ class EntryOut(BaseModel):
     link: Optional[str]
     published: Optional[str]
     summary: Optional[str]
+    og_description: Optional[str] = None
     read: int = 0
     liked: int = 0
     thumbnail_url: Optional[str] = None
@@ -50,6 +51,9 @@ class SettingsUpdate(BaseModel):
     retention_days: Optional[str] = None
     theme: Optional[str] = None
     max_entries: Optional[str] = None
+    pipeline_refresh_schedule: Optional[str] = None
+    pipeline_refresh_day: Optional[str] = None
+    pipeline_refresh_time: Optional[str] = None
     pipeline_refresh_minutes: Optional[str] = None
     newsletter_enabled: Optional[str] = None
     newsletter_imap_host: Optional[str] = None
