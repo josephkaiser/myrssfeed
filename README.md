@@ -25,6 +25,8 @@ myRSSfeed is currently optimized around a small, Pi-friendly feature set:
 
 Older experimental features such as visualization maps, full-page article scraping, and LLM-heavy enrichment are not part of the current core product.
 
+<img src='img/myrssfeed_snip.png'>
+
 ## Install
 
 ### Raspberry Pi / Debian (recommended)
