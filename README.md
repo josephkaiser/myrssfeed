@@ -2,6 +2,8 @@
 
 myRSSfeed is a self-hosted RSS reader built with FastAPI + SQLite, designed to run well on a Raspberry Pi and be reachable on your local network.
 
+<img src='img/myrssfeed_snip.png'>
+
 ## Current capabilities
 
 - Subscribe, unsubscribe, rename, and browse feeds from a local web UI.
@@ -24,8 +26,6 @@ myRSSfeed is currently optimized around a small, Pi-friendly feature set:
 - Optional newsletter ingest
 
 Older experimental features such as visualization maps, full-page article scraping, and LLM-heavy enrichment are not part of the current core product.
-
-<img src='img/myrssfeed_snip.png'>
 
 ## Install
 
